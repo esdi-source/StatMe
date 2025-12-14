@@ -1,12 +1,14 @@
 /// Riverpod Providers
 /// Provides dependency injection and state management
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/models.dart';
 import '../repositories/repositories.dart';
 import '../services/in_memory_database.dart';
+import '../services/openfoodfacts_service.dart';
 
 // ============================================
 // REPOSITORY PROVIDERS
@@ -74,6 +76,31 @@ final moodRepositoryProvider = Provider<MoodRepository>((ref) {
     return DemoMoodRepository();
   }
   return SupabaseMoodRepository(Supabase.instance.client);
+});
+
+// ============================================
+// OPENFOODFACTS PROVIDER
+// ============================================
+
+/// OpenFoodFacts Service Provider
+final openFoodFactsServiceProvider = Provider<OpenFoodFactsService>((ref) {
+  if (AppConfig.isDemoMode) {
+    return DemoOpenFoodFactsService();
+  }
+  return OpenFoodFactsService();
+});
+
+/// Provider für Produkt-Suche per Barcode
+final productByBarcodeProvider = FutureProvider.family<OpenFoodFactsProduct, String>((ref, barcode) async {
+  final service = ref.watch(openFoodFactsServiceProvider);
+  return service.getProductByBarcode(barcode);
+});
+
+/// Provider für Produkt-Suche per Name
+final productSearchProvider = FutureProvider.family<List<OpenFoodFactsProduct>, String>((ref, query) async {
+  if (query.isEmpty) return [];
+  final service = ref.watch(openFoodFactsServiceProvider);
+  return service.searchProducts(query);
 });
 
 // ============================================
@@ -163,6 +190,25 @@ final settingsNotifierProvider = StateNotifierProvider<SettingsNotifier, Setting
 });
 
 // ============================================
+// THEME COLOR PROVIDER
+// ============================================
+
+/// Provider für die aktuelle Theme-Farbe
+final themeColorProvider = StateProvider<Color>((ref) {
+  // Default grün
+  return const Color(0xFF4CAF50);
+});
+
+/// Provider der die Theme-Farbe aus den Settings synchronisiert
+final themeColorFromSettingsProvider = Provider<Color>((ref) {
+  final settings = ref.watch(settingsNotifierProvider);
+  if (settings != null && settings.themeColorValue != 0) {
+    return Color(settings.themeColorValue);
+  }
+  return const Color(0xFF4CAF50);
+});
+
+// ============================================
 // TODO PROVIDERS
 // ============================================
 
@@ -216,7 +262,7 @@ final foodLogsProvider = FutureProvider.family<List<FoodLogModel>, ({String user
   return await repo.getFoodLogs(params.userId, params.date);
 });
 
-final productSearchProvider = FutureProvider.family<List<ProductModel>, String>((ref, query) async {
+final localProductSearchProvider = FutureProvider.family<List<ProductModel>, String>((ref, query) async {
   if (query.isEmpty) return [];
   final repo = ref.watch(foodRepositoryProvider);
   return await repo.searchProducts(query);

@@ -13,12 +13,14 @@ class StatMeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
+    // Theme-Farbe dynamisch aus Provider laden
+    final themeColor = ref.watch(themeColorProvider);
     
     return MaterialApp(
       title: 'StatMe',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: AppTheme.lightTheme(themeColor),
+      darkTheme: AppTheme.darkTheme(themeColor),
       themeMode: ThemeMode.system,
       home: authState.when(
         data: (user) {

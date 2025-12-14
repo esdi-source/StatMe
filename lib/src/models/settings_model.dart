@@ -10,6 +10,7 @@ class SettingsModel extends Equatable {
   final String locale;
   final bool notificationsEnabled;
   final bool darkMode;
+  final int themeColorValue; // Store color as int
 
   const SettingsModel({
     required this.id,
@@ -21,6 +22,7 @@ class SettingsModel extends Equatable {
     this.locale = 'de_DE',
     this.notificationsEnabled = true,
     this.darkMode = false,
+    this.themeColorValue = 0xFF4CAF50, // Default green
   });
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
@@ -34,6 +36,7 @@ class SettingsModel extends Equatable {
       locale: json['locale'] as String? ?? 'de_DE',
       notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
       darkMode: json['dark_mode'] as bool? ?? false,
+      themeColorValue: json['theme_color_value'] as int? ?? 0xFF4CAF50,
     );
   }
 
@@ -47,7 +50,7 @@ class SettingsModel extends Equatable {
       'timezone': timezone,
       'locale': locale,
       'notifications_enabled': notificationsEnabled,
-      'dark_mode': darkMode,
+      'theme_color_value': themeColorValue,
     };
   }
 
@@ -61,6 +64,7 @@ class SettingsModel extends Equatable {
     String? locale,
     bool? notificationsEnabled,
     bool? darkMode,
+    int? themeColorValue,
   }) {
     return SettingsModel(
       id: id ?? this.id,
@@ -72,6 +76,7 @@ class SettingsModel extends Equatable {
       locale: locale ?? this.locale,
       notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
       darkMode: darkMode ?? this.darkMode,
+      themeColorValue: themeColorValue ?? this.themeColorValue,
     );
   }
 
@@ -86,5 +91,6 @@ class SettingsModel extends Equatable {
         locale,
         notificationsEnabled,
         darkMode,
+        themeColorValue,
       ];
 }

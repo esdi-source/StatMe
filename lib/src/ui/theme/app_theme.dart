@@ -1,25 +1,42 @@
-/// App Theme Configuration
+/// App Theme Configuration with Dynamic Color Support
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Available theme colors for user selection
+enum ThemeColor {
+  green(Color(0xFF4CAF50), 'Grün'),
+  blue(Color(0xFF2196F3), 'Blau'),
+  purple(Color(0xFF9C27B0), 'Lila'),
+  orange(Color(0xFFFF9800), 'Orange'),
+  red(Color(0xFFF44336), 'Rot'),
+  pink(Color(0xFFE91E63), 'Pink'),
+  teal(Color(0xFF009688), 'Türkis'),
+  indigo(Color(0xFF3F51B5), 'Indigo'),
+  cyan(Color(0xFF00BCD4), 'Cyan'),
+  amber(Color(0xFFFFC107), 'Bernstein');
+
+  final Color color;
+  final String label;
+  const ThemeColor(this.color, this.label);
+}
+
 class AppTheme {
-  static const Color primaryColor = Color(0xFF4CAF50);
   static const Color secondaryColor = Color(0xFF2196F3);
   static const Color accentColor = Color(0xFFFF9800);
   static const Color errorColor = Color(0xFFE53935);
   static const Color successColor = Color(0xFF43A047);
   
-  static ThemeData get lightTheme {
+  static ThemeData lightTheme(Color seedColor) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
+        seedColor: seedColor,
         brightness: Brightness.light,
       ),
       textTheme: GoogleFonts.interTextTheme(),
       appBarTheme: AppBarTheme(
-        backgroundColor: primaryColor,
+        backgroundColor: seedColor,
         foregroundColor: Colors.white,
         elevation: 0,
         titleTextStyle: GoogleFonts.inter(
@@ -36,7 +53,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
+          backgroundColor: seedColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -53,24 +70,24 @@ class AppTheme {
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: Colors.grey.shade100,
-        selectedIconTheme: const IconThemeData(color: primaryColor),
-        selectedLabelTextStyle: const TextStyle(
-          color: primaryColor,
+        selectedIconTheme: IconThemeData(color: seedColor),
+        selectedLabelTextStyle: TextStyle(
+          color: seedColor,
           fontWeight: FontWeight.w600,
         ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryColor,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: seedColor,
         foregroundColor: Colors.white,
       ),
     );
   }
   
-  static ThemeData get darkTheme {
+  static ThemeData darkTheme(Color seedColor) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
+        seedColor: seedColor,
         brightness: Brightness.dark,
       ),
       textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
@@ -92,7 +109,7 @@ class AppTheme {
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
+          backgroundColor: seedColor,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
@@ -109,14 +126,14 @@ class AppTheme {
       ),
       navigationRailTheme: NavigationRailThemeData(
         backgroundColor: const Color(0xFF2D2D2D),
-        selectedIconTheme: const IconThemeData(color: primaryColor),
-        selectedLabelTextStyle: const TextStyle(
-          color: primaryColor,
+        selectedIconTheme: IconThemeData(color: seedColor),
+        selectedLabelTextStyle: TextStyle(
+          color: seedColor,
           fontWeight: FontWeight.w600,
         ),
       ),
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
-        backgroundColor: primaryColor,
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: seedColor,
         foregroundColor: Colors.white,
       ),
     );
