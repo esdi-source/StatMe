@@ -1,0 +1,70 @@
+name: statme
+description: A comprehensive health and productivity tracking app with Demo Mode support.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.2.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # State Management
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+  
+  # Supabase (only used when DEMO_MODE=false)
+  supabase_flutter: ^2.3.0
+  
+  # Local Storage for Demo Mode
+  sqflite: ^2.3.0
+  sqflite_common_ffi: ^2.3.0+2
+  path_provider: ^2.1.1
+  path: ^1.8.3
+  shared_preferences: ^2.2.2
+  
+  # HTTP & Networking
+  dio: ^5.4.0
+  connectivity_plus: ^5.0.2
+  
+  # UI Components
+  fl_chart: ^0.65.0
+  google_fonts: ^6.1.0
+  
+  # File & Image Handling
+  file_picker: ^6.1.1
+  image_picker: ^1.0.5
+  
+  # Date & Time
+  intl: ^0.18.1
+  
+  # Utilities
+  uuid: ^4.2.2
+  collection: ^1.18.0
+  equatable: ^2.0.5
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+  
+  # Desktop Notifications
+  flutter_local_notifications: ^16.3.0
+  
+  # Environment Variables
+  flutter_dotenv: ^5.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  freezed: ^2.4.6
+  json_serializable: ^6.7.1
+  riverpod_generator: ^2.3.9
+  mockito: ^5.4.4
+  integration_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+  assets:
+    - .env

@@ -1,0 +1,53 @@
+{
+    "name": "StatMe - Health Tracker",
+    "short_name": "StatMe",
+    "start_url": ".",
+    "display": "standalone",
+    "background_color": "#121212",
+    "theme_color": "#6366F1",
+    "description": "Dein persönlicher Health & Productivity Tracker - Todos, Kalorien, Wasser, Schritte, Schlaf & Stimmung",
+    "orientation": "portrait-primary",
+    "prefer_related_applications": false,
+    "categories": ["health", "fitness", "productivity", "lifestyle"],
+    "lang": "de-DE",
+    "scope": ".",
+    "icons": [
+        {
+            "src": "icons/Icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        },
+        {
+            "src": "icons/Icon-maskable-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "icons/Icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Neues Todo",
+            "short_name": "Todo",
+            "url": "./#/todos",
+            "icons": [{"src": "icons/Icon-192.png", "sizes": "192x192"}]
+        },
+        {
+            "name": "Wasser tracken",
+            "short_name": "Wasser",
+            "url": "./#/water",
+            "icons": [{"src": "icons/Icon-192.png", "sizes": "192x192"}]
+        }
+    ]
+}
