@@ -227,6 +227,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: 8),
               _FoodLogsSection(foodLogs: foodLogs),
+              const SizedBox(height: 20),
+
+              // Books Section
+              _BooksQuickCard(
+                onTap: () => _navigateTo(const BooksScreen()),
+              ),
             ],
           ),
         ),
@@ -622,6 +628,70 @@ class _FoodLogsSection extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _BooksQuickCard extends ConsumerWidget {
+  final VoidCallback onTap;
+
+  const _BooksQuickCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final readingGoal = ref.watch(readingGoalNotifierProvider);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: Colors.brown.shade100,
+                child: Icon(Icons.menu_book, color: Colors.brown.shade700, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Meine Bücher',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 4),
+                    if (readingGoal != null) ...[
+                      Text(
+                        'Wochenziel: ${readingGoal.formattedRead} / ${readingGoal.formattedGoal}',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: readingGoal.progressPercent,
+                          minHeight: 6,
+                          backgroundColor: Colors.grey.shade200,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.brown.shade400),
+                        ),
+                      ),
+                    ] else
+                      Text(
+                        'Leseliste & Leseziele verwalten',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
       ),
     );
   }

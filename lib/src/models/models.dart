@@ -7,3 +7,4 @@ export 'sleep_model.dart';
 export 'mood_model.dart';
 export 'settings_model.dart';
 export 'home_widget_model.dart';
+export 'book_model.dart';

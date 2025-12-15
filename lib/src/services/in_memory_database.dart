@@ -366,4 +366,60 @@ class InMemoryDatabase {
       return newLog;
     }
   }
+
+  // Books
+  final List<BookModel> _books = [];
+  final Map<String, ReadingGoalModel> _readingGoals = {};
+
+  List<BookModel> getBooksForUser(String userId) {
+    return _books.where((b) => b.oderId == userId).toList();
+  }
+
+  List<BookModel> getBooksByStatus(String userId, BookStatus status) {
+    return _books.where((b) => b.oderId == userId && b.status == status).toList();
+  }
+
+  Future<BookModel> addBook(BookModel book) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final newBook = book.copyWith(id: _uuid.v4());
+    _books.add(newBook);
+    return newBook;
+  }
+
+  Future<BookModel> updateBook(BookModel book) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _books.indexWhere((b) => b.id == book.id);
+    if (index >= 0) {
+      _books[index] = book;
+    }
+    return book;
+  }
+
+  Future<void> deleteBook(String bookId) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    _books.removeWhere((b) => b.id == bookId);
+  }
+
+  ReadingGoalModel? getReadingGoal(String userId) {
+    return _readingGoals[userId];
+  }
+
+  Future<ReadingGoalModel> upsertReadingGoal(ReadingGoalModel goal) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    _readingGoals[goal.oderId] = goal;
+    return goal;
+  }
+
+  Future<void> addReadingSession(String oderId, ReadingSession session) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final goal = _readingGoals[oderId];
+    if (goal != null) {
+      final updatedSessions = [...goal.sessions, session];
+      final updatedMinutes = goal.readMinutesThisWeek + session.durationMinutes;
+      _readingGoals[oderId] = goal.copyWith(
+        sessions: updatedSessions,
+        readMinutesThisWeek: updatedMinutes,
+      );
+    }
+  }
 }

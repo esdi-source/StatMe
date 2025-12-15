@@ -471,6 +471,8 @@ class _HomescreenEditorScreenState extends ConsumerState<HomescreenEditorScreen>
         return Colors.indigo;
       case HomeWidgetType.quickAdd:
         return Colors.amber;
+      case HomeWidgetType.books:
+        return Colors.brown;
     }
   }
 
@@ -492,6 +494,8 @@ class _HomescreenEditorScreenState extends ConsumerState<HomescreenEditorScreen>
         return Icons.waving_hand;
       case HomeWidgetType.quickAdd:
         return Icons.add_circle;
+      case HomeWidgetType.books:
+        return Icons.menu_book;
     }
   }
 
@@ -513,6 +517,8 @@ class _HomescreenEditorScreenState extends ConsumerState<HomescreenEditorScreen>
         return 'Willkommen zurück!';
       case HomeWidgetType.quickAdd:
         return 'Schnelleingabe';
+      case HomeWidgetType.books:
+        return 'Lesefortschritt';
     }
   }
 

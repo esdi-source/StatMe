@@ -62,3 +62,14 @@ abstract class MoodRepository {
   Future<List<MoodLogModel>> getMoodRange(String userId, DateTime start, DateTime end);
   Future<MoodLogModel> upsertMood(MoodLogModel log);
 }
+
+abstract class BookRepository {
+  Future<List<BookModel>> getBooks(String userId);
+  Future<List<BookModel>> getBooksByStatus(String userId, BookStatus status);
+  Future<BookModel> addBook(BookModel book);
+  Future<BookModel> updateBook(BookModel book);
+  Future<void> deleteBook(String bookId);
+  Future<ReadingGoalModel?> getReadingGoal(String userId);
+  Future<ReadingGoalModel> upsertReadingGoal(ReadingGoalModel goal);
+  Future<void> addReadingSession(String oderId, ReadingSession session);
+}

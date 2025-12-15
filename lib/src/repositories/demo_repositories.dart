@@ -222,3 +222,47 @@ class DemoMoodRepository implements MoodRepository {
     return await _db.upsertMoodLog(log);
   }
 }
+
+class DemoBookRepository implements BookRepository {
+  final InMemoryDatabase _db = InMemoryDatabase();
+  
+  @override
+  Future<List<BookModel>> getBooks(String userId) async {
+    return _db.getBooksForUser(userId);
+  }
+  
+  @override
+  Future<List<BookModel>> getBooksByStatus(String userId, BookStatus status) async {
+    return _db.getBooksByStatus(userId, status);
+  }
+  
+  @override
+  Future<BookModel> addBook(BookModel book) async {
+    return await _db.addBook(book);
+  }
+  
+  @override
+  Future<BookModel> updateBook(BookModel book) async {
+    return await _db.updateBook(book);
+  }
+  
+  @override
+  Future<void> deleteBook(String bookId) async {
+    await _db.deleteBook(bookId);
+  }
+  
+  @override
+  Future<ReadingGoalModel?> getReadingGoal(String userId) async {
+    return _db.getReadingGoal(userId);
+  }
+  
+  @override
+  Future<ReadingGoalModel> upsertReadingGoal(ReadingGoalModel goal) async {
+    return await _db.upsertReadingGoal(goal);
+  }
+  
+  @override
+  Future<void> addReadingSession(String oderId, ReadingSession session) async {
+    await _db.addReadingSession(oderId, session);
+  }
+}
