@@ -10,7 +10,8 @@ enum HomeWidgetType {
   todos('ToDos', 'check_circle'),
   greeting('Begrüßung', 'waving_hand'),
   quickAdd('Schnell hinzufügen', 'add_circle'),
-  books('Bücher', 'menu_book');
+  books('Bücher', 'menu_book'),
+  timer('Timer', 'timer');
 
   final String label;
   final String iconName;

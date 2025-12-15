@@ -360,6 +360,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _QuickAddWidget(size: widget.size, isEditMode: _isEditMode);
       case HomeWidgetType.books:
         return _BooksWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const BooksScreen()));
+      case HomeWidgetType.timer:
+        return _TimerWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const TimerWidgetScreen()));
     }
   }
 
@@ -613,6 +615,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.add_circle;
       case HomeWidgetType.books:
         return Icons.menu_book;
+      case HomeWidgetType.timer:
+        return Icons.timer;
     }
   }
 
@@ -1113,6 +1117,81 @@ class _BooksWidget extends ConsumerWidget {
                   color: tokens.textPrimary,
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimerWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _TimerWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = ref.watch(designTokensProvider);
+    final timerSessions = ref.watch(timerSessionsProvider);
+    
+    // Heutige Sessions zählen
+    final today = DateTime.now();
+    final todaySessions = timerSessions.where((s) => 
+      s.startTime.year == today.year &&
+      s.startTime.month == today.month &&
+      s.startTime.day == today.day
+    ).toList();
+    
+    final totalMinutesToday = todaySessions.fold<int>(
+      0, (sum, s) => sum + s.durationMinutes
+    );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade700],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(Icons.timer, size: 28, color: Colors.white),
+              const SizedBox(height: 4),
+              Text(
+                'Timer',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              if (size != HomeWidgetSize.small) ...[
+                const SizedBox(height: 8),
+                Text(
+                  '$totalMinutesToday min',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                Text(
+                  'heute',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

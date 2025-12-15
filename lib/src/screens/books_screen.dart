@@ -110,15 +110,6 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
           _buildGoalsTab(tokens),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const TimerWidgetScreen()),
-        ),
-        icon: const Icon(Icons.timer),
-        label: const Text('Timer'),
-        backgroundColor: tokens.primary,
-      ),
     );
   }
 
@@ -906,7 +897,18 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
   // HELPER METHODS
   // ============================================
 
+  /// Generiert die Open Library Cover URL basierend auf ISBN
+  String? _getOpenLibraryCoverUrl(BookModel book) {
+    if (book.isbn != null && book.isbn!.isNotEmpty) {
+      // Open Library Covers API: https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg
+      // Größen: S (small), M (medium), L (large)
+      return 'https://covers.openlibrary.org/b/isbn/${book.isbn}-L.jpg';
+    }
+    return null;
+  }
+
   Widget _buildBookCover(BookModel book, DesignTokens tokens) {
+    // 1. Zuerst vorhandene coverUrl verwenden (Google Books)
     if (book.coverUrl != null && book.coverUrl!.isNotEmpty) {
       return Image.network(
         book.coverUrl!,
@@ -924,9 +926,39 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
             ),
           );
         },
+        errorBuilder: (_, __, ___) => _buildOpenLibraryCoverOrDefault(book, tokens),
+      );
+    }
+    
+    // 2. Fallback: Open Library Cover versuchen
+    return _buildOpenLibraryCoverOrDefault(book, tokens);
+  }
+
+  Widget _buildOpenLibraryCoverOrDefault(BookModel book, DesignTokens tokens) {
+    final openLibraryUrl = _getOpenLibraryCoverUrl(book);
+    
+    if (openLibraryUrl != null) {
+      return Image.network(
+        openLibraryUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            color: tokens.surface,
+            child: Center(
+              child: CircularProgressIndicator(
+                value: loadingProgress.expectedTotalBytes != null
+                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                    : null,
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
         errorBuilder: (_, __, ___) => _buildDefaultCover(book, tokens),
       );
     }
+    
     return _buildDefaultCover(book, tokens);
   }
 
