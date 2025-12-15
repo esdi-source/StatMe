@@ -15,7 +15,6 @@ export 'sleep_screen.dart';
 export 'mood_screen.dart';
 export 'stats_screen.dart';
 export 'settings_screen.dart';
-export 'homescreen_editor_screen.dart';
 export 'books_screen.dart';
 export 'book_search_screen.dart';
 export 'book_detail_screen.dart';

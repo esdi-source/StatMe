@@ -1,10 +1,14 @@
-/// Dashboard Screen - All-in-one overview with clickable cards
+/// Dashboard Screen - iOS-Style Home Screen mit Edit-Mode
+/// Long-Press aktiviert Bearbeitungsmodus, Drag & Drop, Widget-Anpassung
 
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
+import '../models/home_widget_model.dart';
 import '../core/config/app_config.dart';
 import 'screens.dart';
 
@@ -15,11 +19,49 @@ class DashboardScreen extends ConsumerStatefulWidget {
   ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+class _DashboardScreenState extends ConsumerState<DashboardScreen>
+    with TickerProviderStateMixin {
+  bool _isEditMode = false;
+  String? _draggedWidgetId;
+  Offset _dragOffset = Offset.zero;
+  
+  // Animation für Wackeln im Edit-Mode
+  late AnimationController _wiggleController;
+  late Animation<double> _wiggleAnimation;
+
+  // Grid-Konfiguration
+  static const int gridColumns = 4;
+  static const double cellPadding = 8.0;
+
   @override
   void initState() {
     super.initState();
+    _wiggleController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    _wiggleAnimation = Tween<double>(begin: -0.02, end: 0.02).animate(
+      CurvedAnimation(parent: _wiggleController, curve: Curves.easeInOut),
+    );
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    _wiggleController.dispose();
+    super.dispose();
+  }
+
+  void _enterEditMode() {
+    setState(() => _isEditMode = true);
+    _wiggleController.repeat(reverse: true);
+    HapticFeedback.mediumImpact();
+  }
+
+  void _exitEditMode() {
+    setState(() => _isEditMode = false);
+    _wiggleController.stop();
+    _wiggleController.reset();
   }
 
   Future<void> _loadData() async {
@@ -27,244 +69,636 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (user == null) return;
 
     final today = DateTime.now();
-    
-    await ref.read(foodLogNotifierProvider.notifier).load(user.id, today);
-    await ref.read(waterLogNotifierProvider.notifier).load(user.id, today);
-    await ref.read(stepsNotifierProvider.notifier).load(user.id, today);
-    await ref.read(sleepNotifierProvider.notifier).load(user.id, today);
-    await ref.read(moodNotifierProvider.notifier).load(user.id, today);
-    await ref.read(todoNotifierProvider.notifier).load(user.id);
-    await ref.read(settingsNotifierProvider.notifier).load(user.id);
-  }
-
-  void _navigateTo(Widget screen) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => screen),
-    );
+    await Future.wait([
+      ref.read(foodLogNotifierProvider.notifier).load(user.id, today),
+      ref.read(waterLogNotifierProvider.notifier).load(user.id, today),
+      ref.read(stepsNotifierProvider.notifier).load(user.id, today),
+      ref.read(sleepNotifierProvider.notifier).load(user.id, today),
+      ref.read(moodNotifierProvider.notifier).load(user.id, today),
+      ref.read(todoNotifierProvider.notifier).load(user.id),
+      ref.read(settingsNotifierProvider.notifier).load(user.id),
+    ]);
   }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).valueOrNull;
-    final foodLogs = ref.watch(foodLogNotifierProvider);
-    final waterLogs = ref.watch(waterLogNotifierProvider);
-    final steps = ref.watch(stepsNotifierProvider);
-    final sleep = ref.watch(sleepNotifierProvider);
-    final mood = ref.watch(moodNotifierProvider);
-    final todos = ref.watch(todoNotifierProvider);
-    final settings = ref.watch(settingsNotifierProvider);
-
-    final totalCalories = foodLogs.fold<double>(0, (sum, log) => sum + log.calories);
-    final totalWater = waterLogs.fold<int>(0, (sum, log) => sum + log.ml);
-    final todayTodos = todos.where((t) => t.active && _isForToday(t)).toList();
+    final tokens = ref.watch(designTokensProvider);
     
-    final calorieGoal = settings?.dailyCalorieGoal ?? 2000;
-    final waterGoal = settings?.dailyWaterGoalMl ?? 2500;
-    final stepsGoal = settings?.dailyStepsGoal ?? 10000;
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    
+    final config = ref.watch(homeScreenConfigProvider(user.id));
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            const Icon(Icons.analytics_outlined),
-            const SizedBox(width: 8),
-            const Text('StatMe'),
-            const Spacer(),
-            if (AppConfig.isDemoMode)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'DEMO',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                ),
-              ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bar_chart),
-            tooltip: 'Statistiken',
-            onPressed: () => _navigateTo(const StatsScreen()),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Einstellungen',
-            onPressed: () => _navigateTo(const SettingsScreen()),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return GestureDetector(
+      // Tap auf freien Bereich beendet Edit-Mode
+      onTap: _isEditMode ? _exitEditMode : null,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
             children: [
-              // Greeting Card
-              _GreetingCard(user: user),
-              const SizedBox(height: 20),
-
-              // Quick Stats Grid - Clickable
-              Text(
-                'Heute auf einen Blick',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+              Icon(Icons.analytics_outlined, color: tokens.primary),
+              const SizedBox(width: 8),
+              const Text('StatMe'),
+              const Spacer(),
+              if (AppConfig.isDemoMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'DEMO',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 800 ? 4 : 2;
-                  return GridView.count(
-                    crossAxisCount: crossAxisCount,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 1.3,
-                    children: [
-                      _ClickableStatCard(
-                        title: 'Kalorien',
-                        value: '${totalCalories.toStringAsFixed(0)}',
-                        unit: 'kcal',
-                        icon: Icons.restaurant,
-                        color: Colors.orange,
-                        progress: totalCalories / calorieGoal,
-                        subtitle: 'von $calorieGoal kcal',
-                        onTap: () => _navigateTo(const FoodScreen()),
-                      ),
-                      _ClickableStatCard(
-                        title: 'Wasser',
-                        value: '$totalWater',
-                        unit: 'ml',
-                        icon: Icons.water_drop,
-                        color: Colors.blue,
-                        progress: totalWater / waterGoal,
-                        subtitle: 'von $waterGoal ml',
-                        onTap: () => _navigateTo(const WaterScreen()),
-                      ),
-                      _ClickableStatCard(
-                        title: 'Schritte',
-                        value: '${steps?.steps ?? 0}',
-                        unit: '',
-                        icon: Icons.directions_walk,
-                        color: Colors.green,
-                        progress: (steps?.steps ?? 0) / stepsGoal,
-                        subtitle: 'von ${(stepsGoal / 1000).toStringAsFixed(0)}k',
-                        onTap: () => _navigateTo(const StepsScreen()),
-                      ),
-                      _ClickableStatCard(
-                        title: 'Schlaf',
-                        value: sleep?.formattedDuration ?? '--',
-                        unit: '',
-                        icon: Icons.bedtime,
-                        color: Colors.purple,
-                        progress: (sleep?.durationMinutes ?? 0) / 480,
-                        subtitle: 'Ziel: 8h',
-                        onTap: () => _navigateTo(const SleepScreen()),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-
-              // Mood Card - Clickable
-              _ClickableMoodCard(
-                mood: mood,
-                onTap: () => _navigateTo(const MoodScreen()),
-              ),
-              const SizedBox(height: 20),
-
-              // Today's Todos - with checkboxes
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Heutige ToDos',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _navigateTo(const TodosScreen()),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Alle ToDos'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _TodosSection(
-                todos: todayTodos,
-                onToggle: (todo) => _toggleTodo(todo),
-                onViewAll: () => _navigateTo(const TodosScreen()),
-              ),
-              const SizedBox(height: 20),
-
-              // Recent Food Logs
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Heutige Mahlzeiten',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: () => _navigateTo(const FoodScreen()),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Hinzufügen'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _FoodLogsSection(foodLogs: foodLogs),
-              const SizedBox(height: 20),
-
-              // Books Section
-              _BooksQuickCard(
-                onTap: () => _navigateTo(const BooksScreen()),
-              ),
             ],
           ),
+          actions: [
+            if (_isEditMode) ...[
+              TextButton.icon(
+                onPressed: _exitEditMode,
+                icon: const Icon(Icons.check),
+                label: const Text('Fertig'),
+              ),
+            ] else ...[
+              IconButton(
+                icon: const Icon(Icons.bar_chart),
+                tooltip: 'Statistiken',
+                onPressed: () => _navigateTo(const StatsScreen()),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings),
+                tooltip: 'Einstellungen',
+                onPressed: () => _navigateTo(const SettingsScreen()),
+              ),
+            ],
+          ],
+        ),
+        body: Stack(
+          children: [
+            // Haupt-Content
+            RefreshIndicator(
+              onRefresh: _loadData,
+              child: config == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildWidgetGrid(config, user.id, tokens),
+            ),
+            
+            // Edit-Mode Bottom Bar
+            if (_isEditMode)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _buildEditModeBar(user.id, tokens),
+              ),
+          ],
         ),
       ),
     );
   }
 
-  bool _isForToday(TodoModel todo) {
-    final now = DateTime.now();
-    final todoDate = todo.startDate;
-    return todoDate.year == now.year && 
-           todoDate.month == now.month && 
-           todoDate.day == now.day;
+  Widget _buildWidgetGrid(HomeScreenConfig config, String userId, DesignTokens tokens) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableWidth = constraints.maxWidth - 32; // Padding
+        final cellWidth = (availableWidth - (gridColumns - 1) * cellPadding) / gridColumns;
+        final cellHeight = cellWidth * 1.2; // Etwas höher als breit
+
+        return SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              // Grid mit Widgets
+              _buildResponsiveGrid(config, cellWidth, cellHeight, userId, tokens),
+              
+              // Extra Padding für Edit-Mode Bar
+              if (_isEditMode) const SizedBox(height: 100),
+            ],
+          ),
+        );
+      },
+    );
   }
 
-  Future<void> _toggleTodo(TodoModel todo) async {
-    final updated = todo.copyWith(active: !todo.active);
-    await ref.read(todoNotifierProvider.notifier).update(updated);
+  Widget _buildResponsiveGrid(
+    HomeScreenConfig config,
+    double cellWidth,
+    double cellHeight,
+    String userId,
+    DesignTokens tokens,
+  ) {
+    final widgets = config.visibleWidgets;
+    
+    // Berechne Zeilen
+    int maxRow = 0;
+    for (final widget in widgets) {
+      final endRow = widget.gridY + widget.size.gridHeight;
+      if (endRow > maxRow) maxRow = endRow;
+    }
+
+    return SizedBox(
+      height: maxRow * (cellHeight + cellPadding),
+      child: Stack(
+        children: widgets.map((widget) {
+          final left = widget.gridX * (cellWidth + cellPadding);
+          final top = widget.gridY * (cellHeight + cellPadding);
+          final width = widget.size.gridWidth * cellWidth + 
+                       (widget.size.gridWidth - 1) * cellPadding;
+          final height = widget.size.gridHeight * cellHeight + 
+                        (widget.size.gridHeight - 1) * cellPadding;
+
+          return AnimatedPositioned(
+            duration: _draggedWidgetId == widget.id 
+                ? Duration.zero 
+                : const Duration(milliseconds: 200),
+            left: _draggedWidgetId == widget.id ? left + _dragOffset.dx : left,
+            top: _draggedWidgetId == widget.id ? top + _dragOffset.dy : top,
+            width: width,
+            height: height,
+            child: _buildDashboardWidget(
+              widget, 
+              userId, 
+              tokens,
+              cellWidth,
+              cellHeight,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildDashboardWidget(
+    HomeWidget widget,
+    String userId,
+    DesignTokens tokens,
+    double cellWidth,
+    double cellHeight,
+  ) {
+    final content = _buildWidgetContent(widget, tokens);
+
+    if (_isEditMode) {
+      return AnimatedBuilder(
+        animation: _wiggleAnimation,
+        builder: (context, child) {
+          return Transform.rotate(
+            angle: _wiggleAnimation.value,
+            child: child,
+          );
+        },
+        child: GestureDetector(
+          onLongPress: () => _showWidgetOptions(widget, userId, tokens),
+          onPanStart: (_) {
+            setState(() {
+              _draggedWidgetId = widget.id;
+              _dragOffset = Offset.zero;
+            });
+          },
+          onPanUpdate: (details) {
+            setState(() {
+              _dragOffset += details.delta;
+            });
+          },
+          onPanEnd: (details) {
+            _handleDragEnd(widget, userId, cellWidth, cellHeight);
+          },
+          child: Stack(
+            children: [
+              // Widget mit Edit-Overlay
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(tokens.radiusMedium),
+                  border: Border.all(
+                    color: tokens.primary.withOpacity(0.5),
+                    width: 2,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(tokens.radiusMedium),
+                  child: content,
+                ),
+              ),
+              // Delete Button
+              Positioned(
+                top: -8,
+                left: -8,
+                child: GestureDetector(
+                  onTap: () => _deleteWidget(widget.id, userId),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.remove, color: Colors.white, size: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Normal Mode - Long Press aktiviert Edit Mode
+    return GestureDetector(
+      onLongPress: _enterEditMode,
+      child: content,
+    );
+  }
+
+  void _handleDragEnd(HomeWidget widget, String userId, double cellWidth, double cellHeight) {
+    // Berechne neue Grid-Position
+    final newX = (widget.gridX + (_dragOffset.dx / (cellWidth + cellPadding)).round())
+        .clamp(0, gridColumns - widget.size.gridWidth);
+    final newY = (widget.gridY + (_dragOffset.dy / (cellHeight + cellPadding)).round())
+        .clamp(0, 20);
+
+    if (newX != widget.gridX || newY != widget.gridY) {
+      ref.read(homeScreenConfigProvider(userId).notifier).moveWidget(
+        widget.id,
+        newX,
+        newY,
+      );
+    }
+
+    setState(() {
+      _draggedWidgetId = null;
+      _dragOffset = Offset.zero;
+    });
+  }
+
+  Widget _buildWidgetContent(HomeWidget widget, DesignTokens tokens) {
+    switch (widget.type) {
+      case HomeWidgetType.greeting:
+        return _GreetingWidget(size: widget.size);
+      case HomeWidgetType.calories:
+        return _CaloriesWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const FoodScreen()));
+      case HomeWidgetType.water:
+        return _WaterWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const WaterScreen()));
+      case HomeWidgetType.steps:
+        return _StepsWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const StepsScreen()));
+      case HomeWidgetType.sleep:
+        return _SleepWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SleepScreen()));
+      case HomeWidgetType.mood:
+        return _MoodWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const MoodScreen()));
+      case HomeWidgetType.todos:
+        return _TodosWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const TodosScreen()));
+      case HomeWidgetType.quickAdd:
+        return _QuickAddWidget(size: widget.size, isEditMode: _isEditMode);
+      case HomeWidgetType.books:
+        return _BooksWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const BooksScreen()));
+    }
+  }
+
+  Widget _buildEditModeBar(String userId, DesignTokens tokens) {
+    return Container(
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 16,
+        bottom: MediaQuery.of(context).padding.bottom + 16,
+      ),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _EditModeButton(
+            icon: Icons.add_circle,
+            label: 'Widget hinzufügen',
+            onTap: () => _showAddWidgetDialog(userId, tokens),
+          ),
+          _EditModeButton(
+            icon: Icons.restore,
+            label: 'Zurücksetzen',
+            onTap: () => _resetLayout(userId),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showWidgetOptions(HomeWidget widget, String userId, DesignTokens tokens) {
+    HapticFeedback.selectionClick();
+    
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                widget.type.label,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(),
+            
+            // Größe ändern
+            ListTile(
+              leading: const Icon(Icons.aspect_ratio),
+              title: const Text('Größe ändern'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.pop(context);
+                _showSizeDialog(widget, userId, tokens);
+              },
+            ),
+            
+            // Widget löschen
+            ListTile(
+              leading: const Icon(Icons.delete, color: Colors.red),
+              title: const Text('Widget entfernen', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.pop(context);
+                _deleteWidget(widget.id, userId);
+              },
+            ),
+            
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSizeDialog(HomeWidget widget, String userId, DesignTokens tokens) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Größe wählen',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(),
+            
+            ...HomeWidgetSize.values.map((size) => ListTile(
+              leading: Icon(
+                _getSizeIcon(size),
+                color: widget.size == size ? tokens.primary : null,
+              ),
+              title: Text(size.label),
+              subtitle: Text('${size.gridWidth}×${size.gridHeight} Felder'),
+              trailing: widget.size == size 
+                  ? Icon(Icons.check, color: tokens.primary)
+                  : null,
+              onTap: () {
+                Navigator.pop(context);
+                ref.read(homeScreenConfigProvider(userId).notifier).resizeWidget(
+                  widget.id,
+                  size,
+                );
+              },
+            )),
+            
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getSizeIcon(HomeWidgetSize size) {
+    switch (size) {
+      case HomeWidgetSize.small:
+        return Icons.crop_square;
+      case HomeWidgetSize.medium:
+        return Icons.crop_16_9;
+      case HomeWidgetSize.large:
+        return Icons.crop_din;
+      case HomeWidgetSize.wide:
+        return Icons.panorama_wide_angle;
+      case HomeWidgetSize.tall:
+        return Icons.crop_portrait;
+    }
+  }
+
+  void _showAddWidgetDialog(String userId, DesignTokens tokens) {
+    final config = ref.read(homeScreenConfigProvider(userId));
+    final existingTypes = config?.widgets.map((w) => w.type).toSet() ?? {};
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (context, scrollController) => Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Widget hinzufügen',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                children: HomeWidgetType.values.map((type) {
+                  final alreadyExists = existingTypes.contains(type);
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: alreadyExists 
+                          ? Colors.grey.shade200 
+                          : tokens.primary.withOpacity(0.1),
+                      child: Icon(
+                        _getWidgetIcon(type),
+                        color: alreadyExists ? Colors.grey : tokens.primary,
+                      ),
+                    ),
+                    title: Text(
+                      type.label,
+                      style: TextStyle(
+                        color: alreadyExists ? Colors.grey : null,
+                      ),
+                    ),
+                    subtitle: alreadyExists 
+                        ? const Text('Bereits vorhanden') 
+                        : null,
+                    trailing: alreadyExists 
+                        ? null 
+                        : Icon(Icons.add_circle, color: tokens.primary),
+                    onTap: alreadyExists ? null : () {
+                      Navigator.pop(context);
+                      ref.read(homeScreenConfigProvider(userId).notifier).addWidget(type);
+                      HapticFeedback.lightImpact();
+                    },
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getWidgetIcon(HomeWidgetType type) {
+    switch (type) {
+      case HomeWidgetType.calories:
+        return Icons.restaurant;
+      case HomeWidgetType.water:
+        return Icons.water_drop;
+      case HomeWidgetType.steps:
+        return Icons.directions_walk;
+      case HomeWidgetType.sleep:
+        return Icons.bedtime;
+      case HomeWidgetType.mood:
+        return Icons.mood;
+      case HomeWidgetType.todos:
+        return Icons.check_circle;
+      case HomeWidgetType.greeting:
+        return Icons.waving_hand;
+      case HomeWidgetType.quickAdd:
+        return Icons.add_circle;
+      case HomeWidgetType.books:
+        return Icons.menu_book;
+    }
+  }
+
+  void _deleteWidget(String widgetId, String userId) {
+    ref.read(homeScreenConfigProvider(userId).notifier).removeWidget(widgetId);
+    HapticFeedback.lightImpact();
+  }
+
+  void _resetLayout(String userId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Layout zurücksetzen?'),
+        content: const Text('Alle Widgets werden auf die Standardpositionen zurückgesetzt.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(context);
+              ref.read(homeScreenConfigProvider(userId).notifier).resetToDefault();
+              HapticFeedback.mediumImpact();
+            },
+            child: const Text('Zurücksetzen'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _navigateTo(Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
 }
 
 // ============================================
-// WIDGET COMPONENTS
+// EDIT MODE BUTTON
 // ============================================
 
-class _GreetingCard extends StatelessWidget {
-  final UserModel? user;
+class _EditModeButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
 
-  const _GreetingCard({this.user});
+  const _EditModeButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 28),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================
+// WIDGET IMPLEMENTATIONS
+// ============================================
+
+class _GreetingWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+
+  const _GreetingWidget({required this.size});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final tokens = ref.watch(designTokensProvider);
+    
     final hour = DateTime.now().hour;
     String greeting;
     if (hour < 12) {
@@ -277,39 +711,44 @@ class _GreetingCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Row(
           children: [
             CircleAvatar(
-              radius: 30,
-              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              radius: size == HomeWidgetSize.small ? 20 : 28,
+              backgroundColor: tokens.primary.withOpacity(0.1),
               child: Text(
                 user?.displayName?.isNotEmpty == true
                     ? user!.displayName![0].toUpperCase()
                     : user?.email[0].toUpperCase() ?? 'D',
                 style: TextStyle(
-                  fontSize: 24,
+                  fontSize: size == HomeWidgetSize.small ? 16 : 20,
                   fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: tokens.primary,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '$greeting, ${user?.displayName ?? user?.email.split('@').first ?? 'Demo'}!',
-                    style: Theme.of(context).textTheme.headlineSmall,
+                    '$greeting!',
+                    style: TextStyle(
+                      fontSize: size == HomeWidgetSize.small ? 14 : 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    DateFormat('EEEE, d. MMMM yyyy', 'de_DE').format(DateTime.now()),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
-                        ),
-                  ),
+                  if (size != HomeWidgetSize.small)
+                    Text(
+                      DateFormat('EEEE, d. MMMM', 'de_DE').format(DateTime.now()),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: tokens.textSecondary,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -320,7 +759,369 @@ class _GreetingCard extends StatelessWidget {
   }
 }
 
-class _ClickableStatCard extends StatelessWidget {
+class _CaloriesWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _CaloriesWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final foodLogs = ref.watch(foodLogNotifierProvider);
+    final settings = ref.watch(settingsNotifierProvider);
+    final tokens = ref.watch(designTokensProvider);
+    
+    final total = foodLogs.fold<double>(0, (sum, log) => sum + log.calories);
+    final goal = settings?.dailyCalorieGoal ?? 2000;
+    final progress = (total / goal).clamp(0.0, 1.0);
+
+    return _StatWidgetCard(
+      title: 'Kalorien',
+      value: total.toStringAsFixed(0),
+      unit: 'kcal',
+      icon: Icons.restaurant,
+      color: Colors.orange,
+      progress: progress,
+      subtitle: 'von $goal kcal',
+      size: size,
+      onTap: onTap,
+    );
+  }
+}
+
+class _WaterWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _WaterWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final waterLogs = ref.watch(waterLogNotifierProvider);
+    final settings = ref.watch(settingsNotifierProvider);
+    
+    final total = waterLogs.fold<int>(0, (sum, log) => sum + log.ml);
+    final goal = settings?.dailyWaterGoalMl ?? 2500;
+    final progress = (total / goal).clamp(0.0, 1.0);
+
+    return _StatWidgetCard(
+      title: 'Wasser',
+      value: '$total',
+      unit: 'ml',
+      icon: Icons.water_drop,
+      color: Colors.blue,
+      progress: progress,
+      subtitle: 'von $goal ml',
+      size: size,
+      onTap: onTap,
+    );
+  }
+}
+
+class _StepsWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _StepsWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final steps = ref.watch(stepsNotifierProvider);
+    final settings = ref.watch(settingsNotifierProvider);
+    
+    final current = steps?.steps ?? 0;
+    final goal = settings?.dailyStepsGoal ?? 10000;
+    final progress = (current / goal).clamp(0.0, 1.0);
+
+    return _StatWidgetCard(
+      title: 'Schritte',
+      value: '$current',
+      unit: '',
+      icon: Icons.directions_walk,
+      color: Colors.green,
+      progress: progress,
+      subtitle: 'von ${(goal / 1000).toStringAsFixed(0)}k',
+      size: size,
+      onTap: onTap,
+    );
+  }
+}
+
+class _SleepWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _SleepWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sleep = ref.watch(sleepNotifierProvider);
+    
+    final duration = sleep?.formattedDuration ?? '--';
+    final minutes = sleep?.durationMinutes ?? 0;
+    final progress = (minutes / 480).clamp(0.0, 1.0); // 8h Ziel
+
+    return _StatWidgetCard(
+      title: 'Schlaf',
+      value: duration,
+      unit: '',
+      icon: Icons.bedtime,
+      color: Colors.purple,
+      progress: progress,
+      subtitle: 'Ziel: 8h',
+      size: size,
+      onTap: onTap,
+    );
+  }
+}
+
+class _MoodWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _MoodWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mood = ref.watch(moodNotifierProvider);
+    final tokens = ref.watch(designTokensProvider);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (mood != null) ...[
+                Text(mood.moodEmoji, style: const TextStyle(fontSize: 32)),
+                const SizedBox(height: 4),
+                Text(
+                  mood.moodLabel,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: tokens.textPrimary,
+                  ),
+                ),
+              ] else ...[
+                Icon(Icons.add_reaction, size: 32, color: tokens.textSecondary),
+                const SizedBox(height: 4),
+                Text(
+                  'Stimmung',
+                  style: TextStyle(color: tokens.textSecondary),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TodosWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _TodosWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final todos = ref.watch(todoNotifierProvider);
+    final tokens = ref.watch(designTokensProvider);
+    
+    final today = DateTime.now();
+    final todayTodos = todos.where((t) => 
+      t.active && 
+      t.startDate.year == today.year && 
+      t.startDate.month == today.month && 
+      t.startDate.day == today.day
+    ).toList();
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ToDos (${todayTodos.length})',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: todayTodos.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Alles erledigt! 🎉',
+                          style: TextStyle(color: tokens.textSecondary),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: math.min(todayTodos.length, 4),
+                        itemBuilder: (context, index) {
+                          final todo = todayTodos[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.circle_outlined,
+                                  size: 16,
+                                  color: tokens.textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    todo.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickAddWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final bool isEditMode;
+
+  const _QuickAddWidget({required this.size, required this.isEditMode});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = ref.watch(designTokensProvider);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            Text(
+              'Schnell hinzufügen',
+              style: TextStyle(
+                fontSize: 11,
+                color: tokens.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _QuickAddButton(
+                  icon: Icons.restaurant,
+                  color: Colors.orange,
+                  onTap: isEditMode ? null : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FoodScreen()),
+                  ),
+                ),
+                _QuickAddButton(
+                  icon: Icons.water_drop,
+                  color: Colors.blue,
+                  onTap: isEditMode ? null : () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const WaterScreen()),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickAddButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _QuickAddButton({
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: color),
+      ),
+    );
+  }
+}
+
+class _BooksWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _BooksWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = ref.watch(designTokensProvider);
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.menu_book, size: 28, color: Colors.brown),
+              const SizedBox(height: 4),
+              Text(
+                'Bücher',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: tokens.textPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StatWidgetCard extends StatelessWidget {
   final String title;
   final String value;
   final String unit;
@@ -328,9 +1129,10 @@ class _ClickableStatCard extends StatelessWidget {
   final Color color;
   final double progress;
   final String subtitle;
-  final VoidCallback onTap;
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
 
-  const _ClickableStatCard({
+  const _StatWidgetCard({
     required this.title,
     required this.value,
     required this.unit,
@@ -338,7 +1140,8 @@ class _ClickableStatCard extends StatelessWidget {
     required this.color,
     required this.progress,
     required this.subtitle,
-    required this.onTap,
+    required this.size,
+    this.onTap,
   });
 
   @override
@@ -348,347 +1151,68 @@ class _ClickableStatCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  Icon(icon, color: color, size: 20),
-                  const SizedBox(width: 8),
-                  Text(title, style: TextStyle(color: Colors.grey.shade600)),
-                  const Spacer(),
-                  Icon(Icons.chevron_right, color: Colors.grey.shade400, size: 20),
+                  Icon(icon, color: color, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 4),
+              const Spacer(),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     value,
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   if (unit.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(left: 4, bottom: 2),
+                      padding: const EdgeInsets.only(left: 2, bottom: 3),
                       child: Text(
                         unit,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey.shade600,
-                            ),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade600,
+                        ),
                       ),
                     ),
                 ],
               ),
-              const SizedBox(height: 8),
-              LinearProgressIndicator(
-                value: progress.clamp(0.0, 1.0),
-                backgroundColor: color.withOpacity(0.2),
-                valueColor: AlwaysStoppedAnimation(color),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 4,
+                  backgroundColor: color.withOpacity(0.2),
+                  valueColor: AlwaysStoppedAnimation(color),
+                ),
               ),
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade500,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ClickableMoodCard extends StatelessWidget {
-  final MoodLogModel? mood;
-  final VoidCallback onTap;
-
-  const _ClickableMoodCard({this.mood, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Icon(Icons.mood, color: Colors.amber, size: 28),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Stimmung heute',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    if (mood != null)
-                      Text(
-                        '${mood!.moodEmoji} ${mood!.moodLabel} (${mood!.mood}/10)',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      )
-                    else
-                      Text(
-                        'Tippe um einzutragen',
-                        style: TextStyle(color: Colors.grey.shade500),
-                      ),
-                  ],
+                style: TextStyle(
+                  fontSize: 10,
+                  color: Colors.grey.shade500,
                 ),
               ),
-              if (mood != null)
-                Text(
-                  mood!.moodEmoji,
-                  style: const TextStyle(fontSize: 32),
-                )
-              else
-                Icon(Icons.add_circle_outline, color: Colors.grey.shade400, size: 32),
-              const SizedBox(width: 8),
-              Icon(Icons.chevron_right, color: Colors.grey.shade400),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TodosSection extends StatelessWidget {
-  final List<TodoModel> todos;
-  final Function(TodoModel) onToggle;
-  final VoidCallback onViewAll;
-
-  const _TodosSection({
-    required this.todos,
-    required this.onToggle,
-    required this.onViewAll,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (todos.isEmpty) {
-      return Card(
-        child: InkWell(
-          onTap: onViewAll,
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(Icons.check_circle_outline, size: 48, color: Colors.green.shade300),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Keine ToDos für heute!',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                  Text(
-                    'Tippe um alle ToDos zu sehen',
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: Column(
-        children: [
-          ...todos.take(5).map((todo) => _TodoListItem(
-                todo: todo,
-                onToggle: () => onToggle(todo),
-              )),
-          if (todos.length > 5)
-            ListTile(
-              leading: const Icon(Icons.more_horiz),
-              title: Text('${todos.length - 5} weitere ToDos'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: onViewAll,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TodoListItem extends StatelessWidget {
-  final TodoModel todo;
-  final VoidCallback onToggle;
-
-  const _TodoListItem({required this.todo, required this.onToggle});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Checkbox(
-        value: !todo.active,
-        onChanged: (_) => onToggle(),
-        activeColor: Theme.of(context).colorScheme.primary,
-      ),
-      title: Text(
-        todo.title,
-        style: TextStyle(
-          decoration: !todo.active ? TextDecoration.lineThrough : null,
-          color: !todo.active ? Colors.grey : null,
-        ),
-      ),
-      subtitle: todo.description != null && todo.description!.isNotEmpty
-          ? Text(
-              todo.description!,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            )
-          : null,
-      trailing: _priorityIndicator(todo.priority),
-    );
-  }
-
-  Widget _priorityIndicator(TodoPriority priority) {
-    Color color;
-    switch (priority) {
-      case TodoPriority.urgent:
-        color = Colors.red;
-        break;
-      case TodoPriority.high:
-        color = Colors.orange;
-        break;
-      case TodoPriority.medium:
-        color = Colors.blue;
-        break;
-      case TodoPriority.low:
-        color = Colors.grey;
-        break;
-    }
-    return Container(
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
-}
-
-class _FoodLogsSection extends StatelessWidget {
-  final List<FoodLogModel> foodLogs;
-
-  const _FoodLogsSection({required this.foodLogs});
-
-  @override
-  Widget build(BuildContext context) {
-    if (foodLogs.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: Column(
-              children: [
-                Icon(Icons.restaurant_menu, size: 48, color: Colors.grey.shade400),
-                const SizedBox(height: 8),
-                Text(
-                  'Noch keine Mahlzeiten eingetragen',
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: foodLogs.take(5).length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final log = foodLogs[index];
-          return ListTile(
-            leading: CircleAvatar(
-              backgroundColor: Colors.orange.shade100,
-              child: Icon(Icons.restaurant, color: Colors.orange.shade700),
-            ),
-            title: Text(log.productName),
-            subtitle: Text('${log.grams.toStringAsFixed(0)}g'),
-            trailing: Text(
-              '${log.calories.toStringAsFixed(0)} kcal',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _BooksQuickCard extends ConsumerWidget {
-  final VoidCallback onTap;
-
-  const _BooksQuickCard({required this.onTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final readingGoal = ref.watch(readingGoalNotifierProvider);
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: Colors.brown.shade100,
-                child: Icon(Icons.menu_book, color: Colors.brown.shade700, size: 28),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Meine Bücher',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    const SizedBox(height: 4),
-                    if (readingGoal != null) ...[
-                      Text(
-                        'Wochenziel: ${readingGoal.formattedRead} / ${readingGoal.formattedGoal}',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                      ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: LinearProgressIndicator(
-                          value: readingGoal.progressPercent,
-                          minHeight: 6,
-                          backgroundColor: Colors.grey.shade200,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.brown.shade400),
-                        ),
-                      ),
-                    ] else
-                      Text(
-                        'Leseliste & Leseziele verwalten',
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
-                      ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right),
             ],
           ),
         ),
