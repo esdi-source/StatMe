@@ -1,12 +1,14 @@
 /// Food Screen - Calorie tracking
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/openfoodfacts_service.dart';
 import 'food_log_edit_screen.dart';
+import 'barcode_scanner_screen.dart';
 
 class FoodScreen extends ConsumerStatefulWidget {
   const FoodScreen({super.key});
@@ -68,11 +70,32 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
   }
   
   Future<void> _scanBarcode() async {
-    // Barcode-Dialog anzeigen (für Web/Demo-Modus manueller Input)
-    final barcode = await showDialog<String>(
-      context: context,
-      builder: (context) => _BarcodeInputDialog(),
-    );
+    String? barcode;
+    
+    // Auf Web: Versuche erst die Kamera, Fallback auf manuelle Eingabe
+    if (kIsWeb) {
+      // Auf mobilen Browsern (PWA) die Kamera verwenden
+      try {
+        barcode = await Navigator.of(context).push<String>(
+          MaterialPageRoute(
+            builder: (context) => const BarcodeScannerScreen(),
+          ),
+        );
+      } catch (e) {
+        // Falls Kamera nicht funktioniert, manueller Input
+        barcode = await showDialog<String>(
+          context: context,
+          builder: (context) => _BarcodeInputDialog(),
+        );
+      }
+    } else {
+      // Native Apps: Direkt Kamera verwenden
+      barcode = await Navigator.of(context).push<String>(
+        MaterialPageRoute(
+          builder: (context) => const BarcodeScannerScreen(),
+        ),
+      );
+    }
     
     if (barcode == null || barcode.isEmpty) return;
     

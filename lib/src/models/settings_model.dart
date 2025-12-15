@@ -22,7 +22,7 @@ class SettingsModel extends Equatable {
     this.locale = 'de_DE',
     this.notificationsEnabled = true,
     this.darkMode = false,
-    this.themeColorValue = 0xFF4CAF50, // Default green
+    this.themeColorValue = 0xFFB2C9AD, // Default Sage (Salbei)
   });
 
   factory SettingsModel.fromJson(Map<String, dynamic> json) {
@@ -36,7 +36,7 @@ class SettingsModel extends Equatable {
       locale: json['locale'] as String? ?? 'de_DE',
       notificationsEnabled: json['notifications_enabled'] as bool? ?? true,
       darkMode: json['dark_mode'] as bool? ?? false,
-      themeColorValue: json['theme_color_value'] as int? ?? 0xFF4CAF50,
+      themeColorValue: json['theme_color_value'] as int? ?? 0xFFB2C9AD,
     );
   }
 

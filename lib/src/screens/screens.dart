@@ -8,6 +8,7 @@ export 'todos_screen.dart';
 export 'todo_edit_screen.dart';
 export 'food_screen.dart';
 export 'food_log_edit_screen.dart';
+export 'barcode_scanner_screen.dart';
 export 'water_screen.dart';
 export 'steps_screen.dart';
 export 'sleep_screen.dart';

@@ -3,22 +3,74 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Available theme colors for user selection
+/// Available theme colors for user selection - 10 carefully curated colors
+/// Including pastels, earth tones, and elegant neutrals
 enum ThemeColor {
-  green(Color(0xFF4CAF50), 'Grün'),
-  blue(Color(0xFF2196F3), 'Blau'),
-  purple(Color(0xFF9C27B0), 'Lila'),
-  orange(Color(0xFFFF9800), 'Orange'),
-  red(Color(0xFFF44336), 'Rot'),
-  pink(Color(0xFFE91E63), 'Pink'),
-  teal(Color(0xFF009688), 'Türkis'),
-  indigo(Color(0xFF3F51B5), 'Indigo'),
-  cyan(Color(0xFF00BCD4), 'Cyan'),
-  amber(Color(0xFFFFC107), 'Bernstein');
+  // Pastell-Farben
+  lavender(Color(0xFFB8A9C9), 'Lavendel', 'Sanft und beruhigend'),
+  sage(Color(0xFFB2C9AD), 'Salbei', 'Natürlich und frisch'),
+  blush(Color(0xFFE8C4C4), 'Rosé', 'Elegant und warm'),
+  sky(Color(0xFFA7C5EB), 'Himmelblau', 'Klar und freundlich'),
+  mint(Color(0xFFB5D8CC), 'Mint', 'Erfrischend und modern'),
+  
+  // Erdtöne / Beige / Braun
+  caramel(Color(0xFFD4A574), 'Karamell', 'Warm und gemütlich'),
+  terracotta(Color(0xFFCB8B73), 'Terracotta', 'Erdverbunden'),
+  mocha(Color(0xFF9C7E6E), 'Mokka', 'Elegant und zeitlos'),
+  sand(Color(0xFFD9CAB3), 'Sand', 'Natürlich und schlicht'),
+  olive(Color(0xFF8B9A71), 'Olive', 'Klassisch und ruhig');
 
   final Color color;
   final String label;
-  const ThemeColor(this.color, this.label);
+  final String description;
+  const ThemeColor(this.color, this.label, this.description);
+  
+  /// Findet eine ThemeColor anhand des Color-Wertes
+  static ThemeColor? fromColor(Color color) {
+    for (final themeColor in ThemeColor.values) {
+      if (themeColor.color.value == color.value) {
+        return themeColor;
+      }
+    }
+    return null;
+  }
+  
+  /// Liefert eine passende Akzentfarbe
+  Color get accentColor {
+    // Für jeden Farbton eine harmonische Akzentfarbe
+    switch (this) {
+      case ThemeColor.lavender:
+        return const Color(0xFF7B68A6);
+      case ThemeColor.sage:
+        return const Color(0xFF6B8E65);
+      case ThemeColor.blush:
+        return const Color(0xFFB88A8A);
+      case ThemeColor.sky:
+        return const Color(0xFF5B8DC9);
+      case ThemeColor.mint:
+        return const Color(0xFF6BA893);
+      case ThemeColor.caramel:
+        return const Color(0xFFA67C52);
+      case ThemeColor.terracotta:
+        return const Color(0xFFA66B55);
+      case ThemeColor.mocha:
+        return const Color(0xFF6D564A);
+      case ThemeColor.sand:
+        return const Color(0xFFB5A48C);
+      case ThemeColor.olive:
+        return const Color(0xFF6B7A55);
+    }
+  }
+  
+  /// Liefert eine passende Container-Farbe (heller)
+  Color get containerColor {
+    return Color.lerp(color, Colors.white, 0.7)!;
+  }
+  
+  /// Liefert eine passende dunkle Variante
+  Color get darkVariant {
+    return Color.lerp(color, Colors.black, 0.3)!;
+  }
 }
 
 class AppTheme {

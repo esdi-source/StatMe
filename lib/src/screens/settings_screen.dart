@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config/app_config.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
+import '../ui/theme/app_theme.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -19,6 +20,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _stepsGoalController;
   bool _notificationsEnabled = true;
   bool _darkMode = false;
+  Color _selectedThemeColor = ThemeColor.sage.color;
 
   @override
   void initState() {
@@ -26,6 +28,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _waterGoalController = TextEditingController(text: '2500');
     _calorieGoalController = TextEditingController(text: '2000');
     _stepsGoalController = TextEditingController(text: '10000');
+    _selectedThemeColor = ref.read(themeColorProvider);
     _loadSettings();
   }
 
@@ -41,7 +44,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _stepsGoalController.text = settings.dailyStepsGoal.toString();
           _notificationsEnabled = settings.notificationsEnabled;
           _darkMode = settings.darkMode;
+          _selectedThemeColor = Color(settings.themeColorValue);
         });
+        // Theme-Provider aktualisieren
+        ref.read(themeColorProvider.notifier).state = Color(settings.themeColorValue);
       }
     }
   }
@@ -60,9 +66,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       dailyStepsGoal: int.tryParse(_stepsGoalController.text) ?? 10000,
       notificationsEnabled: _notificationsEnabled,
       darkMode: _darkMode,
+      themeColorValue: _selectedThemeColor.value,
     );
 
     await ref.read(settingsNotifierProvider.notifier).update(settings);
+    
+    // Theme-Provider aktualisieren
+    ref.read(themeColorProvider.notifier).state = _selectedThemeColor;
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -77,6 +87,118 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _calorieGoalController.dispose();
     _stepsGoalController.dispose();
     super.dispose();
+  }
+
+  void _selectColor(ThemeColor themeColor) {
+    setState(() {
+      _selectedThemeColor = themeColor.color;
+    });
+    // Sofort das Theme aktualisieren für Live-Vorschau
+    ref.read(themeColorProvider.notifier).state = themeColor.color;
+  }
+
+  Widget _buildColorSelector() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Pastell-Farben
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Pastell-Töne',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ThemeColor.lavender,
+                ThemeColor.sage,
+                ThemeColor.blush,
+                ThemeColor.sky,
+                ThemeColor.mint,
+              ].map((themeColor) => _buildColorOption(themeColor)).toList(),
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 12),
+            // Erdtöne
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Erdtöne',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                ThemeColor.caramel,
+                ThemeColor.terracotta,
+                ThemeColor.mocha,
+                ThemeColor.sand,
+                ThemeColor.olive,
+              ].map((themeColor) => _buildColorOption(themeColor)).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildColorOption(ThemeColor themeColor) {
+    final isSelected = _selectedThemeColor.value == themeColor.color.value;
+    
+    return GestureDetector(
+      onTap: () => _selectColor(themeColor),
+      child: Tooltip(
+        message: '${themeColor.label}\n${themeColor.description}',
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: isSelected ? 56 : 48,
+          height: isSelected ? 56 : 48,
+          decoration: BoxDecoration(
+            color: themeColor.color,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: isSelected ? Colors.black54 : Colors.transparent,
+              width: 3,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: themeColor.color.withOpacity(0.5),
+                      blurRadius: 12,
+                      spreadRadius: 2,
+                    ),
+                  ]
+                : null,
+          ),
+          child: isSelected
+              ? Icon(
+                  Icons.check,
+                  color: _getContrastColor(themeColor.color),
+                  size: 28,
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+
+  Color _getContrastColor(Color color) {
+    // Berechne die Helligkeit und wähle Schwarz oder Weiß
+    final luminance = color.computeLuminance();
+    return luminance > 0.5 ? Colors.black87 : Colors.white;
   }
 
   @override
@@ -141,6 +263,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Theme Color Section
+            Text(
+              'Design-Farbe',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Wähle eine Farbe, die zu dir passt. Das gesamte App-Design wird daran angepasst.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            _buildColorSelector(),
             const SizedBox(height: 24),
 
             // Daily Goals Section

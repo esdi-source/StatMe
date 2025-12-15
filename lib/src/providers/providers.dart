@@ -195,8 +195,8 @@ final settingsNotifierProvider = StateNotifierProvider<SettingsNotifier, Setting
 
 /// Provider für die aktuelle Theme-Farbe
 final themeColorProvider = StateProvider<Color>((ref) {
-  // Default grün
-  return const Color(0xFF4CAF50);
+  // Default Sage (Salbei) - passend zu den neuen Pastell-Farben
+  return const Color(0xFFB2C9AD);
 });
 
 /// Provider der die Theme-Farbe aus den Settings synchronisiert
@@ -205,7 +205,7 @@ final themeColorFromSettingsProvider = Provider<Color>((ref) {
   if (settings != null && settings.themeColorValue != 0) {
     return Color(settings.themeColorValue);
   }
-  return const Color(0xFF4CAF50);
+  return const Color(0xFFB2C9AD);
 });
 
 // ============================================
