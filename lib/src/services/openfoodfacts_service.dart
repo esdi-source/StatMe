@@ -200,11 +200,12 @@ class OpenFoodFactsService {
           'User-Agent': _userAgent,
           'Accept': 'application/json',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode != 200) {
         print('OpenFoodFacts Suche Fehler: ${response.statusCode}');
-        return [];
+        // Fallback auf Demo-Daten bei API-Fehler
+        return _searchDemoProducts(query, limit);
       }
       
       final json = jsonDecode(response.body) as Map<String, dynamic>;
@@ -212,15 +213,37 @@ class OpenFoodFactsService {
       
       print('OpenFoodFacts: ${products.length} Produkte gefunden für "$query"'); // Debug
       
-      return products.map((p) {
+      final results = products.map((p) {
         final productMap = p as Map<String, dynamic>;
         final code = productMap['code']?.toString() ?? productMap['_id']?.toString() ?? '';
         return OpenFoodFactsProduct.fromJson(code, {'product': productMap});
       }).where((p) => p.found && p.productName != null && p.productName!.isNotEmpty).toList();
+      
+      // Wenn keine Ergebnisse, Fallback auf Demo-Daten
+      if (results.isEmpty) {
+        return _searchDemoProducts(query, limit);
+      }
+      
+      return results;
     } catch (e) {
       print('Fehler bei der OpenFoodFacts Suche: $e');
-      return [];
+      // Fallback auf Demo-Daten bei Fehler (z.B. CORS, Timeout)
+      return _searchDemoProducts(query, limit);
     }
+  }
+  
+  /// Fallback-Suche in Demo-Produkten für CORS-Probleme im Web
+  List<OpenFoodFactsProduct> _searchDemoProducts(String query, int limit) {
+    print('Fallback auf Demo-Produkte für "$query"');
+    final queryLower = query.toLowerCase();
+    return DemoOpenFoodFactsService._allDemoProducts
+        .where((p) {
+          final name = (p.productName ?? '').toLowerCase();
+          final brand = (p.brand ?? '').toLowerCase();
+          return name.contains(queryLower) || brand.contains(queryLower);
+        })
+        .take(limit)
+        .toList();
   }
   
   void dispose() {

@@ -141,14 +141,17 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.purple.shade50,
+                      color: Colors.purple.shade600,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _isToday(_selectedDate)
                           ? 'Heute Nacht'
                           : 'Nacht zum ${DateFormat('dd.MM.').format(_selectedDate)}',
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                   ),
                 ),

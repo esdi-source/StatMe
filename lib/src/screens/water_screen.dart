@@ -91,14 +91,17 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.blue.shade50,
+                      color: Colors.blue.shade700,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _isToday(_selectedDate)
                           ? 'Heute'
                           : DateFormat('dd.MM.yyyy').format(_selectedDate),
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                   ),
                 ),

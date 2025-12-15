@@ -112,14 +112,17 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.amber.shade50,
+                      color: Colors.amber.shade700,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _isToday(_selectedDate)
                           ? 'Heute'
                           : DateFormat('dd.MM.yyyy').format(_selectedDate),
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                   ),
                 ),

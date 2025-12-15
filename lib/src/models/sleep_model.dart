@@ -16,12 +16,14 @@ class SleepLogModel extends Equatable {
   });
 
   factory SleepLogModel.fromJson(Map<String, dynamic> json) {
+    final startTs = DateTime.parse((json['sleep_start'] ?? json['start_ts']) as String);
+    final endTs = DateTime.parse((json['sleep_end'] ?? json['end_ts']) as String);
     return SleepLogModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      startTs: DateTime.parse(json['start_ts'] as String),
-      endTs: DateTime.parse(json['end_ts'] as String),
-      durationMinutes: json['duration_minutes'] as int,
+      startTs: startTs,
+      endTs: endTs,
+      durationMinutes: json['duration_minutes'] as int? ?? endTs.difference(startTs).inMinutes,
     );
   }
 
@@ -45,9 +47,9 @@ class SleepLogModel extends Equatable {
     return {
       'id': id,
       'user_id': userId,
-      'start_ts': startTs.toIso8601String(),
-      'end_ts': endTs.toIso8601String(),
-      'duration_minutes': durationMinutes,
+      'date': endTs.toIso8601String().split('T')[0],
+      'sleep_start': startTs.toIso8601String(),
+      'sleep_end': endTs.toIso8601String(),
     };
   }
 

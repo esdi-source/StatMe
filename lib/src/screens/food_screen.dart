@@ -171,7 +171,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
           // Date Selector
           Container(
             padding: const EdgeInsets.all(16),
-            color: Theme.of(context).primaryColor.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.primaryContainer,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -195,14 +195,17 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: Colors.orange.shade700,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       _isToday(_selectedDate)
                           ? 'Heute'
                           : DateFormat('dd.MM.yyyy').format(_selectedDate),
-                      style: Theme.of(context).textTheme.titleMedium,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                          ),
                     ),
                   ),
                 ),

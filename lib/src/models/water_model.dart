@@ -19,7 +19,7 @@ class WaterLogModel extends Equatable {
     return WaterLogModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      ml: json['ml'] as int,
+      ml: (json['amount_ml'] ?? json['ml']) as int,
       date: DateTime.parse(json['date'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
     );
@@ -29,8 +29,9 @@ class WaterLogModel extends Equatable {
     return {
       'id': id,
       'user_id': userId,
-      'ml': ml,
+      'amount_ml': ml,
       'date': date.toIso8601String().split('T')[0],
+      'logged_at': createdAt.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
   }
