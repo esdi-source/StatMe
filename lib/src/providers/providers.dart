@@ -1,11 +1,14 @@
 /// Riverpod Providers
 /// Provides dependency injection and state management
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/models.dart';
+import '../models/home_widget_model.dart';
 import '../repositories/repositories.dart';
 import '../services/in_memory_database.dart';
 import '../services/openfoodfacts_service.dart';
@@ -433,6 +436,160 @@ class MoodNotifier extends StateNotifier<MoodLogModel?> {
 
 final moodNotifierProvider = StateNotifierProvider<MoodNotifier, MoodLogModel?>((ref) {
   return MoodNotifier(ref.watch(moodRepositoryProvider));
+});
+
+// ============================================
+// HOMESCREEN CONFIG PROVIDER
+// ============================================
+
+/// SharedPreferences Provider
+final sharedPreferencesProvider = FutureProvider<SharedPreferences>((ref) async {
+  return await SharedPreferences.getInstance();
+});
+
+/// Homescreen-Konfiguration Notifier
+class HomeScreenConfigNotifier extends StateNotifier<HomeScreenConfig?> {
+  final String _oderId;
+  SharedPreferences? _prefs;
+  
+  HomeScreenConfigNotifier(this._oderId) : super(null);
+  
+  static const _storageKey = 'homescreen_config';
+  
+  String get _userKey => '${_storageKey}_$_oderId';
+  
+  Future<void> init(SharedPreferences prefs) async {
+    _prefs = prefs;
+    await load();
+  }
+  
+  Future<void> load() async {
+    if (_prefs == null) return;
+    
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      try {
+        final json = jsonDecode(jsonStr) as Map<String, dynamic>;
+        state = HomeScreenConfig.fromJson(json);
+      } catch (e) {
+        state = HomeScreenConfig.defaultLayout(_oderId);
+      }
+    } else {
+      state = HomeScreenConfig.defaultLayout(_oderId);
+      await _save();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null || state == null) return;
+    await _prefs!.setString(_userKey, jsonEncode(state!.toJson()));
+  }
+  
+  /// Widget hinzufügen
+  Future<void> addWidget(HomeWidgetType type, {HomeWidgetSize size = HomeWidgetSize.small}) async {
+    if (state == null) return;
+    
+    final newId = '${type.name}_${DateTime.now().millisecondsSinceEpoch}';
+    
+    // Finde freie Position
+    final maxY = state!.widgets.isEmpty 
+        ? 0 
+        : state!.widgets.map((w) => w.gridY + w.size.gridHeight).reduce((a, b) => a > b ? a : b);
+    
+    final newWidget = HomeWidget(
+      id: newId,
+      type: type,
+      size: size,
+      gridX: 0,
+      gridY: maxY,
+    );
+    
+    state = state!.copyWith(widgets: [...state!.widgets, newWidget]);
+    await _save();
+  }
+  
+  /// Widget entfernen
+  Future<void> removeWidget(String widgetId) async {
+    if (state == null) return;
+    
+    final widgets = state!.widgets.where((w) => w.id != widgetId).toList();
+    state = state!.copyWith(widgets: widgets);
+    await _save();
+  }
+  
+  /// Widget aktualisieren (Position, Größe, etc.)
+  Future<void> updateWidget(HomeWidget widget) async {
+    if (state == null) return;
+    
+    final widgets = state!.widgets.map((w) {
+      return w.id == widget.id ? widget : w;
+    }).toList();
+    
+    state = state!.copyWith(widgets: widgets);
+    await _save();
+  }
+  
+  /// Widget-Position ändern
+  Future<void> moveWidget(String widgetId, int newGridX, int newGridY) async {
+    if (state == null) return;
+    
+    final widgets = state!.widgets.map((w) {
+      if (w.id == widgetId) {
+        return w.copyWith(
+          gridX: newGridX.clamp(0, state!.gridColumns - w.size.gridWidth),
+          gridY: newGridY.clamp(0, 99),
+        );
+      }
+      return w;
+    }).toList();
+    
+    state = state!.copyWith(widgets: widgets);
+    await _save();
+  }
+  
+  /// Widget-Größe ändern
+  Future<void> resizeWidget(String widgetId, HomeWidgetSize newSize) async {
+    if (state == null) return;
+    
+    final widgets = state!.widgets.map((w) {
+      if (w.id == widgetId) {
+        // Stelle sicher, dass das Widget nicht über den Rand hinausgeht
+        final maxX = state!.gridColumns - newSize.gridWidth;
+        return w.copyWith(
+          size: newSize,
+          gridX: w.gridX.clamp(0, maxX),
+        );
+      }
+      return w;
+    }).toList();
+    
+    state = state!.copyWith(widgets: widgets);
+    await _save();
+  }
+  
+  /// Komplettes Layout ersetzen
+  Future<void> setWidgets(List<HomeWidget> widgets) async {
+    if (state == null) return;
+    state = state!.copyWith(widgets: widgets);
+    await _save();
+  }
+  
+  /// Auf Standard zurücksetzen
+  Future<void> resetToDefault() async {
+    state = HomeScreenConfig.defaultLayout(_oderId);
+    await _save();
+  }
+}
+
+/// Provider für Homescreen-Konfiguration
+final homeScreenConfigProvider = StateNotifierProvider.family<HomeScreenConfigNotifier, HomeScreenConfig?, String>((ref, oderId) {
+  final notifier = HomeScreenConfigNotifier(oderId);
+  
+  ref.watch(sharedPreferencesProvider).whenData((prefs) {
+    notifier.init(prefs);
+  });
+  
+  return notifier;
 });
 
 // ============================================

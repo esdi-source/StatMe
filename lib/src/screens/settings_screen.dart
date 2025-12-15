@@ -6,6 +6,7 @@ import '../core/config/app_config.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
 import '../ui/theme/app_theme.dart';
+import 'homescreen_editor_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -369,6 +370,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Card(
               child: Column(
                 children: [
+                  // Homescreen Editor Button
+                  ListTile(
+                    leading: const Icon(Icons.dashboard_customize),
+                    title: const Text('Startbildschirm bearbeiten'),
+                    subtitle: const Text('Widgets frei anordnen und skalieren'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const HomescreenEditorScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
                   SwitchListTile(
                     secondary: const Icon(Icons.notifications),
                     title: const Text('Benachrichtigungen'),
