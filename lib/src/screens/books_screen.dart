@@ -1,12 +1,11 @@
-/// Books Screen - Library management with reading goals
-/// Features: Want-to-read list, finished books with ratings, reading timer
+/// Books Screen - Simplified Library Management
+/// Features: Reading list with checkoff, finished books with ratings, reading timer
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
 import '../models/book_model.dart';
-import '../services/google_books_service.dart';
 import 'book_search_screen.dart';
 import 'book_detail_screen.dart';
 
@@ -19,7 +18,7 @@ class BooksScreen extends ConsumerStatefulWidget {
 
 class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _gridSize = 3; // Default: 3 Bücher nebeneinander
+  int _gridSize = 3;
   
   // Timer state
   Timer? _readingTimer;
@@ -52,16 +51,18 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     final books = ref.watch(bookNotifierProvider);
     final readingGoal = ref.watch(readingGoalNotifierProvider);
+    final tokens = ref.watch(designTokensProvider);
     
-    final wantToRead = books.where((b) => b.status == BookStatus.wantToRead).toList();
-    final reading = books.where((b) => b.status == BookStatus.reading).toList();
+    // Leseliste = wantToRead + reading (vereinfacht)
+    final readingList = books.where((b) => 
+      b.status == BookStatus.wantToRead || b.status == BookStatus.reading
+    ).toList();
     final finished = books.where((b) => b.status == BookStatus.finished).toList();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Meine Bücher'),
         actions: [
-          // Grid Size Toggle
           PopupMenuButton<int>(
             icon: const Icon(Icons.grid_view),
             tooltip: 'Anzeigegröße',
@@ -70,7 +71,6 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
               const PopupMenuItem(value: 2, child: Text('Groß (2 pro Reihe)')),
               const PopupMenuItem(value: 3, child: Text('Mittel (3 pro Reihe)')),
               const PopupMenuItem(value: 4, child: Text('Klein (4 pro Reihe)')),
-              const PopupMenuItem(value: 5, child: Text('Sehr klein (5 pro Reihe)')),
             ],
           ),
           IconButton(
@@ -84,63 +84,286 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
           tabs: [
             Tab(
               icon: const Icon(Icons.bookmark_border),
-              text: 'Leseliste (${wantToRead.length})',
-            ),
-            Tab(
-              icon: const Icon(Icons.auto_stories),
-              text: 'Lese ich (${reading.length})',
+              text: 'Leseliste (${readingList.length})',
             ),
             Tab(
               icon: const Icon(Icons.check_circle_outline),
               text: 'Gelesen (${finished.length})',
             ),
+            const Tab(
+              icon: Icon(Icons.timer_outlined),
+              text: 'Timer',
+            ),
           ],
         ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Reading Goal & Timer Card
-          _buildReadingGoalCard(readingGoal),
-          
-          // Book Lists
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildBookGrid(wantToRead, 'Keine Bücher auf der Leseliste'),
-                _buildBookGrid(reading, 'Du liest gerade keine Bücher'),
-                _buildFinishedBooksGrid(finished),
-              ],
-            ),
-          ),
+          _buildReadingListTab(readingList, tokens),
+          _buildFinishedBooksTab(finished, tokens),
+          _buildTimerTab(readingGoal, tokens),
         ],
       ),
     );
   }
 
-  Widget _buildReadingGoalCard(ReadingGoalModel? goal) {
+  // ============================================
+  // TAB 1: LESELISTE (mit Abhaken)
+  // ============================================
+  
+  Widget _buildReadingListTab(List<BookModel> books, DesignTokens tokens) {
+    if (books.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.bookmark_add,
+        message: 'Deine Leseliste ist leer',
+        buttonText: 'Buch hinzufügen',
+        onPressed: _navigateToSearch,
+        tokens: tokens,
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: _gridSize,
+        childAspectRatio: 0.58,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: books.length,
+      itemBuilder: (context, index) => _buildReadingListCard(books[index], tokens),
+    );
+  }
+
+  Widget _buildReadingListCard(BookModel book, DesignTokens tokens) {
+    return GestureDetector(
+      onTap: () => _navigateToDetail(book),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Cover
+                Expanded(
+                  child: _buildBookCover(book),
+                ),
+                // Title
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                  child: Text(
+                    book.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                ),
+                if (book.author != null)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    child: Text(
+                      book.author!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 10, color: tokens.textSecondary),
+                    ),
+                  ),
+              ],
+            ),
+            // Checkmark Button (oben rechts)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Material(
+                color: tokens.success,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(20),
+                  onTap: () => _markAsFinished(book),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _markAsFinished(BookModel book) async {
+    final updatedBook = book.copyWith(
+      status: BookStatus.finished,
+      finishedAt: DateTime.now(),
+    );
+    await ref.read(bookNotifierProvider.notifier).updateBook(updatedBook);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('„${book.title}" als gelesen markiert'),
+          action: SnackBarAction(
+            label: 'Bewerten',
+            onPressed: () {
+              _tabController.animateTo(1); // Wechsel zum Gelesen-Tab
+              Future.delayed(const Duration(milliseconds: 300), () {
+                _navigateToDetail(updatedBook);
+              });
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  // ============================================
+  // TAB 2: GELESEN (mit Bewertung)
+  // ============================================
+
+  Widget _buildFinishedBooksTab(List<BookModel> books, DesignTokens tokens) {
+    if (books.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.menu_book,
+        message: 'Du hast noch keine Bücher beendet',
+        buttonText: 'Leseliste ansehen',
+        onPressed: () => _tabController.animateTo(0),
+        tokens: tokens,
+      );
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(12),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: _gridSize,
+        childAspectRatio: 0.52,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+      ),
+      itemCount: books.length,
+      itemBuilder: (context, index) => _buildFinishedBookCard(books[index], tokens),
+    );
+  }
+
+  Widget _buildFinishedBookCard(BookModel book, DesignTokens tokens) {
+    return GestureDetector(
+      onTap: () => _navigateToDetail(book),
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Cover
+            Expanded(
+              child: _buildBookCover(book),
+            ),
+            // Title & Rating
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    book.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                  const SizedBox(height: 4),
+                  // 5-Sterne Rating (kompakt)
+                  if (book.rating != null)
+                    _buildCompactRating(book.rating!.overall, tokens)
+                  else
+                    Text(
+                      'Tippen zum Bewerten',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: tokens.textSecondary,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactRating(int rating, DesignTokens tokens) {
+    // Konvertiere 1-10 zu 1-5 Sternen
+    final stars = (rating / 2).round().clamp(1, 5);
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...List.generate(5, (i) {
+          return Icon(
+            i < stars ? Icons.star : Icons.star_border,
+            size: 14,
+            color: Colors.amber,
+          );
+        }),
+      ],
+    );
+  }
+
+  // ============================================
+  // TAB 3: TIMER
+  // ============================================
+
+  Widget _buildTimerTab(ReadingGoalModel? goal, DesignTokens tokens) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: [
+          // Wochenziel Card
+          _buildWeeklyGoalCard(goal, tokens),
+          const SizedBox(height: 24),
+          // Timer Card
+          _buildTimerCard(tokens),
+          const SizedBox(height: 24),
+          // Letzte Sessions (wenn vorhanden)
+          if (goal?.sessions.isNotEmpty == true)
+            _buildRecentSessionsCard(goal!, tokens),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyGoalCard(ReadingGoalModel? goal, DesignTokens tokens) {
+    final progress = goal?.progressPercent ?? 0;
+    final goalText = goal?.formattedGoal ?? '4h';
+    final readText = goal?.formattedRead ?? '0 min';
+    
     return Card(
-      margin: const EdgeInsets.all(12),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
             Row(
               children: [
-                const Icon(Icons.timer_outlined, size: 28),
+                Icon(Icons.flag, color: tokens.primary, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Wochenziel: ${goal?.formattedGoal ?? '4h'}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      const Text(
+                        'Wochenziel',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                       ),
-                      const SizedBox(height: 4),
                       Text(
-                        'Gelesen: ${goal?.formattedRead ?? '0min'} (${((goal?.progressPercent ?? 0) * 100).toStringAsFixed(0)}%)',
-                        style: TextStyle(color: Colors.grey.shade600),
+                        '$readText von $goalText',
+                        style: TextStyle(color: tokens.textSecondary),
                       ),
                     ],
                   ),
@@ -151,82 +374,242 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
             // Progress Bar
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(tokens.radiusSmall),
               child: LinearProgressIndicator(
-                value: goal?.progressPercent ?? 0,
-                minHeight: 10,
-                backgroundColor: Colors.grey.shade200,
+                value: progress,
+                minHeight: 12,
+                backgroundColor: tokens.divider,
+                color: progress >= 1.0 ? tokens.success : tokens.primary,
               ),
             ),
-            const SizedBox(height: 16),
-            // Timer Section
-            _buildTimerSection(),
+            const SizedBox(height: 8),
+            Text(
+              '${(progress * 100).toStringAsFixed(0)}% erreicht',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: progress >= 1.0 ? tokens.success : tokens.textSecondary,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTimerSection() {
+  Widget _buildTimerCard(DesignTokens tokens) {
     final hours = _timerSeconds ~/ 3600;
     final minutes = (_timerSeconds % 3600) ~/ 60;
     final seconds = _timerSeconds % 60;
     final timeString = '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _isTimerRunning 
-            ? Theme.of(context).colorScheme.primaryContainer 
-            : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Timer Display
-          Text(
-            timeString,
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'monospace',
-              color: _isTimerRunning 
-                  ? Theme.of(context).colorScheme.primary 
-                  : Colors.grey.shade700,
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            // Timer Display
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+              decoration: BoxDecoration(
+                color: _isTimerRunning 
+                    ? tokens.primary.withOpacity(0.1) 
+                    : tokens.background,
+                borderRadius: BorderRadius.circular(tokens.radiusMedium),
+              ),
+              child: Text(
+                timeString,
+                style: TextStyle(
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  color: _isTimerRunning ? tokens.primary : tokens.textPrimary,
+                ),
+              ),
             ),
-          ),
-          const SizedBox(width: 20),
-          // Start/Stop Button
-          ElevatedButton.icon(
-            onPressed: _toggleTimer,
-            icon: Icon(_isTimerRunning ? Icons.stop : Icons.play_arrow),
-            label: Text(_isTimerRunning ? 'Stoppen' : 'Lesen starten'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _isTimerRunning ? Colors.red : null,
-              foregroundColor: _isTimerRunning ? Colors.white : null,
-            ),
-          ),
-          if (_timerSeconds > 0 && !_isTimerRunning) ...[
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.save),
-              tooltip: 'Zeit speichern',
-              onPressed: _saveReadingTime,
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: 'Zurücksetzen',
-              onPressed: () => setState(() => _timerSeconds = 0),
+            const SizedBox(height: 24),
+            // Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Start/Stop Button
+                ElevatedButton.icon(
+                  onPressed: _toggleTimer,
+                  icon: Icon(_isTimerRunning ? Icons.pause : Icons.play_arrow),
+                  label: Text(_isTimerRunning ? 'Pause' : 'Start'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    backgroundColor: _isTimerRunning ? tokens.warning : tokens.primary,
+                  ),
+                ),
+                if (_timerSeconds > 0) ...[
+                  const SizedBox(width: 12),
+                  // Save Button
+                  ElevatedButton.icon(
+                    onPressed: _isTimerRunning ? null : _saveReadingTime,
+                    icon: const Icon(Icons.save),
+                    label: const Text('Speichern'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      backgroundColor: tokens.success,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Reset Button
+                  IconButton(
+                    onPressed: _isTimerRunning ? null : () => setState(() => _timerSeconds = 0),
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Zurücksetzen',
+                  ),
+                ],
+              ],
             ),
           ],
-        ],
+        ),
       ),
     );
   }
+
+  Widget _buildRecentSessionsCard(ReadingGoalModel goal, DesignTokens tokens) {
+    final recentSessions = goal.sessions.take(5).toList();
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Letzte Sitzungen',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: tokens.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            ...recentSessions.map((session) => Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, size: 16, color: tokens.textSecondary),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${session.date.day}.${session.date.month}.${session.date.year}',
+                    style: TextStyle(color: tokens.textSecondary),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${session.durationMinutes} min',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================
+  // HELPER WIDGETS
+  // ============================================
+
+  Widget _buildBookCover(BookModel book) {
+    if (book.coverUrl != null && book.coverUrl!.isNotEmpty) {
+      // Verbesserte Cover URL für höhere Auflösung
+      String coverUrl = book.coverUrl!;
+      // HTTP zu HTTPS konvertieren
+      coverUrl = coverUrl.replaceFirst('http://', 'https://');
+      // Höhere Auflösung anfordern wenn möglich
+      if (coverUrl.contains('zoom=')) {
+        coverUrl = coverUrl.replaceFirst(RegExp(r'zoom=\d'), 'zoom=2');
+      }
+      
+      return Image.network(
+        coverUrl,
+        fit: BoxFit.cover,
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Center(
+            child: CircularProgressIndicator(
+              value: loadingProgress.expectedTotalBytes != null
+                  ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                  : null,
+              strokeWidth: 2,
+            ),
+          );
+        },
+        errorBuilder: (_, __, ___) => _buildPlaceholderCover(book),
+      );
+    }
+    return _buildPlaceholderCover(book);
+  }
+
+  Widget _buildPlaceholderCover(BookModel book) {
+    final tokens = ref.read(designTokensProvider);
+    return Container(
+      color: tokens.primary.withOpacity(0.1),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.menu_book, size: 28, color: tokens.primary.withOpacity(0.5)),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Text(
+                book.title,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 9, color: tokens.textSecondary),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState({
+    required IconData icon,
+    required String message,
+    required String buttonText,
+    required VoidCallback onPressed,
+    required DesignTokens tokens,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 64, color: tokens.textDisabled),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              style: TextStyle(color: tokens.textSecondary, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: onPressed,
+              icon: const Icon(Icons.add),
+              label: Text(buttonText),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================================
+  // TIMER LOGIC
+  // ============================================
 
   void _toggleTimer() {
     setState(() {
@@ -268,205 +651,14 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$minutes Minuten Lesezeit gespeichert!')),
+        SnackBar(content: Text('$minutes Minuten Lesezeit gespeichert! 📚')),
       );
     }
   }
 
-  Widget _buildBookGrid(List<BookModel> books, String emptyMessage) {
-    if (books.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.menu_book, size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text(emptyMessage, style: TextStyle(color: Colors.grey.shade600)),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _navigateToSearch,
-              icon: const Icon(Icons.add),
-              label: const Text('Buch hinzufügen'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _gridSize,
-        childAspectRatio: 0.65,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: books.length,
-      itemBuilder: (context, index) => _buildBookCard(books[index]),
-    );
-  }
-
-  Widget _buildFinishedBooksGrid(List<BookModel> books) {
-    if (books.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.check_circle, size: 64, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            Text('Noch keine Bücher gelesen', style: TextStyle(color: Colors.grey.shade600)),
-          ],
-        ),
-      );
-    }
-
-    return GridView.builder(
-      padding: const EdgeInsets.all(12),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: _gridSize,
-        childAspectRatio: 0.55, // Etwas mehr Platz für Bewertung
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-      ),
-      itemCount: books.length,
-      itemBuilder: (context, index) => _buildFinishedBookCard(books[index]),
-    );
-  }
-
-  Widget _buildBookCard(BookModel book) {
-    return GestureDetector(
-      onTap: () => _navigateToDetail(book),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Cover
-            Expanded(
-              child: book.coverUrl != null
-                  ? Image.network(
-                      book.coverUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholderCover(book),
-                    )
-                  : _buildPlaceholderCover(book),
-            ),
-            // Title
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    book.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-                  ),
-                  if (book.author != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      book.author!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFinishedBookCard(BookModel book) {
-    return GestureDetector(
-      onTap: () => _navigateToDetail(book),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Cover
-            Expanded(
-              child: book.coverUrl != null
-                  ? Image.network(
-                      book.coverUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholderCover(book),
-                    )
-                  : _buildPlaceholderCover(book),
-            ),
-            // Title & Rating
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    book.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
-                  ),
-                  const SizedBox(height: 4),
-                  // Rating Stars
-                  if (book.rating != null)
-                    Row(
-                      children: [
-                        ...List.generate(5, (i) {
-                          final starValue = (i + 1) * 2;
-                          final rating = book.rating!.overall;
-                          if (rating >= starValue) {
-                            return const Icon(Icons.star, size: 14, color: Colors.amber);
-                          } else if (rating >= starValue - 1) {
-                            return const Icon(Icons.star_half, size: 14, color: Colors.amber);
-                          } else {
-                            return Icon(Icons.star_border, size: 14, color: Colors.grey.shade400);
-                          }
-                        }),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${book.rating!.overall}/10',
-                          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPlaceholderCover(BookModel book) {
-    return Container(
-      color: Colors.grey.shade200,
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.menu_book, size: 32, color: Colors.grey.shade400),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                book.title,
-                textAlign: TextAlign.center,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // ============================================
+  // NAVIGATION
+  // ============================================
 
   void _navigateToSearch() {
     Navigator.push(
@@ -493,22 +685,25 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('Wie viele Stunden möchtest du pro Woche lesen?'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             StatefulBuilder(
               builder: (context, setDialogState) => Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  IconButton(
+                  IconButton.filled(
                     icon: const Icon(Icons.remove),
                     onPressed: hours > 1 
                         ? () => setDialogState(() => hours--) 
                         : null,
                   ),
-                  Text(
-                    '$hours Stunden',
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      '$hours h',
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                  IconButton(
+                  IconButton.filled(
                     icon: const Icon(Icons.add),
                     onPressed: () => setDialogState(() => hours++),
                   ),
@@ -526,7 +721,6 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
             onPressed: () async {
               final user = ref.read(authNotifierProvider).valueOrNull;
               if (user != null) {
-                // Berechne Wochenstart (Montag)
                 final now = DateTime.now();
                 final weekStart = now.subtract(Duration(days: now.weekday - 1));
                 

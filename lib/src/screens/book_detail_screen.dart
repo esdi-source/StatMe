@@ -1,4 +1,5 @@
 /// Book Detail Screen - View and edit book details, add ratings
+/// Redesigned with 5-star rating system and responsive layout
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,15 +17,9 @@ class BookDetailScreen extends ConsumerStatefulWidget {
 
 class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
   late BookModel _book;
-  bool _showDetailedRatings = false;
   
-  // Rating controllers
-  int _overallRating = 5;
-  int _storyRating = 5;
-  int _charactersRating = 5;
-  int _writingRating = 5;
-  int _pacingRating = 5;
-  int _emotionalRating = 5;
+  // Rating (1-5 Sterne, intern als 1-10 gespeichert)
+  int _starRating = 3;
   final _noteController = TextEditingController();
 
   @override
@@ -32,12 +27,8 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     super.initState();
     _book = widget.book;
     if (_book.rating != null) {
-      _overallRating = _book.rating!.overall;
-      _storyRating = _book.rating!.story ?? 5;
-      _charactersRating = _book.rating!.characters ?? 5;
-      _writingRating = _book.rating!.writing ?? 5;
-      _pacingRating = _book.rating!.pacing ?? 5;
-      _emotionalRating = _book.rating!.emotionalImpact ?? 5;
+      // Konvertiere 1-10 zu 1-5 Sterne
+      _starRating = (_book.rating!.overall / 2).round().clamp(1, 5);
       _noteController.text = _book.rating!.note ?? '';
     }
   }
@@ -50,12 +41,14 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = ref.watch(designTokensProvider);
+    
     return Scaffold(
       appBar: AppBar(
         title: const Text('Buchdetails'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete),
+            icon: const Icon(Icons.delete_outline),
             onPressed: _confirmDelete,
           ),
         ],
@@ -64,223 +57,22 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header with Cover
-            Container(
-              color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Cover
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: _book.coverUrl != null
-                        ? Image.network(
-                            _book.coverUrl!,
-                            width: 120,
-                            height: 180,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
-                          )
-                        : _buildPlaceholderCover(),
-                  ),
-                  const SizedBox(width: 20),
-                  // Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _book.title,
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        if (_book.author != null)
-                          Text(
-                            _book.author!,
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              color: Colors.grey.shade700,
-                            ),
-                          ),
-                        const SizedBox(height: 12),
-                        // Status Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: _getStatusColor(_book.status),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            _book.status.label,
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ),
-                        if (_book.pageCount != null) ...[
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              const Icon(Icons.menu_book, size: 16),
-                              const SizedBox(width: 4),
-                              Text('${_book.pageCount} Seiten'),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            // Header mit Cover
+            _buildHeader(tokens),
             
-            // Status Change Buttons
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Status ändern',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: BookStatus.values.map((status) {
-                      final isSelected = _book.status == status;
-                      return ChoiceChip(
-                        label: Text(status.label),
-                        selected: isSelected,
-                        onSelected: (_) => _updateStatus(status),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-            ),
+            // Quick Actions
+            _buildQuickActions(tokens),
             
-            const Divider(),
+            const Divider(height: 32),
             
-            // Rating Section (only for finished books)
-            if (_book.status == BookStatus.finished) ...[
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Bewertung',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Overall Rating
-                    _buildRatingRow('Gesamtbewertung', _overallRating, (value) {
-                      setState(() => _overallRating = value);
-                    }, isMain: true),
-                    
-                    // Toggle for detailed ratings
-                    const SizedBox(height: 12),
-                    TextButton.icon(
-                      onPressed: () => setState(() => _showDetailedRatings = !_showDetailedRatings),
-                      icon: Icon(_showDetailedRatings ? Icons.expand_less : Icons.expand_more),
-                      label: Text(_showDetailedRatings 
-                          ? 'Weniger Kategorien' 
-                          : 'Detaillierte Bewertung'),
-                    ),
-                    
-                    // Detailed Ratings
-                    if (_showDetailedRatings) ...[
-                      const SizedBox(height: 12),
-                      _buildRatingRow('Geschichte', _storyRating, (value) {
-                        setState(() => _storyRating = value);
-                      }),
-                      _buildRatingRow('Charaktere', _charactersRating, (value) {
-                        setState(() => _charactersRating = value);
-                      }),
-                      _buildRatingRow('Schreibstil', _writingRating, (value) {
-                        setState(() => _writingRating = value);
-                      }),
-                      _buildRatingRow('Tempo', _pacingRating, (value) {
-                        setState(() => _pacingRating = value);
-                      }),
-                      _buildRatingRow('Emotionale Wirkung', _emotionalRating, (value) {
-                        setState(() => _emotionalRating = value);
-                      }),
-                    ],
-                    
-                    // Note
-                    const SizedBox(height: 20),
-                    TextField(
-                      controller: _noteController,
-                      decoration: const InputDecoration(
-                        labelText: 'Kurze Notiz / Fazit',
-                        hintText: 'Was hat dir besonders gefallen oder nicht gefallen?',
-                        border: OutlineInputBorder(),
-                      ),
-                      maxLines: 3,
-                      maxLength: 200,
-                    ),
-                    
-                    // Save Rating Button
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: _saveRating,
-                        icon: const Icon(Icons.save),
-                        label: const Text('Bewertung speichern'),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ] else ...[
-              // Prompt to mark as finished
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Card(
-                  color: Colors.amber.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.star_border, color: Colors.amber),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Markiere das Buch als "Gelesen" um es zu bewerten.',
-                            style: TextStyle(color: Colors.amber.shade900),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            // Rating Section (nur für gelesene Bücher)
+            if (_book.status == BookStatus.finished)
+              _buildRatingSection(tokens)
+            else
+              _buildFinishPrompt(tokens),
             
             // Book Info
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Informationen',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildInfoRow('Hinzugefügt', _formatDate(_book.addedAt)),
-                  if (_book.finishedAt != null)
-                    _buildInfoRow('Beendet', _formatDate(_book.finishedAt!)),
-                  if (_book.isbn != null)
-                    _buildInfoRow('ISBN', _book.isbn!),
-                ],
-              ),
-            ),
+            _buildInfoSection(tokens),
             
             const SizedBox(height: 32),
           ],
@@ -289,24 +81,117 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     );
   }
 
-  Widget _buildPlaceholderCover() {
+  Widget _buildHeader(DesignTokens tokens) {
     return Container(
-      width: 120,
-      height: 180,
-      color: Colors.grey.shade200,
+      color: tokens.primary.withOpacity(0.1),
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Cover
+          ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radiusSmall),
+            child: SizedBox(
+              width: 100,
+              height: 150,
+              child: _buildCover(),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _book.title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (_book.author != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    _book.author!,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: tokens.textSecondary,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                // Status Badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _getStatusColor(_book.status),
+                    borderRadius: BorderRadius.circular(tokens.radiusFull),
+                  ),
+                  child: Text(
+                    _book.status.label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (_book.pageCount != null) ...[
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Icon(Icons.menu_book, size: 16, color: tokens.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_book.pageCount} Seiten',
+                        style: TextStyle(color: tokens.textSecondary),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCover() {
+    if (_book.coverUrl != null && _book.coverUrl!.isNotEmpty) {
+      String coverUrl = _book.coverUrl!;
+      coverUrl = coverUrl.replaceFirst('http://', 'https://');
+      if (coverUrl.contains('zoom=')) {
+        coverUrl = coverUrl.replaceFirst(RegExp(r'zoom=\d'), 'zoom=2');
+      }
+      
+      return Image.network(
+        coverUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+      );
+    }
+    return _buildPlaceholderCover();
+  }
+
+  Widget _buildPlaceholderCover() {
+    final tokens = ref.read(designTokensProvider);
+    return Container(
+      color: tokens.divider,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.menu_book, size: 40, color: Colors.grey.shade400),
-          const SizedBox(height: 8),
+          Icon(Icons.menu_book, size: 32, color: tokens.textDisabled),
+          const SizedBox(height: 4),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
               _book.title,
               textAlign: TextAlign.center,
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+              style: TextStyle(fontSize: 8, color: tokens.textSecondary),
             ),
           ),
         ],
@@ -314,64 +199,231 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     );
   }
 
-  Widget _buildRatingRow(String label, int value, Function(int) onChanged, {bool isMain = false}) {
+  Widget _buildQuickActions(DesignTokens tokens) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Status ändern',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: tokens.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildStatusButton(
+                BookStatus.wantToRead,
+                Icons.bookmark_border,
+                tokens,
+              ),
+              const SizedBox(width: 8),
+              _buildStatusButton(
+                BookStatus.finished,
+                Icons.check_circle_outline,
+                tokens,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusButton(BookStatus status, IconData icon, DesignTokens tokens) {
+    final isSelected = _book.status == status;
+    
+    return Expanded(
+      child: OutlinedButton.icon(
+        onPressed: () => _updateStatus(status),
+        icon: Icon(icon),
+        label: Text(status.label),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: isSelected ? tokens.primary.withOpacity(0.1) : null,
+          foregroundColor: isSelected ? tokens.primary : tokens.textSecondary,
+          side: BorderSide(
+            color: isSelected ? tokens.primary : tokens.divider,
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFinishPrompt(DesignTokens tokens) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        color: tokens.warning.withOpacity(0.1),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.star_border, color: tokens.warning),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Markiere das Buch als "Gelesen" um es zu bewerten.',
+                  style: TextStyle(color: tokens.textPrimary),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRatingSection(DesignTokens tokens) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Deine Bewertung',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: tokens.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // 5-Sterne Rating (groß und zentriert)
+          Center(
+            child: Column(
+              children: [
+                // Sterne
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(5, (index) {
+                    final starValue = index + 1;
+                    return GestureDetector(
+                      onTap: () => setState(() => _starRating = starValue),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(
+                          starValue <= _starRating ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 44,
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+                const SizedBox(height: 8),
+                // Text-Label
+                Text(
+                  _getRatingLabel(_starRating),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: tokens.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Notiz-Feld
+          TextField(
+            controller: _noteController,
+            decoration: InputDecoration(
+              labelText: 'Kurze Notiz (optional)',
+              hintText: 'Was hat dir besonders gefallen?',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(tokens.radiusSmall),
+              ),
+            ),
+            maxLines: 3,
+            maxLength: 200,
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Speichern Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _saveRating,
+              icon: const Icon(Icons.save),
+              label: const Text('Bewertung speichern'),
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getRatingLabel(int stars) {
+    switch (stars) {
+      case 1:
+        return 'Nicht empfehlenswert';
+      case 2:
+        return 'Geht so';
+      case 3:
+        return 'Ganz okay';
+      case 4:
+        return 'Sehr gut';
+      case 5:
+        return 'Fantastisch!';
+      default:
+        return '';
+    }
+  }
+
+  Widget _buildInfoSection(DesignTokens tokens) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Informationen',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: tokens.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildInfoRow('Hinzugefügt', _formatDate(_book.addedAt), tokens),
+          if (_book.finishedAt != null)
+            _buildInfoRow('Beendet', _formatDate(_book.finishedAt!), tokens),
+          if (_book.isbn != null)
+            _buildInfoRow('ISBN', _book.isbn!, tokens),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value, DesignTokens tokens) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           SizedBox(
-            width: 140,
+            width: 100,
             child: Text(
               label,
-              style: TextStyle(
-                fontWeight: isMain ? FontWeight.bold : FontWeight.normal,
-                fontSize: isMain ? 16 : 14,
-              ),
+              style: TextStyle(color: tokens.textSecondary),
             ),
           ),
           Expanded(
-            child: Row(
-              children: List.generate(10, (index) {
-                final starValue = index + 1;
-                return GestureDetector(
-                  onTap: () => onChanged(starValue),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: Icon(
-                      starValue <= value ? Icons.star : Icons.star_border,
-                      color: Colors.amber,
-                      size: isMain ? 28 : 20,
-                    ),
-                  ),
-                );
-              }),
-            ),
-          ),
-          SizedBox(
-            width: 30,
             child: Text(
-              '$value',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: isMain ? 18 : 14,
-              ),
+              value,
+              style: TextStyle(color: tokens.textPrimary),
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: TextStyle(color: Colors.grey.shade600),
-          ),
-          Text(value),
         ],
       ),
     );
@@ -382,13 +434,14 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
   }
 
   Color _getStatusColor(BookStatus status) {
+    final tokens = ref.read(designTokensProvider);
     switch (status) {
       case BookStatus.wantToRead:
-        return Colors.blue;
+        return tokens.info;
       case BookStatus.reading:
-        return Colors.orange;
+        return tokens.warning;
       case BookStatus.finished:
-        return Colors.green;
+        return tokens.success;
     }
   }
 
@@ -409,13 +462,9 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
   }
 
   Future<void> _saveRating() async {
+    // Konvertiere 1-5 Sterne zu 1-10 für interne Speicherung
     final rating = BookRating(
-      overall: _overallRating,
-      story: _showDetailedRatings ? _storyRating : null,
-      characters: _showDetailedRatings ? _charactersRating : null,
-      writing: _showDetailedRatings ? _writingRating : null,
-      pacing: _showDetailedRatings ? _pacingRating : null,
-      emotionalImpact: _showDetailedRatings ? _emotionalRating : null,
+      overall: _starRating * 2,
       note: _noteController.text.isNotEmpty ? _noteController.text : null,
     );
     
@@ -425,17 +474,19 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bewertung gespeichert')),
+        const SnackBar(content: Text('Bewertung gespeichert ⭐')),
       );
     }
   }
 
   void _confirmDelete() {
+    final tokens = ref.read(designTokensProvider);
+    
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Buch löschen?'),
-        content: Text('Möchtest du "${_book.title}" wirklich aus deiner Bibliothek entfernen?'),
+        content: Text('Möchtest du „${_book.title}" wirklich entfernen?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -445,11 +496,11 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
             onPressed: () async {
               await ref.read(bookNotifierProvider.notifier).deleteBook(_book.id);
               if (mounted) {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Close detail screen
+                Navigator.pop(context); // Dialog schließen
+                Navigator.pop(context); // Detail-Screen schließen
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: tokens.error),
             child: const Text('Löschen'),
           ),
         ],

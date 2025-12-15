@@ -117,23 +117,37 @@ class GoogleBookResult {
   /// Alle Autoren als String
   String get authorsString => authors.join(', ');
 
-  /// Beste verfügbare Cover-URL (mit https)
+  /// Beste verfügbare Cover-URL (mit https und hoher Auflösung)
   String? get bestCoverUrl {
     final url = thumbnailUrl ?? smallThumbnailUrl;
     if (url == null) return null;
     // Google Books liefert manchmal http URLs, wir brauchen https
-    return url.replaceFirst('http://', 'https://');
+    String result = url.replaceFirst('http://', 'https://');
+    // Edge-Curl Parameter entfernen für bessere Darstellung
+    result = result.replaceAll('&edge=curl', '');
+    // Höhere Auflösung anfordern
+    if (result.contains('zoom=')) {
+      result = result.replaceFirst(RegExp(r'zoom=\d'), 'zoom=2');
+    }
+    return result;
   }
 
-  /// Höher auflösendes Cover (zoom=2)
+  /// Höher auflösendes Cover (zoom=3 für maximale Qualität)
   String? get highResCoverUrl {
     final url = bestCoverUrl;
     if (url == null) return null;
-    // Ersetze zoom=1 mit zoom=2 für höhere Auflösung
+    // Ersetze zoom mit zoom=3 für höchste Auflösung
     if (url.contains('zoom=')) {
-      return url.replaceFirst(RegExp(r'zoom=\d'), 'zoom=2');
+      return url.replaceFirst(RegExp(r'zoom=\d'), 'zoom=3');
     }
     return url;
+  }
+
+  /// Original Cover URL ohne Modifikationen (für Fallback)
+  String? get originalCoverUrl {
+    final url = thumbnailUrl ?? smallThumbnailUrl;
+    if (url == null) return null;
+    return url.replaceFirst('http://', 'https://');
   }
 
   factory GoogleBookResult.fromJson(Map<String, dynamic> json) {
