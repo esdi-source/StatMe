@@ -1,5 +1,5 @@
-/// Book Detail Screen - View and edit book details, add ratings
-/// Redesigned with 5-star rating system and responsive layout
+/// Book Detail Screen - View and edit book details with extended ratings
+/// Features: 5-star overall rating + optional detailed categories
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -18,8 +18,15 @@ class BookDetailScreen extends ConsumerStatefulWidget {
 class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
   late BookModel _book;
   
-  // Rating (1-5 Sterne, intern als 1-10 gespeichert)
-  int _starRating = 3;
+  // Ratings (intern 1-10, angezeigt als 1-5 Sterne)
+  int _overallRating = 6; // 3 Sterne
+  int? _storyRating;
+  int? _charactersRating;
+  int? _writingRating;
+  int? _pacingRating;
+  int? _emotionalRating;
+  
+  bool _showDetailedRatings = false;
   final _noteController = TextEditingController();
 
   @override
@@ -27,9 +34,18 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     super.initState();
     _book = widget.book;
     if (_book.rating != null) {
-      // Konvertiere 1-10 zu 1-5 Sterne
-      _starRating = (_book.rating!.overall / 2).round().clamp(1, 5);
+      _overallRating = _book.rating!.overall;
+      _storyRating = _book.rating!.story;
+      _charactersRating = _book.rating!.characters;
+      _writingRating = _book.rating!.writing;
+      _pacingRating = _book.rating!.pacing;
+      _emotionalRating = _book.rating!.emotionalImpact;
       _noteController.text = _book.rating!.note ?? '';
+      
+      // Zeige Detail-Ratings wenn vorhanden
+      _showDetailedRatings = _storyRating != null || 
+                            _charactersRating != null || 
+                            _writingRating != null;
     }
   }
 
@@ -57,23 +73,16 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header mit Cover
             _buildHeader(tokens),
-            
-            // Quick Actions
             _buildQuickActions(tokens),
-            
             const Divider(height: 32),
             
-            // Rating Section (nur für gelesene Bücher)
             if (_book.status == BookStatus.finished)
               _buildRatingSection(tokens)
             else
               _buildFinishPrompt(tokens),
             
-            // Book Info
             _buildInfoSection(tokens),
-            
             const SizedBox(height: 32),
           ],
         ),
@@ -88,40 +97,28 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Cover
           ClipRRect(
             borderRadius: BorderRadius.circular(tokens.radiusSmall),
             child: SizedBox(
               width: 100,
               height: 150,
-              child: _buildCover(),
+              child: _buildCover(tokens),
             ),
           ),
           const SizedBox(width: 16),
-          // Info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   _book.title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 if (_book.author != null) ...[
                   const SizedBox(height: 4),
-                  Text(
-                    _book.author!,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: tokens.textSecondary,
-                    ),
-                  ),
+                  Text(_book.author!, style: TextStyle(fontSize: 16, color: tokens.textSecondary)),
                 ],
                 const SizedBox(height: 12),
-                // Status Badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
@@ -130,11 +127,7 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
                   ),
                   child: Text(
                     _book.status.label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
                   ),
                 ),
                 if (_book.pageCount != null) ...[
@@ -143,10 +136,7 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
                     children: [
                       Icon(Icons.menu_book, size: 16, color: tokens.textSecondary),
                       const SizedBox(width: 4),
-                      Text(
-                        '${_book.pageCount} Seiten',
-                        style: TextStyle(color: tokens.textSecondary),
-                      ),
+                      Text('${_book.pageCount} Seiten', style: TextStyle(color: tokens.textSecondary)),
                     ],
                   ),
                 ],
@@ -158,25 +148,24 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     );
   }
 
-  Widget _buildCover() {
+  Widget _buildCover(DesignTokens tokens) {
     if (_book.coverUrl != null && _book.coverUrl!.isNotEmpty) {
       String coverUrl = _book.coverUrl!;
       coverUrl = coverUrl.replaceFirst('http://', 'https://');
       if (coverUrl.contains('zoom=')) {
-        coverUrl = coverUrl.replaceFirst(RegExp(r'zoom=\d'), 'zoom=2');
+        coverUrl = coverUrl.replaceFirst(RegExp(r'zoom=\d'), 'zoom=3');
       }
       
       return Image.network(
         coverUrl,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildPlaceholderCover(),
+        errorBuilder: (_, __, ___) => _buildPlaceholderCover(tokens),
       );
     }
-    return _buildPlaceholderCover();
+    return _buildPlaceholderCover(tokens);
   }
 
-  Widget _buildPlaceholderCover() {
-    final tokens = ref.read(designTokensProvider);
+  Widget _buildPlaceholderCover(DesignTokens tokens) {
     return Container(
       color: tokens.divider,
       child: Column(
@@ -205,27 +194,13 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Status ändern',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: tokens.textPrimary,
-            ),
-          ),
+          Text('Status ändern', style: TextStyle(fontWeight: FontWeight.bold, color: tokens.textPrimary)),
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildStatusButton(
-                BookStatus.wantToRead,
-                Icons.bookmark_border,
-                tokens,
-              ),
+              _buildStatusButton(BookStatus.wantToRead, Icons.bookmark_border, tokens),
               const SizedBox(width: 8),
-              _buildStatusButton(
-                BookStatus.finished,
-                Icons.check_circle_outline,
-                tokens,
-              ),
+              _buildStatusButton(BookStatus.finished, Icons.check_circle_outline, tokens),
             ],
           ),
         ],
@@ -244,9 +219,7 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
         style: OutlinedButton.styleFrom(
           backgroundColor: isSelected ? tokens.primary.withOpacity(0.1) : null,
           foregroundColor: isSelected ? tokens.primary : tokens.textSecondary,
-          side: BorderSide(
-            color: isSelected ? tokens.primary : tokens.divider,
-          ),
+          side: BorderSide(color: isSelected ? tokens.primary : tokens.divider),
           padding: const EdgeInsets.symmetric(vertical: 12),
         ),
       ),
@@ -285,61 +258,33 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
         children: [
           Text(
             'Deine Bewertung',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: tokens.textPrimary,
-            ),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: tokens.textPrimary),
           ),
           const SizedBox(height: 20),
           
-          // 5-Sterne Rating (groß und zentriert)
-          Center(
-            child: Column(
-              children: [
-                // Sterne
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (index) {
-                    final starValue = index + 1;
-                    return GestureDetector(
-                      onTap: () => setState(() => _starRating = starValue),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        child: Icon(
-                          starValue <= _starRating ? Icons.star : Icons.star_border,
-                          color: Colors.amber,
-                          size: 44,
-                        ),
-                      ),
-                    );
-                  }),
-                ),
-                const SizedBox(height: 8),
-                // Text-Label
-                Text(
-                  _getRatingLabel(_starRating),
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: tokens.textSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Gesamtbewertung (5 Sterne)
+          _buildMainRating(tokens),
           
           const SizedBox(height: 24),
           
-          // Notiz-Feld
+          // Toggle für Detail-Bewertungen
+          _buildDetailedRatingsToggle(tokens),
+          
+          // Detail-Bewertungen
+          if (_showDetailedRatings) ...[
+            const SizedBox(height: 20),
+            _buildDetailedRatings(tokens),
+          ],
+          
+          const SizedBox(height: 24),
+          
+          // Notiz
           TextField(
             controller: _noteController,
             decoration: InputDecoration(
               labelText: 'Kurze Notiz (optional)',
               hintText: 'Was hat dir besonders gefallen?',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.radiusSmall),
-              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(tokens.radiusSmall)),
             ),
             maxLines: 3,
             maxLength: 200,
@@ -347,16 +292,13 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
           
           const SizedBox(height: 16),
           
-          // Speichern Button
+          // Speichern
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
+            child: FilledButton.icon(
               onPressed: _saveRating,
               icon: const Icon(Icons.save),
               label: const Text('Bewertung speichern'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
             ),
           ),
         ],
@@ -364,21 +306,146 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
     );
   }
 
-  String _getRatingLabel(int stars) {
-    switch (stars) {
-      case 1:
-        return 'Nicht empfehlenswert';
-      case 2:
-        return 'Geht so';
-      case 3:
-        return 'Ganz okay';
-      case 4:
-        return 'Sehr gut';
-      case 5:
-        return 'Fantastisch!';
-      default:
-        return '';
-    }
+  Widget _buildMainRating(DesignTokens tokens) {
+    final starRating = (_overallRating / 2).round();
+    
+    return Center(
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              final starValue = index + 1;
+              return GestureDetector(
+                onTap: () => setState(() => _overallRating = starValue * 2),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(
+                    starValue <= starRating ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                    size: 44,
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _getRatingLabel(starRating),
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: tokens.textSecondary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailedRatingsToggle(DesignTokens tokens) {
+    return InkWell(
+      onTap: () => setState(() => _showDetailedRatings = !_showDetailedRatings),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: tokens.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: tokens.divider),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _showDetailedRatings ? Icons.expand_less : Icons.expand_more,
+              color: tokens.primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Detaillierte Bewertung',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: tokens.textPrimary),
+                  ),
+                  Text(
+                    _showDetailedRatings 
+                        ? 'Bewerte einzelne Kategorien' 
+                        : 'Geschichte, Charaktere, Schreibstil...',
+                    style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+            Switch(
+              value: _showDetailedRatings,
+              onChanged: (value) => setState(() => _showDetailedRatings = value),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailedRatings(DesignTokens tokens) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: tokens.divider),
+      ),
+      child: Column(
+        children: [
+          _buildCategoryRating('Geschichte', Icons.auto_stories, _storyRating, 
+              (v) => setState(() => _storyRating = v), tokens),
+          const SizedBox(height: 16),
+          _buildCategoryRating('Charaktere', Icons.people, _charactersRating, 
+              (v) => setState(() => _charactersRating = v), tokens),
+          const SizedBox(height: 16),
+          _buildCategoryRating('Schreibstil', Icons.edit, _writingRating, 
+              (v) => setState(() => _writingRating = v), tokens),
+          const SizedBox(height: 16),
+          _buildCategoryRating('Tempo', Icons.speed, _pacingRating, 
+              (v) => setState(() => _pacingRating = v), tokens),
+          const SizedBox(height: 16),
+          _buildCategoryRating('Emotionale Wirkung', Icons.favorite, _emotionalRating, 
+              (v) => setState(() => _emotionalRating = v), tokens),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryRating(String label, IconData icon, int? value, 
+      Function(int?) onChanged, DesignTokens tokens) {
+    final starValue = value != null ? (value / 2).round() : 0;
+    
+    return Row(
+      children: [
+        Icon(icon, color: tokens.textSecondary, size: 20),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 100,
+          child: Text(label, style: TextStyle(color: tokens.textPrimary, fontSize: 13)),
+        ),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: List.generate(5, (index) {
+              final sv = index + 1;
+              return GestureDetector(
+                onTap: () => onChanged(value == sv * 2 ? null : sv * 2),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  child: Icon(
+                    sv <= starValue ? Icons.star : Icons.star_border,
+                    color: Colors.amber,
+                    size: 24,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildInfoSection(DesignTokens tokens) {
@@ -387,42 +454,35 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Informationen',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-              color: tokens.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildInfoRow('Hinzugefügt', _formatDate(_book.addedAt), tokens),
-          if (_book.finishedAt != null)
-            _buildInfoRow('Beendet', _formatDate(_book.finishedAt!), tokens),
+          Text('Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: tokens.textPrimary)),
+          const SizedBox(height: 16),
+          
           if (_book.isbn != null)
-            _buildInfoRow('ISBN', _book.isbn!, tokens),
+            _buildInfoRow('ISBN', _book.isbn!, Icons.barcode_reader, tokens),
+          
+          _buildInfoRow('Hinzugefügt', _formatDate(_book.addedAt), Icons.calendar_today, tokens),
+          
+          if (_book.finishedAt != null)
+            _buildInfoRow('Beendet', _formatDate(_book.finishedAt!), Icons.check_circle, tokens),
+          
+          if (_book.googleBooksId != null)
+            _buildInfoRow('Google Books ID', _book.googleBooksId!, Icons.cloud, tokens),
         ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, DesignTokens tokens) {
+  Widget _buildInfoRow(String label, String value, IconData icon, DesignTokens tokens) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              label,
-              style: TextStyle(color: tokens.textSecondary),
-            ),
-          ),
+          Icon(icon, size: 18, color: tokens.textSecondary),
+          const SizedBox(width: 12),
+          Text('$label:', style: TextStyle(color: tokens.textSecondary)),
+          const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              value,
-              style: TextStyle(color: tokens.textPrimary),
-            ),
+            child: Text(value, style: TextStyle(color: tokens.textPrimary)),
           ),
         ],
       ),
@@ -431,6 +491,17 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
 
   String _formatDate(DateTime date) {
     return '${date.day}.${date.month}.${date.year}';
+  }
+
+  String _getRatingLabel(int stars) {
+    switch (stars) {
+      case 1: return 'Schlecht';
+      case 2: return 'Okay';
+      case 3: return 'Gut';
+      case 4: return 'Sehr gut';
+      case 5: return 'Ausgezeichnet';
+      default: return '';
+    }
   }
 
   Color _getStatusColor(BookStatus status) {
@@ -446,65 +517,61 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
   }
 
   Future<void> _updateStatus(BookStatus status) async {
-    final updatedBook = _book.copyWith(
-      status: status,
-      finishedAt: status == BookStatus.finished ? DateTime.now() : null,
-    );
-    
-    await ref.read(bookNotifierProvider.notifier).updateBook(updatedBook);
-    setState(() => _book = updatedBook);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Status geändert zu "${status.label}"')),
+    setState(() {
+      _book = _book.copyWith(
+        status: status,
+        finishedAt: status == BookStatus.finished ? DateTime.now() : null,
       );
-    }
+    });
+    await ref.read(bookNotifierProvider.notifier).updateBook(_book);
   }
 
   Future<void> _saveRating() async {
-    // Konvertiere 1-5 Sterne zu 1-10 für interne Speicherung
     final rating = BookRating(
-      overall: _starRating * 2,
-      note: _noteController.text.isNotEmpty ? _noteController.text : null,
+      overall: _overallRating,
+      story: _showDetailedRatings ? _storyRating : null,
+      characters: _showDetailedRatings ? _charactersRating : null,
+      writing: _showDetailedRatings ? _writingRating : null,
+      pacing: _showDetailedRatings ? _pacingRating : null,
+      emotionalImpact: _showDetailedRatings ? _emotionalRating : null,
+      note: _noteController.text.isEmpty ? null : _noteController.text,
     );
-    
+
     final updatedBook = _book.copyWith(rating: rating);
     await ref.read(bookNotifierProvider.notifier).updateBook(updatedBook);
+    
     setState(() => _book = updatedBook);
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bewertung gespeichert ⭐')),
+        const SnackBar(content: Text('Bewertung gespeichert!')),
       );
     }
   }
 
-  void _confirmDelete() {
-    final tokens = ref.read(designTokensProvider);
-    
-    showDialog(
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Buch löschen?'),
-        content: Text('Möchtest du „${_book.title}" wirklich entfernen?'),
+        content: Text('Möchtest du „${_book.title}" wirklich aus deiner Bibliothek entfernen?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, false),
             child: const Text('Abbrechen'),
           ),
-          TextButton(
-            onPressed: () async {
-              await ref.read(bookNotifierProvider.notifier).deleteBook(_book.id);
-              if (mounted) {
-                Navigator.pop(context); // Dialog schließen
-                Navigator.pop(context); // Detail-Screen schließen
-              }
-            },
-            style: TextButton.styleFrom(foregroundColor: tokens.error),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Löschen'),
           ),
         ],
       ),
     );
+
+    if (confirmed == true && mounted) {
+      await ref.read(bookNotifierProvider.notifier).deleteBook(_book.id);
+      if (mounted) Navigator.pop(context);
+    }
   }
 }

@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/config/app_config.dart';
 import '../models/models.dart';
 import '../models/home_widget_model.dart';
+import '../models/micro_widget_model.dart';
+import '../models/timer_widget_model.dart';
 import '../repositories/repositories.dart';
 import '../services/in_memory_database.dart';
 import '../services/openfoodfacts_service.dart';
@@ -698,3 +700,180 @@ final homeScreenConfigProvider = StateNotifierProvider.family<HomeScreenConfigNo
 final inMemoryDatabaseProvider = Provider<InMemoryDatabase>((ref) {
   return InMemoryDatabase();
 });
+
+// ============================================
+// TIMER SESSIONS PROVIDER
+// ============================================
+
+/// Timer Sessions Notifier - Verwaltet Timer-Sessions für alle Aktivitäten
+class TimerSessionsNotifier extends StateNotifier<List<TimerSessionModel>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  TimerSessionsNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'timer_sessions';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> init(SharedPreferences prefs) async {
+    _prefs = prefs;
+    await load();
+  }
+  
+  Future<void> load() async {
+    if (_prefs == null) return;
+    
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      try {
+        final List<dynamic> jsonList = jsonDecode(jsonStr);
+        state = jsonList
+            .map((j) => TimerSessionModel.fromJson(j as Map<String, dynamic>))
+            .toList();
+      } catch (e) {
+        state = [];
+      }
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) return;
+    final jsonList = state.map((s) => s.toJson()).toList();
+    await _prefs!.setString(_userKey, jsonEncode(jsonList));
+  }
+  
+  Future<void> addSession(TimerSessionModel session) async {
+    state = [session, ...state];
+    await _save();
+  }
+  
+  Future<void> deleteSession(String sessionId) async {
+    state = state.where((s) => s.id != sessionId).toList();
+    await _save();
+  }
+  
+  /// Alle Sessions für eine Aktivität
+  List<TimerSessionModel> getSessionsForActivity(TimerActivityType type) {
+    return state.where((s) => s.activityType == type).toList();
+  }
+  
+  /// Sessions für einen Zeitraum
+  List<TimerSessionModel> getSessionsInRange(DateTime start, DateTime end) {
+    return state.where((s) => 
+        s.startTime.isAfter(start) && s.startTime.isBefore(end)
+    ).toList();
+  }
+}
+
+/// Timer Sessions Provider
+final timerSessionsProvider = StateNotifierProvider<TimerSessionsNotifier, List<TimerSessionModel>>((ref) {
+  final user = ref.watch(authNotifierProvider).valueOrNull;
+  final userId = user?.id ?? 'demo';
+  final notifier = TimerSessionsNotifier(userId);
+  
+  ref.watch(sharedPreferencesProvider).whenData((prefs) {
+    notifier.init(prefs);
+  });
+  
+  return notifier;
+});
+
+// ============================================
+// MICRO WIDGETS PROVIDER
+// ============================================
+
+/// MicroWidgets Notifier - Verwaltet kleine abhakbare Gewohnheits-Widgets
+class MicroWidgetsNotifier extends StateNotifier<List<MicroWidgetModel>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  MicroWidgetsNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'micro_widgets';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> init(SharedPreferences prefs) async {
+    _prefs = prefs;
+    await load();
+  }
+  
+  Future<void> load() async {
+    if (_prefs == null) return;
+    
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      try {
+        final List<dynamic> jsonList = jsonDecode(jsonStr);
+        state = jsonList
+            .map((j) => MicroWidgetModel.fromJson(j as Map<String, dynamic>))
+            .toList();
+        
+        // Check for period resets
+        _checkAndResetPeriods();
+      } catch (e) {
+        state = [];
+      }
+    }
+  }
+  
+  void _checkAndResetPeriods() {
+    bool needsSave = false;
+    state = state.map((widget) {
+      if (widget.needsReset()) {
+        needsSave = true;
+        return widget.resetForNewPeriod();
+      }
+      return widget;
+    }).toList();
+    
+    if (needsSave) _save();
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) return;
+    final jsonList = state.map((w) => w.toJson()).toList();
+    await _prefs!.setString(_userKey, jsonEncode(jsonList));
+  }
+  
+  Future<void> addWidget(MicroWidgetModel widget) async {
+    state = [...state, widget];
+    await _save();
+  }
+  
+  Future<void> updateWidget(MicroWidgetModel widget) async {
+    state = state.map((w) => w.id == widget.id ? widget : w).toList();
+    await _save();
+  }
+  
+  Future<void> deleteWidget(String widgetId) async {
+    state = state.where((w) => w.id != widgetId).toList();
+    await _save();
+  }
+  
+  /// Widget abhaken (für heute)
+  Future<void> checkOff(String widgetId) async {
+    state = state.map((w) {
+      if (w.id == widgetId) {
+        return w.checkOff();
+      }
+      return w;
+    }).toList();
+    await _save();
+  }
+}
+
+/// MicroWidgets Provider
+final microWidgetsProvider = StateNotifierProvider<MicroWidgetsNotifier, List<MicroWidgetModel>>((ref) {
+  final user = ref.watch(authNotifierProvider).valueOrNull;
+  final userId = user?.id ?? 'demo';
+  final notifier = MicroWidgetsNotifier(userId);
+  
+  ref.watch(sharedPreferencesProvider).whenData((prefs) {
+    notifier.init(prefs);
+  });
+  
+  return notifier;
+});
+

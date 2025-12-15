@@ -8,3 +8,5 @@ export 'mood_model.dart';
 export 'settings_model.dart';
 export 'home_widget_model.dart';
 export 'book_model.dart';
+export 'micro_widget_model.dart';
+export 'timer_widget_model.dart';
