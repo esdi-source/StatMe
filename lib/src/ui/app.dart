@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config/app_config.dart';
 import '../providers/providers.dart';
 import 'theme/app_theme.dart';
+import 'theme/theme_provider.dart';
 import '../screens/screens.dart';
 
 class StatMeApp extends ConsumerWidget {
@@ -13,15 +14,14 @@ class StatMeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
-    // Theme-Farbe dynamisch aus Provider laden
-    final themeColor = ref.watch(themeColorProvider);
+    // Neues Theme-System - Design Tokens basiert
+    final tokens = ref.watch(designTokensProvider);
     
     return MaterialApp(
       title: 'StatMe',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme(themeColor),
-      darkTheme: AppTheme.darkTheme(themeColor),
-      themeMode: ThemeMode.system,
+      theme: AppTheme.fromTokens(tokens),
+      themeMode: ThemeMode.light, // Theme wird durch Tokens gesteuert
       home: authState.when(
         data: (user) {
           // In demo mode, auto-login with demo user

@@ -6,6 +6,8 @@ import '../core/config/app_config.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
 import '../ui/theme/app_theme.dart';
+import '../ui/theme/design_tokens.dart';
+import '../ui/theme/theme_provider.dart';
 import 'homescreen_editor_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -20,8 +22,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   late TextEditingController _calorieGoalController;
   late TextEditingController _stepsGoalController;
   bool _notificationsEnabled = true;
-  bool _darkMode = false;
-  Color _selectedThemeColor = ThemeColor.sage.color;
 
   @override
   void initState() {
@@ -29,7 +29,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _waterGoalController = TextEditingController(text: '2500');
     _calorieGoalController = TextEditingController(text: '2000');
     _stepsGoalController = TextEditingController(text: '10000');
-    _selectedThemeColor = ref.read(themeColorProvider);
     _loadSettings();
   }
 
@@ -44,11 +43,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _calorieGoalController.text = settings.dailyCalorieGoal.toString();
           _stepsGoalController.text = settings.dailyStepsGoal.toString();
           _notificationsEnabled = settings.notificationsEnabled;
-          _darkMode = settings.darkMode;
-          _selectedThemeColor = Color(settings.themeColorValue);
         });
-        // Theme-Provider aktualisieren
-        ref.read(themeColorProvider.notifier).state = Color(settings.themeColorValue);
       }
     }
   }
@@ -66,14 +61,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       dailyCalorieGoal: int.tryParse(_calorieGoalController.text) ?? 2000,
       dailyStepsGoal: int.tryParse(_stepsGoalController.text) ?? 10000,
       notificationsEnabled: _notificationsEnabled,
-      darkMode: _darkMode,
-      themeColorValue: _selectedThemeColor.value,
+      darkMode: ref.read(themePresetProvider) == ThemePreset.dark,
+      themeColorValue: ref.read(designTokensProvider).primary.value,
     );
 
     await ref.read(settingsNotifierProvider.notifier).update(settings);
-    
-    // Theme-Provider aktualisieren
-    ref.read(themeColorProvider.notifier).state = _selectedThemeColor;
     
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -90,121 +82,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
-  void _selectColor(ThemeColor themeColor) {
-    setState(() {
-      _selectedThemeColor = themeColor.color;
-    });
-    // Sofort das Theme aktualisieren für Live-Vorschau
-    ref.read(themeColorProvider.notifier).state = themeColor.color;
-  }
-
-  Widget _buildColorSelector() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Pastell-Farben
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Pastell-Töne',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ThemeColor.lavender,
-                ThemeColor.sage,
-                ThemeColor.blush,
-                ThemeColor.sky,
-                ThemeColor.mint,
-              ].map((themeColor) => _buildColorOption(themeColor)).toList(),
-            ),
-            const SizedBox(height: 20),
-            const Divider(),
-            const SizedBox(height: 12),
-            // Erdtöne
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Erdtöne',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey.shade700,
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ThemeColor.caramel,
-                ThemeColor.terracotta,
-                ThemeColor.mocha,
-                ThemeColor.sand,
-                ThemeColor.olive,
-              ].map((themeColor) => _buildColorOption(themeColor)).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildColorOption(ThemeColor themeColor) {
-    final isSelected = _selectedThemeColor.value == themeColor.color.value;
-    
-    return GestureDetector(
-      onTap: () => _selectColor(themeColor),
-      child: Tooltip(
-        message: '${themeColor.label}\n${themeColor.description}',
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: isSelected ? 56 : 48,
-          height: isSelected ? 56 : 48,
-          decoration: BoxDecoration(
-            color: themeColor.color,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: isSelected ? Colors.black54 : Colors.transparent,
-              width: 3,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: themeColor.color.withOpacity(0.5),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ]
-                : null,
-          ),
-          child: isSelected
-              ? Icon(
-                  Icons.check,
-                  color: _getContrastColor(themeColor.color),
-                  size: 28,
-                )
-              : null,
-        ),
-      ),
-    );
-  }
-
-  Color _getContrastColor(Color color) {
-    // Berechne die Helligkeit und wähle Schwarz oder Weiß
-    final luminance = color.computeLuminance();
-    return luminance > 0.5 ? Colors.black87 : Colors.white;
-  }
-
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).valueOrNull;
+    final themeState = ref.watch(themeStateProvider);
+    final tokens = ref.watch(designTokensProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -223,12 +105,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     CircleAvatar(
                       radius: 40,
-                      backgroundColor: Colors.green.shade100,
+                      backgroundColor: tokens.primary.withOpacity(0.2),
                       child: Text(
                         user?.displayName?.isNotEmpty == true
                             ? user!.displayName![0].toUpperCase()
                             : user?.email[0].toUpperCase() ?? 'D',
-                        style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 32, 
+                          fontWeight: FontWeight.bold,
+                          color: tokens.primary,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 20),
@@ -242,19 +128,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                           Text(
                             user?.email ?? 'demo@statme.app',
-                            style: TextStyle(color: Colors.grey.shade600),
+                            style: TextStyle(color: tokens.textSecondary),
                           ),
                           if (AppConfig.isDemoMode)
                             Container(
                               margin: const EdgeInsets.only(top: 8),
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
-                                color: Colors.blue.shade100,
-                                borderRadius: BorderRadius.circular(4),
+                                color: tokens.info.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(tokens.radiusSmall),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'DEMO MODUS',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                                style: TextStyle(
+                                  fontSize: 10, 
+                                  fontWeight: FontWeight.bold,
+                                  color: tokens.info,
+                                ),
                               ),
                             ),
                         ],
@@ -266,18 +156,32 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Theme Color Section
+            // Theme Preset Section (NEU)
             Text(
-              'Design-Farbe',
+              'Design-Stil',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             Text(
-              'Wähle eine Farbe, die zu dir passt. Das gesamte App-Design wird daran angepasst.',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+              'Wähle einen Stil für das gesamte App-Design.',
+              style: TextStyle(color: tokens.textSecondary, fontSize: 14),
             ),
             const SizedBox(height: 16),
-            _buildColorSelector(),
+            _buildThemePresetSelector(themeState, tokens),
+            const SizedBox(height: 24),
+
+            // Shape Style Section (NEU)
+            Text(
+              'Form-Stil',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Wähle zwischen runden oder eckigen Ecken.',
+              style: TextStyle(color: tokens.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            _buildShapeStyleSelector(themeState, tokens),
             const SizedBox(height: 24),
 
             // Daily Goals Section
@@ -293,9 +197,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     // Water Goal
                     ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.blue,
-                        child: Icon(Icons.water_drop, color: Colors.white),
+                      leading: CircleAvatar(
+                        backgroundColor: tokens.info,
+                        child: const Icon(Icons.water_drop, color: Colors.white),
                       ),
                       title: const Text('Wasser-Ziel'),
                       subtitle: const Text('Tägliches Wasserziel in ml'),
@@ -315,9 +219,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const Divider(),
                     // Calorie Goal
                     ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.orange,
-                        child: Icon(Icons.restaurant, color: Colors.white),
+                      leading: CircleAvatar(
+                        backgroundColor: tokens.warning,
+                        child: const Icon(Icons.restaurant, color: Colors.white),
                       ),
                       title: const Text('Kalorien-Ziel'),
                       subtitle: const Text('Tägliche Kalorienaufnahme'),
@@ -337,9 +241,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const Divider(),
                     // Steps Goal
                     ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: Colors.green,
-                        child: Icon(Icons.directions_walk, color: Colors.white),
+                      leading: CircleAvatar(
+                        backgroundColor: tokens.success,
+                        child: const Icon(Icons.directions_walk, color: Colors.white),
                       ),
                       title: const Text('Schritte-Ziel'),
                       subtitle: const Text('Tägliche Schritte'),
@@ -395,16 +299,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       setState(() => _notificationsEnabled = value);
                     },
                   ),
-                  const Divider(height: 1),
-                  SwitchListTile(
-                    secondary: const Icon(Icons.dark_mode),
-                    title: const Text('Dunkler Modus'),
-                    subtitle: const Text('Augen schonen'),
-                    value: _darkMode,
-                    onChanged: (value) {
-                      setState(() => _darkMode = value);
-                    },
-                  ),
                 ],
               ),
             ),
@@ -445,7 +339,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     trailing: Text(
                       AppConfig.isDemoMode ? 'Demo' : 'Produktion',
                       style: TextStyle(
-                        color: AppConfig.isDemoMode ? Colors.blue : Colors.green,
+                        color: AppConfig.isDemoMode ? tokens.info : tokens.success,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -493,13 +387,193 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 icon: const Icon(Icons.logout),
                 label: const Text('Abmelden'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.red,
+                  foregroundColor: tokens.error,
                   padding: const EdgeInsets.all(16),
                 ),
               ),
             ),
             const SizedBox(height: 32),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Theme-Preset Auswahl Widget
+  Widget _buildThemePresetSelector(ThemeState themeState, DesignTokens tokens) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Grid mit 6 Theme-Presets
+            GridView.count(
+              crossAxisCount: 3,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1,
+              children: ThemePreset.values.map((preset) {
+                final isSelected = themeState.preset == preset;
+                final previewTokens = DesignTokens.forPreset(preset, themeState.shape);
+                
+                return GestureDetector(
+                  onTap: () {
+                    ref.read(themeStateProvider.notifier).setPreset(preset);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: previewTokens.surface,
+                      borderRadius: BorderRadius.circular(tokens.radiusMedium),
+                      border: Border.all(
+                        color: isSelected ? previewTokens.primary : previewTokens.divider,
+                        width: isSelected ? 2 : 1,
+                      ),
+                      boxShadow: isSelected ? previewTokens.shadowSmall : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Farbkreise als Preview
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 16,
+                              height: 16,
+                              decoration: BoxDecoration(
+                                color: previewTokens.primary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: previewTokens.secondary,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          preset.label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                            color: previewTokens.textPrimary,
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: previewTokens.primary,
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 12),
+            // Beschreibung des aktuellen Themes
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: tokens.background,
+                borderRadius: BorderRadius.circular(tokens.radiusSmall),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: tokens.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      themeState.preset.description,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: tokens.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Shape-Style Auswahl Widget
+  Widget _buildShapeStyleSelector(ThemeState themeState, DesignTokens tokens) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: ShapeStyle.values.map((shape) {
+            final isSelected = themeState.shape == shape;
+            
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  ref.read(themeStateProvider.notifier).setShape(shape);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isSelected ? tokens.primary.withOpacity(0.1) : tokens.surface,
+                    borderRadius: BorderRadius.circular(
+                      shape == ShapeStyle.round ? 16 : 4,
+                    ),
+                    border: Border.all(
+                      color: isSelected ? tokens.primary : tokens.divider,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Preview Shape
+                      Container(
+                        width: 48,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: tokens.primary,
+                          borderRadius: BorderRadius.circular(
+                            shape == ShapeStyle.round ? 8 : 2,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        shape.label,
+                        style: TextStyle(
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? tokens.primary : tokens.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        shape.description,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: tokens.textSecondary,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ),
     );

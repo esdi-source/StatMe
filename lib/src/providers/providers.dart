@@ -14,6 +14,10 @@ import '../services/in_memory_database.dart';
 import '../services/openfoodfacts_service.dart';
 import '../services/google_books_service.dart';
 
+// Re-export Theme Provider für einfacheren Zugriff
+export '../ui/theme/theme_provider.dart';
+export '../ui/theme/design_tokens.dart' show ThemePreset, ShapeStyle, DesignTokens;
+
 // ============================================
 // REPOSITORY PROVIDERS
 // ============================================
