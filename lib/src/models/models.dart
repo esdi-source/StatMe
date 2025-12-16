@@ -11,3 +11,5 @@ export 'book_model.dart';
 export 'micro_widget_model.dart';
 export 'timer_widget_model.dart';
 export 'school_model.dart';
+export 'sport_model.dart';
+export 'skin_model.dart';

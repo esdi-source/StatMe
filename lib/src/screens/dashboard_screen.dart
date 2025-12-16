@@ -581,6 +581,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _TimerWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const TimerWidgetScreen()));
       case HomeWidgetType.school:
         return _SchoolWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SchoolScreen()));
+      case HomeWidgetType.sport:
+        return _SportWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SportScreen()));
+      case HomeWidgetType.skin:
+        return _SkinWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SkinScreen()));
     }
   }
 
@@ -838,6 +842,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.timer;
       case HomeWidgetType.school:
         return Icons.school;
+      case HomeWidgetType.sport:
+        return Icons.fitness_center;
+      case HomeWidgetType.skin:
+        return Icons.face_retouching_natural;
     }
   }
 
@@ -1509,6 +1517,203 @@ class _SchoolWidget extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SportWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _SportWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = ref.watch(designTokensProvider);
+    final sessions = ref.watch(sportSessionsNotifierProvider);
+    final streak = ref.watch(sportStreakProvider);
+    
+    // Heute trainiert?
+    final now = DateTime.now();
+    final todaySessions = sessions.where((s) =>
+      s.date.year == now.year &&
+      s.date.month == now.month &&
+      s.date.day == now.day
+    ).length;
+    
+    // Diese Woche
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final weekSessions = sessions.where((s) => s.date.isAfter(startOfWeek)).length;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.green.shade400, Colors.green.shade700],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(Icons.fitness_center, size: 28, color: Colors.white),
+              const SizedBox(height: 4),
+              Text(
+                'Sport',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              if (size != HomeWidgetSize.small) ...[
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildBadge(Icons.local_fire_department, streak.currentStreak, Colors.orange),
+                    const SizedBox(width: 8),
+                    _buildBadge(Icons.today, todaySessions, Colors.lightBlue),
+                  ],
+                ),
+                if (size == HomeWidgetSize.large) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    '$weekSessions Einheiten diese Woche',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBadge(IconData icon, int count, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            '$count',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkinWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _SkinWidget({required this.size, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = ref.watch(designTokensProvider);
+    final entries = ref.watch(skinEntriesNotifierProvider);
+    final steps = ref.watch(skinCareStepsNotifierProvider);
+    
+    // Heutiger Eintrag?
+    final now = DateTime.now();
+    final todayEntry = entries.cast<SkinEntry?>().firstWhere(
+      (e) => e != null && 
+             e.date.year == now.year &&
+             e.date.month == now.month &&
+             e.date.day == now.day,
+      orElse: () => null,
+    );
+    
+    // Routine Progress heute - vereinfacht ohne completedDates
+    final dailySteps = steps.where((s) => s.isDaily).toList();
+    final completedToday = 0; // TODO: Implement via completions provider
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.pink.shade300, Colors.pink.shade600],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(Icons.face_retouching_natural, size: 28, color: Colors.white),
+              const SizedBox(height: 4),
+              Text(
+                'Haut',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              if (size != HomeWidgetSize.small) ...[
+                const SizedBox(height: 8),
+                if (todayEntry != null)
+                  Text(
+                    todayEntry.overallCondition.emoji,
+                    style: const TextStyle(fontSize: 24),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Kein Eintrag',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                if (size == HomeWidgetSize.large && dailySteps.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Routine: $completedToday/${dailySteps.length}',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

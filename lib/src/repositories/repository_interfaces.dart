@@ -137,3 +137,75 @@ abstract class SchoolRepository {
   // Aggregierte Daten
   Future<SubjectProfile> getSubjectProfile(String userId, String subjectId);
 }
+
+// ============================================================================
+// SPORT REPOSITORY
+// ============================================================================
+
+abstract class SportRepository {
+  // Sportarten
+  Future<List<SportType>> getSportTypes(String userId);
+  Future<SportType> addSportType(SportType type);
+  Future<SportType> updateSportType(SportType type);
+  Future<void> deleteSportType(String typeId);
+  
+  // Workout Sessions (legacy - mit SportType ID Referenz)
+  Future<List<WorkoutSession>> getWorkoutSessions(String userId);
+  Future<List<WorkoutSession>> getWorkoutSessionsForDate(String userId, DateTime date);
+  Future<List<WorkoutSession>> getWorkoutSessionsRange(String userId, DateTime start, DateTime end);
+  Future<WorkoutSession> addWorkoutSession(WorkoutSession session);
+  Future<WorkoutSession> updateWorkoutSession(WorkoutSession session);
+  Future<void> deleteWorkoutSession(String sessionId);
+  
+  // Sport Sessions (simplified - mit direktem Sportart-String)
+  Future<List<SportSession>> getSportSessions(String userId);
+  Future<SportSession> addSportSession(SportSession session);
+  Future<SportSession> updateSportSession(SportSession session);
+  Future<void> deleteSportSession(String sessionId);
+  
+  // Gewicht
+  Future<List<WeightEntry>> getWeightEntries(String userId);
+  Future<WeightEntry?> getLatestWeight(String userId);
+  Future<WeightEntry> addWeightEntry(WeightEntry entry);
+  Future<WeightEntry> updateWeightEntry(WeightEntry entry);
+  Future<void> deleteWeightEntry(String entryId);
+}
+
+// ============================================================================
+// SKIN REPOSITORY
+// ============================================================================
+
+abstract class SkinRepository {
+  // Tägliche Einträge
+  Future<List<SkinEntry>> getSkinEntries(String userId);
+  Future<SkinEntry?> getSkinEntryForDate(String userId, DateTime date);
+  Future<SkinEntry> upsertSkinEntry(SkinEntry entry);
+  Future<void> deleteSkinEntry(String entryId);
+  
+  // Pflegeroutine
+  Future<List<SkinCareStep>> getSkinCareSteps(String userId);
+  Future<SkinCareStep> addSkinCareStep(SkinCareStep step);
+  Future<SkinCareStep> updateSkinCareStep(SkinCareStep step);
+  Future<void> deleteSkinCareStep(String stepId);
+  
+  // Pflegeroutine Abhaken
+  Future<List<SkinCareCompletion>> getCompletionsForDate(String userId, DateTime date);
+  Future<SkinCareCompletion> addCompletion(SkinCareCompletion completion);
+  Future<void> deleteCompletion(String completionId);
+  
+  // Produkte
+  Future<List<SkinProduct>> getSkinProducts(String userId);
+  Future<SkinProduct> addSkinProduct(SkinProduct product);
+  Future<SkinProduct> updateSkinProduct(SkinProduct product);
+  Future<void> deleteSkinProduct(String productId);
+  
+  // Notizen
+  Future<List<SkinNote>> getSkinNotes(String userId);
+  Future<SkinNote> addSkinNote(SkinNote note);
+  Future<void> deleteSkinNote(String noteId);
+  
+  // Fotos
+  Future<List<SkinPhoto>> getSkinPhotos(String userId);
+  Future<SkinPhoto> addSkinPhoto(SkinPhoto photo);
+  Future<void> deleteSkinPhoto(String photoId);
+}

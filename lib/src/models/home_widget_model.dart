@@ -12,7 +12,9 @@ enum HomeWidgetType {
   quickAdd('Schnell hinzufügen', 'add_circle'),
   books('Bücher', 'menu_book'),
   timer('Timer', 'timer'),
-  school('Schule', 'school');
+  school('Schule', 'school'),
+  sport('Sport', 'fitness_center'),
+  skin('Gesichtshaut', 'face_retouching_natural');
 
   final String label;
   final String iconName;

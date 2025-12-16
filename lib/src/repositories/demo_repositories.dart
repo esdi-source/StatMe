@@ -609,3 +609,319 @@ class DemoSchoolRepository implements SchoolRepository {
     );
   }
 }
+
+// ============================================================================
+// SPORT REPOSITORY
+// ============================================================================
+
+class DemoSportRepository implements SportRepository {
+  final List<SportType> _sportTypes = [];
+  final List<WorkoutSession> _workoutSessions = [];
+  final List<SportSession> _sportSessions = [];
+  final List<WeightEntry> _weightEntries = [];
+  
+  // ===================== SPORT TYPES =====================
+  
+  @override
+  Future<List<SportType>> getSportTypes(String userId) async {
+    return _sportTypes.where((t) => t.userId == userId).toList();
+  }
+  
+  @override
+  Future<SportType> addSportType(SportType type) async {
+    _sportTypes.add(type);
+    return type;
+  }
+  
+  @override
+  Future<SportType> updateSportType(SportType type) async {
+    final index = _sportTypes.indexWhere((t) => t.id == type.id);
+    if (index != -1) {
+      _sportTypes[index] = type;
+    }
+    return type;
+  }
+  
+  @override
+  Future<void> deleteSportType(String typeId) async {
+    _sportTypes.removeWhere((t) => t.id == typeId);
+  }
+  
+  // ===================== WORKOUT SESSIONS (legacy) =====================
+  
+  @override
+  Future<List<WorkoutSession>> getWorkoutSessions(String userId) async {
+    return _workoutSessions.where((s) => s.userId == userId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+  
+  @override
+  Future<List<WorkoutSession>> getWorkoutSessionsForDate(String userId, DateTime date) async {
+    return _workoutSessions.where((s) => 
+      s.userId == userId &&
+      s.date.year == date.year &&
+      s.date.month == date.month &&
+      s.date.day == date.day
+    ).toList();
+  }
+  
+  @override
+  Future<List<WorkoutSession>> getWorkoutSessionsRange(String userId, DateTime start, DateTime end) async {
+    return _workoutSessions.where((s) => 
+      s.userId == userId &&
+      s.date.isAfter(start.subtract(const Duration(days: 1))) &&
+      s.date.isBefore(end.add(const Duration(days: 1)))
+    ).toList()..sort((a, b) => b.date.compareTo(a.date));
+  }
+  
+  @override
+  Future<WorkoutSession> addWorkoutSession(WorkoutSession session) async {
+    _workoutSessions.add(session);
+    return session;
+  }
+  
+  @override
+  Future<WorkoutSession> updateWorkoutSession(WorkoutSession session) async {
+    final index = _workoutSessions.indexWhere((s) => s.id == session.id);
+    if (index != -1) {
+      _workoutSessions[index] = session;
+    }
+    return session;
+  }
+  
+  @override
+  Future<void> deleteWorkoutSession(String sessionId) async {
+    _workoutSessions.removeWhere((s) => s.id == sessionId);
+  }
+  
+  // ===================== SPORT SESSIONS (simplified) =====================
+  
+  @override
+  Future<List<SportSession>> getSportSessions(String userId) async {
+    return _sportSessions.where((s) => s.userId == userId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+  
+  @override
+  Future<SportSession> addSportSession(SportSession session) async {
+    _sportSessions.add(session);
+    return session;
+  }
+  
+  @override
+  Future<SportSession> updateSportSession(SportSession session) async {
+    final index = _sportSessions.indexWhere((s) => s.id == session.id);
+    if (index != -1) {
+      _sportSessions[index] = session;
+    }
+    return session;
+  }
+  
+  @override
+  Future<void> deleteSportSession(String sessionId) async {
+    _sportSessions.removeWhere((s) => s.id == sessionId);
+  }
+  
+  // ===================== WEIGHT =====================
+  
+  @override
+  Future<List<WeightEntry>> getWeightEntries(String userId) async {
+    return _weightEntries.where((e) => e.userId == userId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+  
+  @override
+  Future<WeightEntry?> getLatestWeight(String userId) async {
+    final entries = await getWeightEntries(userId);
+    return entries.isNotEmpty ? entries.first : null;
+  }
+  
+  @override
+  Future<WeightEntry> addWeightEntry(WeightEntry entry) async {
+    _weightEntries.add(entry);
+    return entry;
+  }
+  
+  @override
+  Future<WeightEntry> updateWeightEntry(WeightEntry entry) async {
+    final index = _weightEntries.indexWhere((e) => e.id == entry.id);
+    if (index != -1) {
+      _weightEntries[index] = entry;
+    }
+    return entry;
+  }
+  
+  @override
+  Future<void> deleteWeightEntry(String entryId) async {
+    _weightEntries.removeWhere((e) => e.id == entryId);
+  }
+}
+
+// ============================================================================
+// SKIN REPOSITORY
+// ============================================================================
+
+class DemoSkinRepository implements SkinRepository {
+  final List<SkinEntry> _skinEntries = [];
+  final List<SkinCareStep> _skinCareSteps = [];
+  final List<SkinCareCompletion> _completions = [];
+  final List<SkinProduct> _products = [];
+  final List<SkinNote> _notes = [];
+  final List<SkinPhoto> _photos = [];
+  
+  // ===================== SKIN ENTRIES =====================
+  
+  @override
+  Future<List<SkinEntry>> getSkinEntries(String userId) async {
+    return _skinEntries.where((e) => e.userId == userId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+  
+  @override
+  Future<SkinEntry?> getSkinEntryForDate(String userId, DateTime date) async {
+    return _skinEntries.cast<SkinEntry?>().firstWhere(
+      (e) => e?.userId == userId &&
+             e?.date.year == date.year &&
+             e?.date.month == date.month &&
+             e?.date.day == date.day,
+      orElse: () => null,
+    );
+  }
+  
+  @override
+  Future<SkinEntry> upsertSkinEntry(SkinEntry entry) async {
+    final index = _skinEntries.indexWhere((e) => 
+      e.userId == entry.userId &&
+      e.date.year == entry.date.year &&
+      e.date.month == entry.date.month &&
+      e.date.day == entry.date.day
+    );
+    if (index != -1) {
+      _skinEntries[index] = entry;
+    } else {
+      _skinEntries.add(entry);
+    }
+    return entry;
+  }
+  
+  @override
+  Future<void> deleteSkinEntry(String entryId) async {
+    _skinEntries.removeWhere((e) => e.id == entryId);
+  }
+  
+  // ===================== SKIN CARE STEPS =====================
+  
+  @override
+  Future<List<SkinCareStep>> getSkinCareSteps(String userId) async {
+    return _skinCareSteps.where((s) => s.userId == userId && s.isActive).toList()
+      ..sort((a, b) => a.order.compareTo(b.order));
+  }
+  
+  @override
+  Future<SkinCareStep> addSkinCareStep(SkinCareStep step) async {
+    _skinCareSteps.add(step);
+    return step;
+  }
+  
+  @override
+  Future<SkinCareStep> updateSkinCareStep(SkinCareStep step) async {
+    final index = _skinCareSteps.indexWhere((s) => s.id == step.id);
+    if (index != -1) {
+      _skinCareSteps[index] = step;
+    }
+    return step;
+  }
+  
+  @override
+  Future<void> deleteSkinCareStep(String stepId) async {
+    _skinCareSteps.removeWhere((s) => s.id == stepId);
+  }
+  
+  // ===================== COMPLETIONS =====================
+  
+  @override
+  Future<List<SkinCareCompletion>> getCompletionsForDate(String userId, DateTime date) async {
+    return _completions.where((c) =>
+      c.userId == userId &&
+      c.date.year == date.year &&
+      c.date.month == date.month &&
+      c.date.day == date.day
+    ).toList();
+  }
+  
+  @override
+  Future<SkinCareCompletion> addCompletion(SkinCareCompletion completion) async {
+    _completions.add(completion);
+    return completion;
+  }
+  
+  @override
+  Future<void> deleteCompletion(String completionId) async {
+    _completions.removeWhere((c) => c.id == completionId);
+  }
+  
+  // ===================== PRODUCTS =====================
+  
+  @override
+  Future<List<SkinProduct>> getSkinProducts(String userId) async {
+    return _products.where((p) => p.userId == userId).toList();
+  }
+  
+  @override
+  Future<SkinProduct> addSkinProduct(SkinProduct product) async {
+    _products.add(product);
+    return product;
+  }
+  
+  @override
+  Future<SkinProduct> updateSkinProduct(SkinProduct product) async {
+    final index = _products.indexWhere((p) => p.id == product.id);
+    if (index != -1) {
+      _products[index] = product;
+    }
+    return product;
+  }
+  
+  @override
+  Future<void> deleteSkinProduct(String productId) async {
+    _products.removeWhere((p) => p.id == productId);
+  }
+  
+  // ===================== NOTES =====================
+  
+  @override
+  Future<List<SkinNote>> getSkinNotes(String userId) async {
+    return _notes.where((n) => n.userId == userId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+  
+  @override
+  Future<SkinNote> addSkinNote(SkinNote note) async {
+    _notes.add(note);
+    return note;
+  }
+  
+  @override
+  Future<void> deleteSkinNote(String noteId) async {
+    _notes.removeWhere((n) => n.id == noteId);
+  }
+  
+  // ===================== PHOTOS =====================
+  
+  @override
+  Future<List<SkinPhoto>> getSkinPhotos(String userId) async {
+    return _photos.where((p) => p.userId == userId).toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+  
+  @override
+  Future<SkinPhoto> addSkinPhoto(SkinPhoto photo) async {
+    _photos.add(photo);
+    return photo;
+  }
+  
+  @override
+  Future<void> deleteSkinPhoto(String photoId) async {
+    _photos.removeWhere((p) => p.id == photoId);
+  }
+}

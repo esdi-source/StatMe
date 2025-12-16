@@ -1267,3 +1267,460 @@ final schoolNotesNotifierProvider = StateNotifierProvider<SchoolNotesNotifier, L
   final repository = ref.watch(schoolRepositoryProvider);
   return SchoolNotesNotifier(repository);
 });
+
+// ============================================
+// SPORT PROVIDERS
+// ============================================
+
+/// Sport Repository Provider
+final sportRepositoryProvider = Provider<SportRepository>((ref) {
+  if (AppConfig.isDemoMode) {
+    return DemoSportRepository();
+  }
+  // TODO: Implement SupabaseSportRepository when needed
+  return DemoSportRepository();
+});
+
+/// Sport Sessions Notifier
+class SportSessionsNotifier extends StateNotifier<List<SportSession>> {
+  final SportRepository _repository;
+  String? _userId;
+  
+  SportSessionsNotifier(this._repository) : super([]);
+  
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getSportSessions(userId);
+  }
+  
+  List<SportSession> getForDate(DateTime date) {
+    return state.where((s) {
+      return s.date.year == date.year &&
+             s.date.month == date.month &&
+             s.date.day == date.day;
+    }).toList();
+  }
+  
+  List<SportSession> getForDateRange(DateTime start, DateTime end) {
+    return state.where((s) {
+      return s.date.isAfter(start.subtract(const Duration(days: 1))) &&
+             s.date.isBefore(end.add(const Duration(days: 1)));
+    }).toList();
+  }
+  
+  Duration getTotalDurationForWeek() {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final sessions = getForDateRange(startOfWeek, now);
+    return sessions.fold(Duration.zero, (sum, s) => sum + s.duration);
+  }
+  
+  int getTotalCaloriesForWeek() {
+    final now = DateTime.now();
+    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    final sessions = getForDateRange(startOfWeek, now);
+    return sessions.fold(0, (sum, s) => sum + (s.caloriesBurned ?? 0));
+  }
+  
+  Future<SportSession> add(SportSession session) async {
+    final created = await _repository.addSportSession(session);
+    state = [...state, created];
+    return created;
+  }
+  
+  Future<void> update(SportSession session) async {
+    await _repository.updateSportSession(session);
+    state = state.map((s) => s.id == session.id ? session : s).toList();
+  }
+  
+  Future<void> delete(String sessionId) async {
+    await _repository.deleteSportSession(sessionId);
+    state = state.where((s) => s.id != sessionId).toList();
+  }
+}
+
+final sportSessionsNotifierProvider = StateNotifierProvider<SportSessionsNotifier, List<SportSession>>((ref) {
+  final repository = ref.watch(sportRepositoryProvider);
+  return SportSessionsNotifier(repository);
+});
+
+/// Weight Entries Notifier
+class WeightNotifier extends StateNotifier<List<WeightEntry>> {
+  final SportRepository _repository;
+  String? _userId;
+  
+  WeightNotifier(this._repository) : super([]);
+  
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getWeightEntries(userId);
+  }
+  
+  WeightEntry? get latest {
+    if (state.isEmpty) return null;
+    final sorted = [...state]..sort((a, b) => b.date.compareTo(a.date));
+    return sorted.first;
+  }
+  
+  List<WeightEntry> getForRange(DateTime start, DateTime end) {
+    return state.where((w) {
+      return w.date.isAfter(start.subtract(const Duration(days: 1))) &&
+             w.date.isBefore(end.add(const Duration(days: 1)));
+    }).toList()..sort((a, b) => a.date.compareTo(b.date));
+  }
+  
+  double? getTrend() {
+    if (state.length < 2) return null;
+    final sorted = [...state]..sort((a, b) => a.date.compareTo(b.date));
+    final latest = sorted.last.weightKg;
+    final previous = sorted[sorted.length - 2].weightKg;
+    return latest - previous;
+  }
+  
+  Future<WeightEntry> add(WeightEntry entry) async {
+    final created = await _repository.addWeightEntry(entry);
+    state = [...state, created];
+    return created;
+  }
+  
+  Future<void> update(WeightEntry entry) async {
+    await _repository.updateWeightEntry(entry);
+    state = state.map((w) => w.id == entry.id ? entry : w).toList();
+  }
+  
+  Future<void> delete(String entryId) async {
+    await _repository.deleteWeightEntry(entryId);
+    state = state.where((w) => w.id != entryId).toList();
+  }
+}
+
+final weightNotifierProvider = StateNotifierProvider<WeightNotifier, List<WeightEntry>>((ref) {
+  final repository = ref.watch(sportRepositoryProvider);
+  return WeightNotifier(repository);
+});
+
+/// Sport Streak Provider
+final sportStreakProvider = Provider<SportStreak>((ref) {
+  final sessions = ref.watch(sportSessionsNotifierProvider);
+  return _calculateStreak(sessions);
+});
+
+SportStreak _calculateStreak(List<SportSession> sessions) {
+  if (sessions.isEmpty) {
+    return SportStreak(currentStreak: 0, longestStreak: 0);
+  }
+  
+  // Get unique dates with sport
+  final dates = sessions.map((s) {
+    return DateTime(s.date.year, s.date.month, s.date.day);
+  }).toSet().toList()..sort((a, b) => b.compareTo(a));
+  
+  if (dates.isEmpty) {
+    return SportStreak(currentStreak: 0, longestStreak: 0);
+  }
+  
+  // Calculate current streak
+  int currentStreak = 0;
+  final today = DateTime.now();
+  final todayDate = DateTime(today.year, today.month, today.day);
+  
+  // Check if today or yesterday has a session
+  final hasToday = dates.any((d) => d == todayDate);
+  final hasYesterday = dates.any((d) => d == todayDate.subtract(const Duration(days: 1)));
+  
+  if (hasToday || hasYesterday) {
+    DateTime checkDate = hasToday ? todayDate : todayDate.subtract(const Duration(days: 1));
+    
+    while (dates.contains(checkDate)) {
+      currentStreak++;
+      checkDate = checkDate.subtract(const Duration(days: 1));
+    }
+  }
+  
+  // Calculate longest streak
+  int longestStreak = 0;
+  int tempStreak = 1;
+  
+  for (int i = 0; i < dates.length - 1; i++) {
+    final diff = dates[i].difference(dates[i + 1]).inDays;
+    if (diff == 1) {
+      tempStreak++;
+    } else {
+      longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
+      tempStreak = 1;
+    }
+  }
+  longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
+  
+  return SportStreak(
+    currentStreak: currentStreak,
+    longestStreak: longestStreak,
+    lastActivityDate: dates.isNotEmpty ? dates.first : null,
+  );
+}
+
+/// Sport Stats Provider (aggregated by sport type)
+final sportStatsProvider = Provider<List<SportStats>>((ref) {
+  final sessions = ref.watch(sportSessionsNotifierProvider);
+  return _calculateSportStats(sessions);
+});
+
+List<SportStats> _calculateSportStats(List<SportSession> sessions) {
+  final Map<String, List<SportSession>> byType = {};
+  
+  for (final session in sessions) {
+    byType.putIfAbsent(session.sportType, () => []).add(session);
+  }
+  
+  return byType.entries.map((entry) {
+    final typeSessions = entry.value;
+    final totalDuration = typeSessions.fold<Duration>(
+      Duration.zero, (sum, s) => sum + s.duration);
+    final totalCalories = typeSessions.fold<int>(
+      0, (sum, s) => sum + (s.caloriesBurned ?? 0));
+    
+    return SportStats(
+      sportType: entry.key,
+      totalDuration: totalDuration,
+      totalCalories: totalCalories,
+      sessionCount: typeSessions.length,
+      averageIntensity: typeSessions.isEmpty ? 0 : 
+        typeSessions.map((s) => s.intensity.value).reduce((a, b) => a + b) / typeSessions.length,
+    );
+  }).toList()..sort((a, b) => b.totalDuration.compareTo(a.totalDuration));
+}
+
+// ============================================
+// SKIN (GESICHTSHAUT) PROVIDERS
+// ============================================
+
+/// Skin Repository Provider
+final skinRepositoryProvider = Provider<SkinRepository>((ref) {
+  if (AppConfig.isDemoMode) {
+    return DemoSkinRepository();
+  }
+  // TODO: Implement SupabaseSkinRepository when needed
+  return DemoSkinRepository();
+});
+
+/// Skin Entries Notifier
+class SkinEntriesNotifier extends StateNotifier<List<SkinEntry>> {
+  final SkinRepository _repository;
+  String? _userId;
+  
+  SkinEntriesNotifier(this._repository) : super([]);
+  
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getSkinEntries(userId);
+  }
+  
+  SkinEntry? getForDate(DateTime date) {
+    return state.cast<SkinEntry?>().firstWhere(
+      (e) => e != null && 
+             e.date.year == date.year &&
+             e.date.month == date.month &&
+             e.date.day == date.day,
+      orElse: () => null,
+    );
+  }
+  
+  List<SkinEntry> getForRange(DateTime start, DateTime end) {
+    return state.where((e) {
+      return e.date.isAfter(start.subtract(const Duration(days: 1))) &&
+             e.date.isBefore(end.add(const Duration(days: 1)));
+    }).toList()..sort((a, b) => a.date.compareTo(b.date));
+  }
+  
+  double? getAverageCondition(int days) {
+    final now = DateTime.now();
+    final start = now.subtract(Duration(days: days));
+    final entries = getForRange(start, now);
+    if (entries.isEmpty) return null;
+    return entries.map((e) => e.overallCondition.value).reduce((a, b) => a + b) / entries.length;
+  }
+  
+  Future<SkinEntry> add(SkinEntry entry) async {
+    final created = await _repository.upsertSkinEntry(entry);
+    state = [...state, created];
+    return created;
+  }
+  
+  Future<void> update(SkinEntry entry) async {
+    await _repository.upsertSkinEntry(entry);
+    state = state.map((e) => e.id == entry.id ? entry : e).toList();
+  }
+  
+  Future<void> delete(String entryId) async {
+    await _repository.deleteSkinEntry(entryId);
+    state = state.where((e) => e.id != entryId).toList();
+  }
+}
+
+final skinEntriesNotifierProvider = StateNotifierProvider<SkinEntriesNotifier, List<SkinEntry>>((ref) {
+  final repository = ref.watch(skinRepositoryProvider);
+  return SkinEntriesNotifier(repository);
+});
+
+/// Skin Care Steps Notifier (Pflegeroutine)
+class SkinCareStepsNotifier extends StateNotifier<List<SkinCareStep>> {
+  final SkinRepository _repository;
+  String? _userId;
+  
+  SkinCareStepsNotifier(this._repository) : super([]);
+  
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getSkinCareSteps(userId);
+  }
+  
+  List<SkinCareStep> get dailySteps => state.where((s) => s.isDaily).toList()
+    ..sort((a, b) => a.order.compareTo(b.order));
+  
+  List<SkinCareStep> get occasionalSteps => state.where((s) => !s.isDaily).toList()
+    ..sort((a, b) => a.order.compareTo(b.order));
+  
+  Future<SkinCareStep> add(SkinCareStep step) async {
+    final created = await _repository.addSkinCareStep(step);
+    state = [...state, created];
+    return created;
+  }
+  
+  Future<void> update(SkinCareStep step) async {
+    await _repository.updateSkinCareStep(step);
+    state = state.map((s) => s.id == step.id ? step : s).toList();
+  }
+  
+  Future<void> reorder(List<String> orderedIds) async {
+    for (int i = 0; i < orderedIds.length; i++) {
+      final step = state.firstWhere((s) => s.id == orderedIds[i]);
+      if (step.order != i) {
+        final updated = step.copyWith(order: i);
+        await update(updated);
+      }
+    }
+  }
+  
+  Future<void> delete(String stepId) async {
+    await _repository.deleteSkinCareStep(stepId);
+    state = state.where((s) => s.id != stepId).toList();
+  }
+}
+
+final skinCareStepsNotifierProvider = StateNotifierProvider<SkinCareStepsNotifier, List<SkinCareStep>>((ref) {
+  final repository = ref.watch(skinRepositoryProvider);
+  return SkinCareStepsNotifier(repository);
+});
+
+/// Skin Products Notifier
+class SkinProductsNotifier extends StateNotifier<List<SkinProduct>> {
+  final SkinRepository _repository;
+  String? _userId;
+  
+  SkinProductsNotifier(this._repository) : super([]);
+  
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getSkinProducts(userId);
+  }
+  
+  List<SkinProduct> getByCategory(SkinProductCategory category) {
+    return state.where((p) => p.category == category).toList();
+  }
+  
+  Future<SkinProduct> add(SkinProduct product) async {
+    final created = await _repository.addSkinProduct(product);
+    state = [...state, created];
+    return created;
+  }
+  
+  Future<void> update(SkinProduct product) async {
+    await _repository.updateSkinProduct(product);
+    state = state.map((p) => p.id == product.id ? product : p).toList();
+  }
+  
+  Future<void> delete(String productId) async {
+    await _repository.deleteSkinProduct(productId);
+    state = state.where((p) => p.id != productId).toList();
+  }
+}
+
+final skinProductsNotifierProvider = StateNotifierProvider<SkinProductsNotifier, List<SkinProduct>>((ref) {
+  final repository = ref.watch(skinRepositoryProvider);
+  return SkinProductsNotifier(repository);
+});
+
+/// Skin Notes Notifier
+class SkinNotesNotifier extends StateNotifier<List<SkinNote>> {
+  final SkinRepository _repository;
+  String? _userId;
+  
+  SkinNotesNotifier(this._repository) : super([]);
+  
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getSkinNotes(userId);
+  }
+  
+  List<SkinNote> getRecent(int count) {
+    final sorted = [...state]..sort((a, b) => b.date.compareTo(a.date));
+    return sorted.take(count).toList();
+  }
+  
+  Future<SkinNote> add(SkinNote note) async {
+    final created = await _repository.addSkinNote(note);
+    state = [...state, created];
+    return created;
+  }
+  
+  Future<void> delete(String noteId) async {
+    await _repository.deleteSkinNote(noteId);
+    state = state.where((n) => n.id != noteId).toList();
+  }
+}
+
+final skinNotesNotifierProvider = StateNotifierProvider<SkinNotesNotifier, List<SkinNote>>((ref) {
+  final repository = ref.watch(skinRepositoryProvider);
+  return SkinNotesNotifier(repository);
+});
+
+/// Skin Photos Notifier
+class SkinPhotosNotifier extends StateNotifier<List<SkinPhoto>> {
+  final SkinRepository _repository;
+  String? _userId;
+  
+  SkinPhotosNotifier(this._repository) : super([]);
+  
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getSkinPhotos(userId);
+  }
+  
+  List<SkinPhoto> getRecent(int count) {
+    final sorted = [...state]..sort((a, b) => b.date.compareTo(a.date));
+    return sorted.take(count).toList();
+  }
+  
+  List<SkinPhoto> getForRange(DateTime start, DateTime end) {
+    return state.where((p) {
+      return p.date.isAfter(start.subtract(const Duration(days: 1))) &&
+             p.date.isBefore(end.add(const Duration(days: 1)));
+    }).toList()..sort((a, b) => a.date.compareTo(b.date));
+  }
+  
+  Future<SkinPhoto> add(SkinPhoto photo) async {
+    final created = await _repository.addSkinPhoto(photo);
+    state = [...state, created];
+    return created;
+  }
+  
+  Future<void> delete(String photoId) async {
+    await _repository.deleteSkinPhoto(photoId);
+    state = state.where((p) => p.id != photoId).toList();
+  }
+}
+
+final skinPhotosNotifierProvider = StateNotifierProvider<SkinPhotosNotifier, List<SkinPhoto>>((ref) {
+  final repository = ref.watch(skinRepositoryProvider);
+  return SkinPhotosNotifier(repository);
+});
