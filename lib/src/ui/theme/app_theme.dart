@@ -107,13 +107,13 @@ class AppTheme {
         backgroundColor: tokens.surface,
         foregroundColor: tokens.textPrimary,
         elevation: 0,
-        scrolledUnderElevation: tokens.useGlass ? 0 : 1,
+        scrolledUnderElevation: 1,
         surfaceTintColor: Colors.transparent,
         titleTextStyle: tokens.titleLarge.copyWith(color: tokens.textPrimary),
       ),
       cardTheme: CardThemeData(
         color: tokens.surface,
-        elevation: tokens.useGlass ? 0 : 2,
+        elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.radiusMedium),
           side: BorderSide(color: tokens.cardBorder, width: 0.5),
@@ -199,7 +199,7 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: tokens.primary,
         foregroundColor: _contrastColor(tokens.primary),
-        elevation: tokens.useGlass ? 0 : 4,
+        elevation: 4,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.radiusMedium),
         ),
@@ -233,7 +233,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.radiusLarge),
         ),
-        elevation: tokens.useGlass ? 0 : 8,
+        elevation: 8,
       ),
       snackBarTheme: SnackBarThemeData(
         backgroundColor: isDark ? tokens.surfaceElevated : tokens.textPrimary,

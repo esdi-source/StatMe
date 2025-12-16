@@ -2,6 +2,7 @@
 /// 
 /// Zentrale Definition aller Style-Variablen:
 /// - Farben (Primary, Secondary, Surface, etc.)
+/// - Intensitätsstufen für Farben
 /// - Radien (BorderRadius)
 /// - Schatten (BoxShadow)
 /// - Typografie-Scales
@@ -10,16 +11,14 @@
 /// Widgets referenzieren diese Tokens statt fester Werte.
 
 import 'package:flutter/material.dart';
-import 'dart:ui';
 
 // ============================================================================
-// THEME PRESET ENUM
+// THEME PRESET ENUM (ohne Glass)
 // ============================================================================
 
 /// Verfügbare Theme-Presets
 enum ThemePreset {
-  fotzig('Fotzig', 'Pastellfarben, weich, verspielt'),
-  glass('Glass', 'Transparenz, Blur, Glassmorphism'),
+  fotzig('Fotzig', 'Lebendige Pastellfarben, verspielt'),
   modern('Modern', 'Neutral, klare Kontraste, technisch'),
   minimal('Minimal', 'Schwarz/Weiß/Grau, Fokus auf Inhalt'),
   dark('Dark', 'Dunkle Hintergründe, augenschonend'),
@@ -54,12 +53,18 @@ class DesignTokens {
   static DesignTokens? _instance;
   static ThemePreset _currentPreset = ThemePreset.hell;
   static ShapeStyle _currentShape = ShapeStyle.round;
+  static double _currentIntensity = 0.7;
+  static Color? _customPrimary;
+  static Color? _customSecondary;
   
   /// Aktuelles Theme Preset
   static ThemePreset get currentPreset => _currentPreset;
   
   /// Aktuelle Shape-Style
   static ShapeStyle get currentShape => _currentShape;
+  
+  /// Aktuelle Intensität
+  static double get currentIntensity => _currentIntensity;
   
   /// Setzt das Theme-Preset (invalidiert Cache)
   static void setPreset(ThemePreset preset) {
@@ -77,15 +82,49 @@ class DesignTokens {
     }
   }
   
+  /// Setzt die Intensität (invalidiert Cache)
+  static void setIntensity(double intensity) {
+    if (_currentIntensity != intensity) {
+      _currentIntensity = intensity.clamp(0.0, 1.0);
+      _instance = null;
+    }
+  }
+  
+  /// Setzt benutzerdefinierte Farben
+  static void setCustomColors(Color? primary, Color? secondary) {
+    _customPrimary = primary;
+    _customSecondary = secondary;
+    _instance = null;
+  }
+  
+  /// Entfernt benutzerdefinierte Farben
+  static void clearCustomColors() {
+    _customPrimary = null;
+    _customSecondary = null;
+    _instance = null;
+  }
+  
   /// Gibt die aktuellen Tokens zurück
   static DesignTokens get current {
-    _instance ??= DesignTokens._create(_currentPreset, _currentShape);
+    _instance ??= DesignTokens._create(
+      _currentPreset, 
+      _currentShape,
+      _currentIntensity,
+      _customPrimary,
+      _customSecondary,
+    );
     return _instance!;
   }
   
   /// Erstellt Tokens für ein bestimmtes Preset und Shape
-  static DesignTokens forPreset(ThemePreset preset, ShapeStyle shape) {
-    return DesignTokens._create(preset, shape);
+  static DesignTokens forPreset(
+    ThemePreset preset, 
+    ShapeStyle shape, {
+    double intensity = 0.7,
+    Color? customPrimary,
+    Color? customSecondary,
+  }) {
+    return DesignTokens._create(preset, shape, intensity, customPrimary, customSecondary);
   }
   
   // ---------------------------------------------------------------------------
@@ -134,7 +173,7 @@ class DesignTokens {
   /// Card Border Farbe
   final Color cardBorder;
   
-  /// Overlay Farbe (für Glassmorphism)
+  /// Overlay Farbe
   final Color overlay;
   
   // ---------------------------------------------------------------------------
@@ -176,16 +215,6 @@ class DesignTokens {
   final List<BoxShadow> shadowLarge;
   
   // ---------------------------------------------------------------------------
-  // BLUR / GLASSMORPHISM
-  // ---------------------------------------------------------------------------
-  
-  /// Blur-Intensität für Glassmorphism
-  final double blurAmount;
-  
-  /// Ob Glassmorphism aktiv ist
-  final bool useGlass;
-  
-  // ---------------------------------------------------------------------------
   // ABSTÄNDE (SPACING)
   // ---------------------------------------------------------------------------
   
@@ -211,27 +240,18 @@ class DesignTokens {
   // TYPOGRAFIE
   // ---------------------------------------------------------------------------
   
-  /// Display Text (große Überschriften)
   final TextStyle displayLarge;
   final TextStyle displayMedium;
   final TextStyle displaySmall;
-  
-  /// Headline Text
   final TextStyle headlineLarge;
   final TextStyle headlineMedium;
   final TextStyle headlineSmall;
-  
-  /// Title Text
   final TextStyle titleLarge;
   final TextStyle titleMedium;
   final TextStyle titleSmall;
-  
-  /// Body Text
   final TextStyle bodyLarge;
   final TextStyle bodyMedium;
   final TextStyle bodySmall;
-  
-  /// Label Text
   final TextStyle labelLarge;
   final TextStyle labelMedium;
   final TextStyle labelSmall;
@@ -240,16 +260,9 @@ class DesignTokens {
   // ANIMATION
   // ---------------------------------------------------------------------------
   
-  /// Standard Animation Duration
   final Duration animationDuration;
-  
-  /// Schnelle Animation
   final Duration animationFast;
-  
-  /// Langsame Animation
   final Duration animationSlow;
-  
-  /// Standard Curve
   final Curve animationCurve;
   
   // ---------------------------------------------------------------------------
@@ -282,8 +295,6 @@ class DesignTokens {
     required this.shadowSmall,
     required this.shadowMedium,
     required this.shadowLarge,
-    required this.blurAmount,
-    required this.useGlass,
     required this.spacingXS,
     required this.spacingS,
     required this.spacingM,
@@ -315,24 +326,26 @@ class DesignTokens {
   // FACTORY - THEME CREATION
   // ---------------------------------------------------------------------------
   
-  factory DesignTokens._create(ThemePreset preset, ShapeStyle shape) {
-    // Radien basierend auf Shape
+  factory DesignTokens._create(
+    ThemePreset preset, 
+    ShapeStyle shape,
+    double intensity,
+    Color? customPrimary,
+    Color? customSecondary,
+  ) {
     final radii = _getRadii(shape);
     
-    // Farben und Schatten basierend auf Preset
     switch (preset) {
       case ThemePreset.fotzig:
-        return _createFotzig(radii);
-      case ThemePreset.glass:
-        return _createGlass(radii);
+        return _createFotzig(radii, intensity, customPrimary, customSecondary);
       case ThemePreset.modern:
-        return _createModern(radii);
+        return _createModern(radii, intensity, customPrimary, customSecondary);
       case ThemePreset.minimal:
-        return _createMinimal(radii);
+        return _createMinimal(radii, intensity, customPrimary, customSecondary);
       case ThemePreset.dark:
-        return _createDark(radii);
+        return _createDark(radii, intensity, customPrimary, customSecondary);
       case ThemePreset.hell:
-        return _createHell(radii);
+        return _createHell(radii, intensity, customPrimary, customSecondary);
     }
   }
   
@@ -362,7 +375,32 @@ class DesignTokens {
   }
   
   // ---------------------------------------------------------------------------
-  // BASE TEXT STYLES (Apple HIG inspired)
+  // INTENSITY HELPER
+  // ---------------------------------------------------------------------------
+  
+  /// Passt eine Farbe basierend auf Intensität an
+  static Color _applyIntensity(Color baseColor, double intensity) {
+    final hsl = HSLColor.fromColor(baseColor);
+    // Intensität beeinflusst Sättigung: 0.0 = entsättigt, 1.0 = voll gesättigt
+    final newSaturation = hsl.saturation * (0.3 + (intensity * 0.7));
+    // Bei höherer Intensität auch leicht dunklere Farben für mehr Kontrast
+    final newLightness = hsl.lightness * (0.95 + (intensity * 0.1));
+    return hsl
+        .withSaturation(newSaturation.clamp(0.0, 1.0))
+        .withLightness(newLightness.clamp(0.0, 1.0))
+        .toColor();
+  }
+  
+  /// Intensiviert eine Farbe (macht sie kräftiger)
+  static Color _intensify(Color color, double intensity) {
+    final hsl = HSLColor.fromColor(color);
+    // Mehr Sättigung bei höherer Intensität
+    final newSaturation = (hsl.saturation + (intensity * 0.3)).clamp(0.0, 1.0);
+    return hsl.withSaturation(newSaturation).toColor();
+  }
+  
+  // ---------------------------------------------------------------------------
+  // BASE TEXT STYLES
   // ---------------------------------------------------------------------------
   
   static TextStyle _baseTextStyle(Color color) => TextStyle(
@@ -374,15 +412,15 @@ class DesignTokens {
   static _Typography _createTypography(Color primary, Color secondary) {
     return _Typography(
       displayLarge: _baseTextStyle(primary).copyWith(fontSize: 34, fontWeight: FontWeight.w700, letterSpacing: 0.25),
-      displayMedium: _baseTextStyle(primary).copyWith(fontSize: 28, fontWeight: FontWeight.w600, letterSpacing: 0),
-      displaySmall: _baseTextStyle(primary).copyWith(fontSize: 24, fontWeight: FontWeight.w600, letterSpacing: 0),
-      headlineLarge: _baseTextStyle(primary).copyWith(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: 0),
+      displayMedium: _baseTextStyle(primary).copyWith(fontSize: 28, fontWeight: FontWeight.w600),
+      displaySmall: _baseTextStyle(primary).copyWith(fontSize: 24, fontWeight: FontWeight.w600),
+      headlineLarge: _baseTextStyle(primary).copyWith(fontSize: 22, fontWeight: FontWeight.w600),
       headlineMedium: _baseTextStyle(primary).copyWith(fontSize: 20, fontWeight: FontWeight.w600, letterSpacing: 0.15),
       headlineSmall: _baseTextStyle(primary).copyWith(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.15),
-      titleLarge: _baseTextStyle(primary).copyWith(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: 0),
+      titleLarge: _baseTextStyle(primary).copyWith(fontSize: 17, fontWeight: FontWeight.w600),
       titleMedium: _baseTextStyle(primary).copyWith(fontSize: 16, fontWeight: FontWeight.w500, letterSpacing: 0.15),
       titleSmall: _baseTextStyle(primary).copyWith(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1),
-      bodyLarge: _baseTextStyle(primary).copyWith(fontSize: 17, fontWeight: FontWeight.w400, letterSpacing: 0),
+      bodyLarge: _baseTextStyle(primary).copyWith(fontSize: 17, fontWeight: FontWeight.w400),
       bodyMedium: _baseTextStyle(primary).copyWith(fontSize: 15, fontWeight: FontWeight.w400, letterSpacing: 0.25),
       bodySmall: _baseTextStyle(secondary).copyWith(fontSize: 13, fontWeight: FontWeight.w400, letterSpacing: 0.4),
       labelLarge: _baseTextStyle(primary).copyWith(fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.1),
@@ -392,18 +430,23 @@ class DesignTokens {
   }
   
   // ---------------------------------------------------------------------------
-  // THEME: FOTZIG (Girls/Soft)
+  // THEME: FOTZIG (Vibrant, Playful) - Intensivere Farben
   // ---------------------------------------------------------------------------
   
-  static DesignTokens _createFotzig(_Radii radii) {
-    const primary = Color(0xFFE8A4C9); // Soft Pink
-    const secondary = Color(0xFFB8A4E8); // Soft Lavender
-    const background = Color(0xFFFFF5F8); // Very Light Pink
+  static DesignTokens _createFotzig(_Radii radii, double intensity, Color? customPrimary, Color? customSecondary) {
+    // Basis: Lebhafte Pink/Lila-Töne
+    final basePrimary = customPrimary ?? const Color(0xFFE91E8C); // Vivid Pink
+    final baseSecondary = customSecondary ?? const Color(0xFF9C27B0); // Deep Purple
+    
+    final primary = _intensify(basePrimary, intensity);
+    final secondary = _intensify(baseSecondary, intensity);
+    
+    const background = Color(0xFFFFF0F5); // Lavender Blush
     const surface = Color(0xFFFFFFFF);
     const surfaceElevated = Color(0xFFFFFFFF);
-    const textPrimary = Color(0xFF4A3F55); // Soft Dark Purple
-    const textSecondary = Color(0xFF8A7F95);
-    const textDisabled = Color(0xFFBDB5C5);
+    const textPrimary = Color(0xFF2D1B33); // Dark Purple
+    const textSecondary = Color(0xFF6B5277);
+    const textDisabled = Color(0xFFB5A3BC);
     
     final typography = _createTypography(textPrimary, textSecondary);
     
@@ -416,13 +459,13 @@ class DesignTokens {
       textPrimary: textPrimary,
       textSecondary: textSecondary,
       textDisabled: textDisabled,
-      success: const Color(0xFF9DD6B0),
-      warning: const Color(0xFFF5D89A),
-      error: const Color(0xFFF5A5A5),
-      info: const Color(0xFFA5C9F5),
-      divider: const Color(0xFFF0E5EB),
-      cardBorder: const Color(0xFFF5E0EA),
-      overlay: const Color(0x20E8A4C9),
+      success: _intensify(const Color(0xFF4CAF50), intensity),
+      warning: _intensify(const Color(0xFFFF9800), intensity),
+      error: _intensify(const Color(0xFFF44336), intensity),
+      info: _intensify(const Color(0xFF2196F3), intensity),
+      divider: const Color(0xFFF0E0E8),
+      cardBorder: const Color(0xFFE8D0E0),
+      overlay: primary.withOpacity(0.1),
       radiusSmall: radii.small,
       radiusMedium: radii.medium,
       radiusLarge: radii.large,
@@ -431,34 +474,32 @@ class DesignTokens {
       shadowNone: const [],
       shadowSubtle: [
         BoxShadow(
-          color: const Color(0xFFE8A4C9).withOpacity(0.08),
+          color: primary.withOpacity(0.08 * intensity),
           blurRadius: 4,
           offset: const Offset(0, 2),
         ),
       ],
       shadowSmall: [
         BoxShadow(
-          color: const Color(0xFFE8A4C9).withOpacity(0.12),
+          color: primary.withOpacity(0.12 * intensity),
           blurRadius: 8,
           offset: const Offset(0, 4),
         ),
       ],
       shadowMedium: [
         BoxShadow(
-          color: const Color(0xFFE8A4C9).withOpacity(0.15),
+          color: primary.withOpacity(0.15 * intensity),
           blurRadius: 16,
           offset: const Offset(0, 8),
         ),
       ],
       shadowLarge: [
         BoxShadow(
-          color: const Color(0xFFE8A4C9).withOpacity(0.2),
+          color: primary.withOpacity(0.2 * intensity),
           blurRadius: 24,
           offset: const Offset(0, 12),
         ),
       ],
-      blurAmount: 0,
-      useGlass: false,
       spacingXS: 4,
       spacingS: 8,
       spacingM: 16,
@@ -488,123 +529,16 @@ class DesignTokens {
   }
   
   // ---------------------------------------------------------------------------
-  // THEME: GLASS (Glassmorphism)
+  // THEME: MODERN (Clean, Technical) - Intensivere Farben
   // ---------------------------------------------------------------------------
   
-  static DesignTokens _createGlass(_Radii radii) {
-    const primary = Color(0xFF6E8EFA); // Bright Blue
-    const secondary = Color(0xFFA78BFA); // Light Purple
-    const background = Color(0xFFF0F4FF); // Very Light Blue
-    const surface = Color(0xBBFFFFFF); // Semi-transparent White
-    const surfaceElevated = Color(0xDDFFFFFF);
-    const textPrimary = Color(0xFF1A1A2E);
-    const textSecondary = Color(0xFF4A4A6A);
-    const textDisabled = Color(0xFF9A9ABB);
+  static DesignTokens _createModern(_Radii radii, double intensity, Color? customPrimary, Color? customSecondary) {
+    final basePrimary = customPrimary ?? const Color(0xFF2563EB); // Vivid Blue
+    final baseSecondary = customSecondary ?? const Color(0xFF7C3AED); // Vivid Purple
     
-    final typography = _createTypography(textPrimary, textSecondary);
+    final primary = _intensify(basePrimary, intensity);
+    final secondary = _intensify(baseSecondary, intensity);
     
-    return DesignTokens._(
-      primary: primary,
-      secondary: secondary,
-      background: background,
-      surface: surface,
-      surfaceElevated: surfaceElevated,
-      textPrimary: textPrimary,
-      textSecondary: textSecondary,
-      textDisabled: textDisabled,
-      success: const Color(0xFF4ADE80),
-      warning: const Color(0xFFFBBF24),
-      error: const Color(0xFFF87171),
-      info: const Color(0xFF60A5FA),
-      divider: const Color(0x20000000),
-      cardBorder: const Color(0x40FFFFFF),
-      overlay: const Color(0x40FFFFFF),
-      radiusSmall: radii.small,
-      radiusMedium: radii.medium,
-      radiusLarge: radii.large,
-      radiusXLarge: radii.xLarge,
-      radiusFull: radii.full,
-      shadowNone: const [],
-      shadowSubtle: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-      ],
-      shadowSmall: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.08),
-          blurRadius: 16,
-          offset: const Offset(0, 4),
-        ),
-        BoxShadow(
-          color: const Color(0xFF6E8EFA).withOpacity(0.1),
-          blurRadius: 20,
-          offset: const Offset(0, 8),
-        ),
-      ],
-      shadowMedium: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 24,
-          offset: const Offset(0, 8),
-        ),
-        BoxShadow(
-          color: const Color(0xFF6E8EFA).withOpacity(0.15),
-          blurRadius: 32,
-          offset: const Offset(0, 16),
-        ),
-      ],
-      shadowLarge: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.15),
-          blurRadius: 40,
-          offset: const Offset(0, 16),
-        ),
-        BoxShadow(
-          color: const Color(0xFF6E8EFA).withOpacity(0.2),
-          blurRadius: 48,
-          offset: const Offset(0, 24),
-        ),
-      ],
-      blurAmount: 20,
-      useGlass: true,
-      spacingXS: 4,
-      spacingS: 8,
-      spacingM: 16,
-      spacingL: 24,
-      spacingXL: 32,
-      spacingXXL: 48,
-      displayLarge: typography.displayLarge,
-      displayMedium: typography.displayMedium,
-      displaySmall: typography.displaySmall,
-      headlineLarge: typography.headlineLarge,
-      headlineMedium: typography.headlineMedium,
-      headlineSmall: typography.headlineSmall,
-      titleLarge: typography.titleLarge,
-      titleMedium: typography.titleMedium,
-      titleSmall: typography.titleSmall,
-      bodyLarge: typography.bodyLarge,
-      bodyMedium: typography.bodyMedium,
-      bodySmall: typography.bodySmall,
-      labelLarge: typography.labelLarge,
-      labelMedium: typography.labelMedium,
-      labelSmall: typography.labelSmall,
-      animationDuration: const Duration(milliseconds: 350),
-      animationFast: const Duration(milliseconds: 200),
-      animationSlow: const Duration(milliseconds: 600),
-      animationCurve: Curves.easeOutQuint,
-    );
-  }
-  
-  // ---------------------------------------------------------------------------
-  // THEME: MODERN (Neutral, Technical)
-  // ---------------------------------------------------------------------------
-  
-  static DesignTokens _createModern(_Radii radii) {
-    const primary = Color(0xFF3B82F6); // Blue
-    const secondary = Color(0xFF6366F1); // Indigo
     const background = Color(0xFFF8FAFC);
     const surface = Color(0xFFFFFFFF);
     const surfaceElevated = Color(0xFFFFFFFF);
@@ -623,10 +557,10 @@ class DesignTokens {
       textPrimary: textPrimary,
       textSecondary: textSecondary,
       textDisabled: textDisabled,
-      success: const Color(0xFF22C55E),
-      warning: const Color(0xFFF59E0B),
-      error: const Color(0xFFEF4444),
-      info: const Color(0xFF0EA5E9),
+      success: _intensify(const Color(0xFF16A34A), intensity),
+      warning: _intensify(const Color(0xFFEAB308), intensity),
+      error: _intensify(const Color(0xFFDC2626), intensity),
+      info: _intensify(const Color(0xFF0EA5E9), intensity),
       divider: const Color(0xFFE2E8F0),
       cardBorder: const Color(0xFFE2E8F0),
       overlay: const Color(0x10000000),
@@ -638,49 +572,32 @@ class DesignTokens {
       shadowNone: const [],
       shadowSubtle: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.03),
+          color: Colors.black.withOpacity(0.03 * intensity),
           blurRadius: 2,
           offset: const Offset(0, 1),
         ),
       ],
       shadowSmall: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.05),
+          color: Colors.black.withOpacity(0.05 * intensity),
           blurRadius: 4,
           offset: const Offset(0, 2),
-        ),
-        BoxShadow(
-          color: Colors.black.withOpacity(0.03),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
         ),
       ],
       shadowMedium: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.08),
+          color: Colors.black.withOpacity(0.08 * intensity),
           blurRadius: 12,
           offset: const Offset(0, 6),
-        ),
-        BoxShadow(
-          color: Colors.black.withOpacity(0.04),
-          blurRadius: 16,
-          offset: const Offset(0, 8),
         ),
       ],
       shadowLarge: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.1),
+          color: Colors.black.withOpacity(0.1 * intensity),
           blurRadius: 24,
           offset: const Offset(0, 12),
         ),
-        BoxShadow(
-          color: Colors.black.withOpacity(0.06),
-          blurRadius: 32,
-          offset: const Offset(0, 16),
-        ),
       ],
-      blurAmount: 0,
-      useGlass: false,
       spacingXS: 4,
       spacingS: 8,
       spacingM: 16,
@@ -710,18 +627,19 @@ class DesignTokens {
   }
   
   // ---------------------------------------------------------------------------
-  // THEME: MINIMAL (Black/White/Gray)
+  // THEME: MINIMAL (Black/White/Grey)
   // ---------------------------------------------------------------------------
   
-  static DesignTokens _createMinimal(_Radii radii) {
-    const primary = Color(0xFF171717); // Near Black
-    const secondary = Color(0xFF525252);
+  static DesignTokens _createMinimal(_Radii radii, double intensity, Color? customPrimary, Color? customSecondary) {
+    final primary = customPrimary ?? const Color(0xFF000000);
+    final secondary = customSecondary ?? const Color(0xFF525252);
+    
     const background = Color(0xFFFFFFFF);
     const surface = Color(0xFFFFFFFF);
     const surfaceElevated = Color(0xFFFAFAFA);
-    const textPrimary = Color(0xFF171717);
+    const textPrimary = Color(0xFF000000);
     const textSecondary = Color(0xFF737373);
-    const textDisabled = Color(0xFFA3A3A3);
+    const textDisabled = Color(0xFFD4D4D4);
     
     final typography = _createTypography(textPrimary, textSecondary);
     
@@ -734,10 +652,10 @@ class DesignTokens {
       textPrimary: textPrimary,
       textSecondary: textSecondary,
       textDisabled: textDisabled,
-      success: const Color(0xFF171717),
-      warning: const Color(0xFF525252),
-      error: const Color(0xFF171717),
-      info: const Color(0xFF525252),
+      success: const Color(0xFF22C55E),
+      warning: const Color(0xFFF59E0B),
+      error: const Color(0xFFEF4444),
+      info: const Color(0xFF3B82F6),
       divider: const Color(0xFFE5E5E5),
       cardBorder: const Color(0xFFE5E5E5),
       overlay: const Color(0x08000000),
@@ -747,30 +665,34 @@ class DesignTokens {
       radiusXLarge: radii.xLarge,
       radiusFull: radii.full,
       shadowNone: const [],
-      shadowSubtle: const [],
-      shadowSmall: [
+      shadowSubtle: [
         BoxShadow(
           color: Colors.black.withOpacity(0.04),
           blurRadius: 2,
           offset: const Offset(0, 1),
         ),
       ],
-      shadowMedium: [
+      shadowSmall: [
         BoxShadow(
           color: Colors.black.withOpacity(0.06),
-          blurRadius: 6,
-          offset: const Offset(0, 3),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ],
+      shadowMedium: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.08),
+          blurRadius: 8,
+          offset: const Offset(0, 4),
         ),
       ],
       shadowLarge: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.08),
-          blurRadius: 12,
-          offset: const Offset(0, 6),
+          color: Colors.black.withOpacity(0.12),
+          blurRadius: 16,
+          offset: const Offset(0, 8),
         ),
       ],
-      blurAmount: 0,
-      useGlass: false,
       spacingXS: 4,
       spacingS: 8,
       spacingM: 16,
@@ -795,17 +717,21 @@ class DesignTokens {
       animationDuration: const Duration(milliseconds: 200),
       animationFast: const Duration(milliseconds: 100),
       animationSlow: const Duration(milliseconds: 350),
-      animationCurve: Curves.easeOut,
+      animationCurve: Curves.easeInOut,
     );
   }
   
   // ---------------------------------------------------------------------------
-  // THEME: DARK (Dark Mode)
+  // THEME: DARK (Eye-friendly dark mode) - Intensivere Farben
   // ---------------------------------------------------------------------------
   
-  static DesignTokens _createDark(_Radii radii) {
-    const primary = Color(0xFF60A5FA); // Light Blue
-    const secondary = Color(0xFFA78BFA); // Light Purple
+  static DesignTokens _createDark(_Radii radii, double intensity, Color? customPrimary, Color? customSecondary) {
+    final basePrimary = customPrimary ?? const Color(0xFF60A5FA); // Bright Blue
+    final baseSecondary = customSecondary ?? const Color(0xFFA78BFA); // Light Purple
+    
+    final primary = _intensify(basePrimary, intensity);
+    final secondary = _intensify(baseSecondary, intensity);
+    
     const background = Color(0xFF0F0F0F);
     const surface = Color(0xFF1A1A1A);
     const surfaceElevated = Color(0xFF262626);
@@ -824,13 +750,13 @@ class DesignTokens {
       textPrimary: textPrimary,
       textSecondary: textSecondary,
       textDisabled: textDisabled,
-      success: const Color(0xFF4ADE80),
-      warning: const Color(0xFFFBBF24),
-      error: const Color(0xFFF87171),
-      info: const Color(0xFF38BDF8),
-      divider: const Color(0xFF262626),
+      success: _intensify(const Color(0xFF4ADE80), intensity),
+      warning: _intensify(const Color(0xFFFBBF24), intensity),
+      error: _intensify(const Color(0xFFF87171), intensity),
+      info: _intensify(const Color(0xFF38BDF8), intensity),
+      divider: const Color(0xFF2A2A2A),
       cardBorder: const Color(0xFF333333),
-      overlay: const Color(0x30FFFFFF),
+      overlay: const Color(0x20FFFFFF),
       radiusSmall: radii.small,
       radiusMedium: radii.medium,
       radiusLarge: radii.large,
@@ -861,12 +787,10 @@ class DesignTokens {
       shadowLarge: [
         BoxShadow(
           color: Colors.black.withOpacity(0.6),
-          blurRadius: 32,
-          offset: const Offset(0, 16),
+          blurRadius: 24,
+          offset: const Offset(0, 12),
         ),
       ],
-      blurAmount: 0,
-      useGlass: false,
       spacingXS: 4,
       spacingS: 8,
       spacingM: 16,
@@ -896,18 +820,22 @@ class DesignTokens {
   }
   
   // ---------------------------------------------------------------------------
-  // THEME: HELL (Light / Clean)
+  // THEME: HELL (Light, high readability) - Intensivere Farben
   // ---------------------------------------------------------------------------
   
-  static DesignTokens _createHell(_Radii radii) {
-    const primary = Color(0xFF007AFF); // iOS Blue
-    const secondary = Color(0xFF5856D6); // iOS Purple
-    const background = Color(0xFFF2F2F7); // iOS Light Gray Background
+  static DesignTokens _createHell(_Radii radii, double intensity, Color? customPrimary, Color? customSecondary) {
+    final basePrimary = customPrimary ?? const Color(0xFF3B82F6); // Vivid Blue
+    final baseSecondary = customSecondary ?? const Color(0xFF8B5CF6); // Vivid Purple
+    
+    final primary = _intensify(basePrimary, intensity);
+    final secondary = _intensify(baseSecondary, intensity);
+    
+    const background = Color(0xFFFAFAFA);
     const surface = Color(0xFFFFFFFF);
     const surfaceElevated = Color(0xFFFFFFFF);
-    const textPrimary = Color(0xFF000000);
-    const textSecondary = Color(0xFF8E8E93); // iOS Secondary Label
-    const textDisabled = Color(0xFFC7C7CC);
+    const textPrimary = Color(0xFF171717);
+    const textSecondary = Color(0xFF525252);
+    const textDisabled = Color(0xFFA3A3A3);
     
     final typography = _createTypography(textPrimary, textSecondary);
     
@@ -920,12 +848,12 @@ class DesignTokens {
       textPrimary: textPrimary,
       textSecondary: textSecondary,
       textDisabled: textDisabled,
-      success: const Color(0xFF34C759), // iOS Green
-      warning: const Color(0xFFFF9500), // iOS Orange
-      error: const Color(0xFFFF3B30), // iOS Red
-      info: const Color(0xFF5AC8FA), // iOS Teal
-      divider: const Color(0xFFC6C6C8),
-      cardBorder: const Color(0xFFE5E5EA),
+      success: _intensify(const Color(0xFF22C55E), intensity),
+      warning: _intensify(const Color(0xFFF59E0B), intensity),
+      error: _intensify(const Color(0xFFEF4444), intensity),
+      info: _intensify(const Color(0xFF0EA5E9), intensity),
+      divider: const Color(0xFFE5E5E5),
+      cardBorder: const Color(0xFFE5E5E5),
       overlay: const Color(0x08000000),
       radiusSmall: radii.small,
       radiusMedium: radii.medium,
@@ -936,33 +864,31 @@ class DesignTokens {
       shadowSubtle: [
         BoxShadow(
           color: Colors.black.withOpacity(0.04),
-          blurRadius: 3,
+          blurRadius: 2,
           offset: const Offset(0, 1),
         ),
       ],
       shadowSmall: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.08),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
+          color: Colors.black.withOpacity(0.06),
+          blurRadius: 6,
+          offset: const Offset(0, 2),
         ),
       ],
       shadowMedium: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.12),
-          blurRadius: 16,
-          offset: const Offset(0, 8),
+          color: Colors.black.withOpacity(0.1),
+          blurRadius: 12,
+          offset: const Offset(0, 6),
         ),
       ],
       shadowLarge: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.16),
-          blurRadius: 32,
-          offset: const Offset(0, 16),
+          color: Colors.black.withOpacity(0.15),
+          blurRadius: 20,
+          offset: const Offset(0, 10),
         ),
       ],
-      blurAmount: 0,
-      useGlass: false,
       spacingXS: 4,
       spacingS: 8,
       spacingM: 16,
@@ -987,48 +913,51 @@ class DesignTokens {
       animationDuration: const Duration(milliseconds: 250),
       animationFast: const Duration(milliseconds: 150),
       animationSlow: const Duration(milliseconds: 400),
-      animationCurve: Curves.easeInOut,
+      animationCurve: Curves.easeOutCubic,
     );
   }
   
   // ---------------------------------------------------------------------------
-  // HELPER: BorderRadius
+  // CONVENIENCE METHODS
   // ---------------------------------------------------------------------------
   
-  /// Erstellt BorderRadius aus dem Token-Wert
-  BorderRadius borderRadiusSmall() => BorderRadius.circular(radiusSmall);
-  BorderRadius borderRadiusMedium() => BorderRadius.circular(radiusMedium);
-  BorderRadius borderRadiusLarge() => BorderRadius.circular(radiusLarge);
-  BorderRadius borderRadiusXLarge() => BorderRadius.circular(radiusXLarge);
-  BorderRadius borderRadiusFull() => BorderRadius.circular(radiusFull);
-  
-  // ---------------------------------------------------------------------------
-  // HELPER: Card Decoration
-  // ---------------------------------------------------------------------------
-  
-  /// Standard Card Decoration
-  BoxDecoration cardDecoration({
-    Color? color,
-    List<BoxShadow>? shadow,
-    BorderRadius? borderRadius,
-  }) {
+  /// Erstellt eine Card-Decoration mit den aktuellen Tokens
+  BoxDecoration cardDecoration({List<BoxShadow>? shadow}) {
     return BoxDecoration(
-      color: color ?? surface,
-      borderRadius: borderRadius ?? borderRadiusMedium(),
-      boxShadow: shadow ?? shadowSmall,
-      border: Border.all(color: cardBorder, width: 0.5),
-    );
-  }
-  
-  /// Glass Card Decoration (für Glass-Theme)
-  BoxDecoration glassDecoration({
-    Color? color,
-    BorderRadius? borderRadius,
-  }) {
-    return BoxDecoration(
-      color: color ?? overlay,
-      borderRadius: borderRadius ?? borderRadiusMedium(),
+      color: surface,
+      borderRadius: BorderRadius.circular(radiusMedium),
       border: Border.all(color: cardBorder, width: 1),
+      boxShadow: shadow ?? shadowSmall,
+    );
+  }
+  
+  /// Erstellt eine Button-Decoration
+  BoxDecoration buttonDecoration({Color? color}) {
+    return BoxDecoration(
+      color: color ?? primary,
+      borderRadius: BorderRadius.circular(radiusSmall),
+    );
+  }
+  
+  /// Erstellt eine Input-Decoration
+  InputDecoration inputDecoration({String? label, String? hint}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      filled: true,
+      fillColor: surface,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(radiusSmall),
+        borderSide: BorderSide(color: divider),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(radiusSmall),
+        borderSide: BorderSide(color: divider),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(radiusSmall),
+        borderSide: BorderSide(color: primary, width: 2),
+      ),
     );
   }
 }
@@ -1090,69 +1019,6 @@ class _Typography {
 }
 
 // ============================================================================
-// EXTENSION: BuildContext
-// ============================================================================
-
-/// Extension für einfachen Zugriff auf Design Tokens
-extension DesignTokensExtension on BuildContext {
-  /// Schnellzugriff auf aktuelle Design Tokens
-  DesignTokens get tokens => DesignTokens.current;
-}
-
-// ============================================================================
-// GLASSMORPHISM WIDGET
-// ============================================================================
-
-/// Widget für Glassmorphism-Effekt
-class GlassContainer extends StatelessWidget {
-  final Widget child;
-  final BorderRadius? borderRadius;
-  final EdgeInsets? padding;
-  final Color? color;
-  
-  const GlassContainer({
-    super.key,
-    required this.child,
-    this.borderRadius,
-    this.padding,
-    this.color,
-  });
-  
-  @override
-  Widget build(BuildContext context) {
-    final tokens = DesignTokens.current;
-    
-    if (!tokens.useGlass) {
-      return Container(
-        padding: padding ?? EdgeInsets.all(tokens.spacingM),
-        decoration: tokens.cardDecoration(
-          borderRadius: borderRadius,
-        ),
-        child: child,
-      );
-    }
-    
-    return ClipRRect(
-      borderRadius: borderRadius ?? tokens.borderRadiusMedium(),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: tokens.blurAmount,
-          sigmaY: tokens.blurAmount,
-        ),
-        child: Container(
-          padding: padding ?? EdgeInsets.all(tokens.spacingM),
-          decoration: tokens.glassDecoration(
-            color: color,
-            borderRadius: borderRadius,
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-// ============================================================================
 // THEMED CARD WIDGET
 // ============================================================================
 
@@ -1177,20 +1043,11 @@ class ThemedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = DesignTokens.current;
     
-    Widget card;
-    
-    if (tokens.useGlass) {
-      card = GlassContainer(
-        padding: padding ?? EdgeInsets.all(tokens.spacingM),
-        child: child,
-      );
-    } else {
-      card = Container(
-        padding: padding ?? EdgeInsets.all(tokens.spacingM),
-        decoration: tokens.cardDecoration(shadow: shadow),
-        child: child,
-      );
-    }
+    Widget card = Container(
+      padding: padding ?? EdgeInsets.all(tokens.spacingM),
+      decoration: tokens.cardDecoration(shadow: shadow),
+      child: child,
+    );
     
     if (onTap != null) {
       card = GestureDetector(

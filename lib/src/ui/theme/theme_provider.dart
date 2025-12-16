@@ -1,11 +1,14 @@
 /// Theme Provider für globales Theme-Management
 /// 
 /// Verwaltet:
-/// - Aktuelles Theme-Preset (Fotzig, Glass, Modern, Minimal, Dark, Hell)
+/// - Aktuelles Theme-Preset (Fotzig, Modern, Minimal, Dark, Hell)
 /// - Aktuelle Shape-Style (Rund, Eckig)
+/// - Intensität der Farben (0.0 - 1.0)
+/// - Benutzerdefinierte Farben
 /// - Persistente Speicherung mit SharedPreferences
 /// - Live-Updates an alle Widgets
 
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'design_tokens.dart';
@@ -14,30 +17,50 @@ import 'design_tokens.dart';
 // STORAGE KEYS
 // ============================================================================
 
-const String _themePresetKey = 'theme_preset';
-const String _shapeStyleKey = 'shape_style';
+const String _themePresetKey = 'theme_preset_v2';
+const String _shapeStyleKey = 'shape_style_v2';
+const String _intensityKey = 'theme_intensity';
+const String _customPrimaryKey = 'custom_primary_color';
+const String _customSecondaryKey = 'custom_secondary_color';
+const String _useCustomColorsKey = 'use_custom_colors';
 
 // ============================================================================
 // THEME STATE
 // ============================================================================
 
-/// Kombinierter Theme State
+/// Kombinierter Theme State mit erweiterten Optionen
 class ThemeState {
   final ThemePreset preset;
   final ShapeStyle shape;
+  final double intensity; // 0.0 (mild) - 1.0 (intensiv)
+  final Color? customPrimaryColor;
+  final Color? customSecondaryColor;
+  final bool useCustomColors;
   
   const ThemeState({
     this.preset = ThemePreset.hell,
     this.shape = ShapeStyle.round,
+    this.intensity = 0.7, // Standard: 70%
+    this.customPrimaryColor,
+    this.customSecondaryColor,
+    this.useCustomColors = false,
   });
   
   ThemeState copyWith({
     ThemePreset? preset,
     ShapeStyle? shape,
+    double? intensity,
+    Color? customPrimaryColor,
+    Color? customSecondaryColor,
+    bool? useCustomColors,
   }) {
     return ThemeState(
       preset: preset ?? this.preset,
       shape: shape ?? this.shape,
+      intensity: intensity ?? this.intensity,
+      customPrimaryColor: customPrimaryColor ?? this.customPrimaryColor,
+      customSecondaryColor: customSecondaryColor ?? this.customSecondaryColor,
+      useCustomColors: useCustomColors ?? this.useCustomColors,
     );
   }
   
@@ -45,10 +68,22 @@ class ThemeState {
   void applyToTokens() {
     DesignTokens.setPreset(preset);
     DesignTokens.setShape(shape);
+    DesignTokens.setIntensity(intensity);
+    if (useCustomColors && customPrimaryColor != null) {
+      DesignTokens.setCustomColors(customPrimaryColor, customSecondaryColor);
+    } else {
+      DesignTokens.clearCustomColors();
+    }
   }
   
   /// Gibt die aktuellen Design Tokens zurück
-  DesignTokens get tokens => DesignTokens.forPreset(preset, shape);
+  DesignTokens get tokens => DesignTokens.forPreset(
+    preset, 
+    shape,
+    intensity: intensity,
+    customPrimary: useCustomColors ? customPrimaryColor : null,
+    customSecondary: useCustomColors ? customSecondaryColor : null,
+  );
   
   @override
   bool operator ==(Object other) =>
@@ -56,17 +91,23 @@ class ThemeState {
       other is ThemeState &&
           runtimeType == other.runtimeType &&
           preset == other.preset &&
-          shape == other.shape;
+          shape == other.shape &&
+          intensity == other.intensity &&
+          customPrimaryColor == other.customPrimaryColor &&
+          customSecondaryColor == other.customSecondaryColor &&
+          useCustomColors == other.useCustomColors;
   
   @override
-  int get hashCode => preset.hashCode ^ shape.hashCode;
+  int get hashCode => Object.hash(
+    preset, shape, intensity, customPrimaryColor, customSecondaryColor, useCustomColors
+  );
 }
 
 // ============================================================================
 // THEME NOTIFIER
 // ============================================================================
 
-/// StateNotifier für Theme-Management
+/// StateNotifier für Theme-Management mit erweiterten Features
 class ThemeNotifier extends StateNotifier<ThemeState> {
   ThemeNotifier() : super(const ThemeState()) {
     _loadFromPrefs();
@@ -77,8 +118,35 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
     try {
       final prefs = await SharedPreferences.getInstance();
       
-      final presetIndex = prefs.getInt(_themePresetKey);
-      final shapeIndex = prefs.getInt(_shapeStyleKey);
+      // Preset laden (Migration von alten Keys)
+      var presetIndex = prefs.getInt(_themePresetKey);
+      if (presetIndex == null) {
+        // Migration von altem Key
+        final oldPresetIndex = prefs.getInt('theme_preset');
+        if (oldPresetIndex != null) {
+          // Glass (index 1) wurde entfernt, also verschieben
+          presetIndex = oldPresetIndex >= 1 ? oldPresetIndex - 1 : oldPresetIndex;
+          if (presetIndex < 0) presetIndex = 0;
+        }
+      }
+      
+      final shapeIndex = prefs.getInt(_shapeStyleKey) ?? prefs.getInt('shape_style');
+      final intensity = prefs.getDouble(_intensityKey) ?? 0.7;
+      final useCustom = prefs.getBool(_useCustomColorsKey) ?? false;
+      
+      // Custom Colors laden
+      Color? customPrimary;
+      Color? customSecondary;
+      
+      final primaryValue = prefs.getInt(_customPrimaryKey);
+      final secondaryValue = prefs.getInt(_customSecondaryKey);
+      
+      if (primaryValue != null) {
+        customPrimary = Color(primaryValue);
+      }
+      if (secondaryValue != null) {
+        customSecondary = Color(secondaryValue);
+      }
       
       final preset = presetIndex != null && presetIndex < ThemePreset.values.length
           ? ThemePreset.values[presetIndex]
@@ -88,7 +156,14 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
           ? ShapeStyle.values[shapeIndex]
           : ShapeStyle.round;
       
-      state = ThemeState(preset: preset, shape: shape);
+      state = ThemeState(
+        preset: preset,
+        shape: shape,
+        intensity: intensity.clamp(0.0, 1.0),
+        customPrimaryColor: customPrimary,
+        customSecondaryColor: customSecondary,
+        useCustomColors: useCustom,
+      );
       state.applyToTokens();
     } catch (e) {
       // Bei Fehler Default-Werte behalten
@@ -102,6 +177,15 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setInt(_themePresetKey, state.preset.index);
       await prefs.setInt(_shapeStyleKey, state.shape.index);
+      await prefs.setDouble(_intensityKey, state.intensity);
+      await prefs.setBool(_useCustomColorsKey, state.useCustomColors);
+      
+      if (state.customPrimaryColor != null) {
+        await prefs.setInt(_customPrimaryKey, state.customPrimaryColor!.value);
+      }
+      if (state.customSecondaryColor != null) {
+        await prefs.setInt(_customSecondaryKey, state.customSecondaryColor!.value);
+      }
     } catch (e) {
       // Fehler beim Speichern ignorieren
     }
@@ -125,11 +209,51 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
     await _saveToPrefs();
   }
   
+  /// Setzt die Intensität (0.0 - 1.0)
+  Future<void> setIntensity(double intensity) async {
+    final clampedIntensity = intensity.clamp(0.0, 1.0);
+    if (state.intensity == clampedIntensity) return;
+    
+    state = state.copyWith(intensity: clampedIntensity);
+    state.applyToTokens();
+    await _saveToPrefs();
+  }
+  
+  /// Setzt benutzerdefinierte Farben
+  Future<void> setCustomColors({
+    required Color primary,
+    Color? secondary,
+  }) async {
+    state = state.copyWith(
+      customPrimaryColor: primary,
+      customSecondaryColor: secondary ?? _generateSecondaryColor(primary),
+      useCustomColors: true,
+    );
+    state.applyToTokens();
+    await _saveToPrefs();
+  }
+  
+  /// Aktiviert/Deaktiviert benutzerdefinierte Farben
+  Future<void> setUseCustomColors(bool use) async {
+    if (state.useCustomColors == use) return;
+    
+    state = state.copyWith(useCustomColors: use);
+    state.applyToTokens();
+    await _saveToPrefs();
+  }
+  
+  /// Generiert eine passende Sekundärfarbe
+  Color _generateSecondaryColor(Color primary) {
+    final hsl = HSLColor.fromColor(primary);
+    // Verschiebe Hue um 30 Grad für komplementäre Farbe
+    return hsl.withHue((hsl.hue + 30) % 360).toColor();
+  }
+  
   /// Setzt beides gleichzeitig
   Future<void> setTheme(ThemePreset preset, ShapeStyle shape) async {
     if (state.preset == preset && state.shape == shape) return;
     
-    state = ThemeState(preset: preset, shape: shape);
+    state = state.copyWith(preset: preset, shape: shape);
     state.applyToTokens();
     await _saveToPrefs();
   }
@@ -147,6 +271,13 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
         ? ShapeStyle.square
         : ShapeStyle.round;
     await setShape(newShape);
+  }
+  
+  /// Setzt alle Einstellungen auf Standard zurück
+  Future<void> resetToDefaults() async {
+    state = const ThemeState();
+    state.applyToTokens();
+    await _saveToPrefs();
   }
 }
 
@@ -169,6 +300,11 @@ final shapeStyleProvider = Provider<ShapeStyle>((ref) {
   return ref.watch(themeStateProvider).shape;
 });
 
+/// Provider für Intensität
+final themeIntensityProvider = Provider<double>((ref) {
+  return ref.watch(themeStateProvider).intensity;
+});
+
 /// Provider für aktuelle Design Tokens
 final designTokensProvider = Provider<DesignTokens>((ref) {
   final themeState = ref.watch(themeStateProvider);
@@ -181,8 +317,12 @@ final isDarkThemeProvider = Provider<bool>((ref) {
   return preset == ThemePreset.dark;
 });
 
-/// Provider um zu prüfen ob Glass Theme aktiv ist
-final isGlassThemeProvider = Provider<bool>((ref) {
-  final preset = ref.watch(themePresetProvider);
-  return preset == ThemePreset.glass;
+/// Provider um zu prüfen ob Custom Colors aktiv sind
+final useCustomColorsProvider = Provider<bool>((ref) {
+  return ref.watch(themeStateProvider).useCustomColors;
+});
+
+/// Provider für Custom Primary Color
+final customPrimaryColorProvider = Provider<Color?>((ref) {
+  return ref.watch(themeStateProvider).customPrimaryColor;
 });
