@@ -11,7 +11,8 @@ enum HomeWidgetType {
   greeting('Begrüßung', 'waving_hand'),
   quickAdd('Schnell hinzufügen', 'add_circle'),
   books('Bücher', 'menu_book'),
-  timer('Timer', 'timer');
+  timer('Timer', 'timer'),
+  school('Schule', 'school');
 
   final String label;
   final String iconName;
