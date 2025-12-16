@@ -554,7 +554,7 @@ class _SchoolScreenState extends ConsumerState<SchoolScreen> {
         screen = const SubjectProfilesScreen();
         break;
       case 'notes':
-        screen = const SchoolNotesScreen();
+        screen = NotesScreen();
         break;
       case 'calculator':
         screen = const GradeCalculatorScreen();
