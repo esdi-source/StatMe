@@ -19,3 +19,14 @@ export 'books_screen.dart';
 export 'book_search_screen.dart';
 export 'book_detail_screen.dart';
 export 'timer_widget_screen.dart';
+
+// School Module
+export 'school_screen.dart';
+export 'school/timetable_screen.dart';
+export 'school/grades_screen.dart';
+export 'school/subject_profiles_screen.dart';
+export 'school/study_time_screen.dart';
+export 'school/school_calendar_screen.dart';
+export 'school/homework_screen.dart';
+export 'school/notes_screen.dart';
+export 'school/grade_calculator_screen.dart';

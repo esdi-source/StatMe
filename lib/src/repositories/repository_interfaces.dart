@@ -73,3 +73,67 @@ abstract class BookRepository {
   Future<ReadingGoalModel> upsertReadingGoal(ReadingGoalModel goal);
   Future<void> addReadingSession(String oderId, ReadingSession session);
 }
+
+// ============================================================================
+// SCHOOL REPOSITORY
+// ============================================================================
+
+abstract class SchoolRepository {
+  // Fächer (Subjects)
+  Future<List<Subject>> getSubjects(String userId);
+  Future<Subject> addSubject(Subject subject);
+  Future<Subject> updateSubject(Subject subject);
+  Future<void> deleteSubject(String subjectId);
+  
+  // Stundenplan (Timetable)
+  Future<List<TimetableEntry>> getTimetable(String userId);
+  Future<List<TimetableEntry>> getTimetableForDay(String userId, Weekday weekday);
+  Future<TimetableEntry> addTimetableEntry(TimetableEntry entry);
+  Future<TimetableEntry> updateTimetableEntry(TimetableEntry entry);
+  Future<void> deleteTimetableEntry(String entryId);
+  
+  // Noten (Grades)
+  Future<List<Grade>> getGrades(String userId);
+  Future<List<Grade>> getGradesForSubject(String userId, String subjectId);
+  Future<Grade> addGrade(Grade grade);
+  Future<Grade> updateGrade(Grade grade);
+  Future<void> deleteGrade(String gradeId);
+  
+  // Lernzeit (Study Sessions)
+  Future<List<StudySession>> getStudySessions(String userId);
+  Future<List<StudySession>> getStudySessionsForSubject(String userId, String subjectId);
+  Future<List<StudySession>> getStudySessionsRange(String userId, DateTime start, DateTime end);
+  Future<StudySession> addStudySession(StudySession session);
+  Future<StudySession> updateStudySession(StudySession session);
+  Future<void> deleteStudySession(String sessionId);
+  
+  // Schultermine (School Events)
+  Future<List<SchoolEvent>> getSchoolEvents(String userId);
+  Future<List<SchoolEvent>> getUpcomingEvents(String userId, {int days = 14});
+  Future<List<SchoolEvent>> getEventsForSubject(String userId, String subjectId);
+  Future<SchoolEvent> addSchoolEvent(SchoolEvent event);
+  Future<SchoolEvent> updateSchoolEvent(SchoolEvent event);
+  Future<void> deleteSchoolEvent(String eventId);
+  
+  // Hausaufgaben (Homework)
+  Future<List<Homework>> getHomework(String userId);
+  Future<List<Homework>> getPendingHomework(String userId);
+  Future<List<Homework>> getHomeworkForSubject(String userId, String subjectId);
+  Future<Homework> addHomework(Homework homework);
+  Future<Homework> updateHomework(Homework homework);
+  Future<void> deleteHomework(String homeworkId);
+  
+  // Notizen (Notes)
+  Future<List<SchoolNote>> getNotes(String userId);
+  Future<List<SchoolNote>> getNotesForSubject(String userId, String subjectId);
+  Future<SchoolNote> addNote(SchoolNote note);
+  Future<SchoolNote> updateNote(SchoolNote note);
+  Future<void> deleteNote(String noteId);
+  
+  // Notenrechner Konfiguration
+  Future<GradeCalculatorConfig?> getGradeCalculatorConfig(String userId, {String? subjectId});
+  Future<GradeCalculatorConfig> upsertGradeCalculatorConfig(GradeCalculatorConfig config);
+  
+  // Aggregierte Daten
+  Future<SubjectProfile> getSubjectProfile(String userId, String subjectId);
+}
