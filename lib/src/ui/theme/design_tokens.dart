@@ -21,7 +21,6 @@ enum ThemePreset {
   fotzig('Fotzig', 'Lebendige Pastellfarben, verspielt'),
   modern('Modern', 'Neutral, klare Kontraste, technisch'),
   minimal('Minimal', 'Schwarz/Weiß/Grau, Fokus auf Inhalt'),
-  dark('Dark', 'Dunkle Hintergründe, augenschonend'),
   hell('Hell', 'Heller Hintergrund, hohe Lesbarkeit');
 
   final String label;
@@ -342,8 +341,6 @@ class DesignTokens {
         return _createModern(radii, intensity, customPrimary, customSecondary);
       case ThemePreset.minimal:
         return _createMinimal(radii, intensity, customPrimary, customSecondary);
-      case ThemePreset.dark:
-        return _createDark(radii, intensity, customPrimary, customSecondary);
       case ThemePreset.hell:
         return _createHell(radii, intensity, customPrimary, customSecondary);
     }
@@ -718,104 +715,6 @@ class DesignTokens {
       animationFast: const Duration(milliseconds: 100),
       animationSlow: const Duration(milliseconds: 350),
       animationCurve: Curves.easeInOut,
-    );
-  }
-  
-  // ---------------------------------------------------------------------------
-  // THEME: DARK (Eye-friendly dark mode) - Intensivere Farben
-  // ---------------------------------------------------------------------------
-  
-  static DesignTokens _createDark(_Radii radii, double intensity, Color? customPrimary, Color? customSecondary) {
-    final basePrimary = customPrimary ?? const Color(0xFF60A5FA); // Bright Blue
-    final baseSecondary = customSecondary ?? const Color(0xFFA78BFA); // Light Purple
-    
-    final primary = _intensify(basePrimary, intensity);
-    final secondary = _intensify(baseSecondary, intensity);
-    
-    const background = Color(0xFF0F0F0F);
-    const surface = Color(0xFF1A1A1A);
-    const surfaceElevated = Color(0xFF262626);
-    const textPrimary = Color(0xFFF5F5F5);
-    const textSecondary = Color(0xFFA3A3A3);
-    const textDisabled = Color(0xFF525252);
-    
-    final typography = _createTypography(textPrimary, textSecondary);
-    
-    return DesignTokens._(
-      primary: primary,
-      secondary: secondary,
-      background: background,
-      surface: surface,
-      surfaceElevated: surfaceElevated,
-      textPrimary: textPrimary,
-      textSecondary: textSecondary,
-      textDisabled: textDisabled,
-      success: _intensify(const Color(0xFF4ADE80), intensity),
-      warning: _intensify(const Color(0xFFFBBF24), intensity),
-      error: _intensify(const Color(0xFFF87171), intensity),
-      info: _intensify(const Color(0xFF38BDF8), intensity),
-      divider: const Color(0xFF2A2A2A),
-      cardBorder: const Color(0xFF333333),
-      overlay: const Color(0x20FFFFFF),
-      radiusSmall: radii.small,
-      radiusMedium: radii.medium,
-      radiusLarge: radii.large,
-      radiusXLarge: radii.xLarge,
-      radiusFull: radii.full,
-      shadowNone: const [],
-      shadowSubtle: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.3),
-          blurRadius: 4,
-          offset: const Offset(0, 2),
-        ),
-      ],
-      shadowSmall: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.4),
-          blurRadius: 8,
-          offset: const Offset(0, 4),
-        ),
-      ],
-      shadowMedium: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.5),
-          blurRadius: 16,
-          offset: const Offset(0, 8),
-        ),
-      ],
-      shadowLarge: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.6),
-          blurRadius: 24,
-          offset: const Offset(0, 12),
-        ),
-      ],
-      spacingXS: 4,
-      spacingS: 8,
-      spacingM: 16,
-      spacingL: 24,
-      spacingXL: 32,
-      spacingXXL: 48,
-      displayLarge: typography.displayLarge,
-      displayMedium: typography.displayMedium,
-      displaySmall: typography.displaySmall,
-      headlineLarge: typography.headlineLarge,
-      headlineMedium: typography.headlineMedium,
-      headlineSmall: typography.headlineSmall,
-      titleLarge: typography.titleLarge,
-      titleMedium: typography.titleMedium,
-      titleSmall: typography.titleSmall,
-      bodyLarge: typography.bodyLarge,
-      bodyMedium: typography.bodyMedium,
-      bodySmall: typography.bodySmall,
-      labelLarge: typography.labelLarge,
-      labelMedium: typography.labelMedium,
-      labelSmall: typography.labelSmall,
-      animationDuration: const Duration(milliseconds: 300),
-      animationFast: const Duration(milliseconds: 150),
-      animationSlow: const Duration(milliseconds: 500),
-      animationCurve: Curves.easeInOutCubic,
     );
   }
   

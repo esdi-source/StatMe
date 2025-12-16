@@ -668,6 +668,24 @@ class HomeScreenConfigNotifier extends StateNotifier<HomeScreenConfig?> {
     await _save();
   }
   
+  /// Widget-Farbe ändern
+  Future<void> updateWidgetColor(String widgetId, int? colorValue) async {
+    if (state == null) return;
+    
+    final widgets = state!.widgets.map((w) {
+      if (w.id == widgetId) {
+        return w.copyWith(
+          customColorValue: colorValue,
+          clearCustomColor: colorValue == null,
+        );
+      }
+      return w;
+    }).toList();
+    
+    state = state!.copyWith(widgets: widgets);
+    await _save();
+  }
+  
   /// Komplettes Layout ersetzen
   Future<void> setWidgets(List<HomeWidget> widgets) async {
     if (state == null) return;

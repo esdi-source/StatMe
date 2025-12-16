@@ -24,6 +24,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   bool _isEditMode = false;
   String? _draggedWidgetId;
   Offset _dragOffset = Offset.zero;
+  String? _resizingWidgetId;
+  Offset _resizeOffset = Offset.zero;
   
   // Animation für Wackeln im Edit-Mode
   late AnimationController _wiggleController;
@@ -84,6 +86,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Widget build(BuildContext context) {
     final user = ref.watch(authNotifierProvider).valueOrNull;
     final tokens = ref.watch(designTokensProvider);
+    final backgroundImagePath = ref.watch(backgroundImagePathProvider);
     
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -94,6 +97,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     return GestureDetector(
       // Tap auf freien Bereich beendet Edit-Mode
       onTap: _isEditMode ? _exitEditMode : null,
+      // Long Press auf Hintergrund aktiviert Edit-Mode
+      onLongPress: _isEditMode ? null : _enterEditMode,
       child: Scaffold(
         appBar: AppBar(
           title: Row(
@@ -139,6 +144,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ),
         body: Stack(
           children: [
+            // Hintergrundbild wenn gesetzt
+            if (backgroundImagePath != null)
+              Positioned.fill(
+                child: Image.network(
+                  backgroundImagePath,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const SizedBox(),
+                ),
+              ),
+            
             // Haupt-Content
             RefreshIndicator(
               onRefresh: _loadData,
@@ -240,7 +255,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     double cellWidth,
     double cellHeight,
   ) {
+    final widgetTransparency = ref.watch(widgetTransparencyProvider);
     final content = _buildWidgetContent(widget, tokens);
+    
+    // Widget-spezifische Farbe anwenden wenn gesetzt
+    Widget styledContent = widget.customColorValue != null
+        ? ColorFiltered(
+            colorFilter: ColorFilter.mode(
+              Color(widget.customColorValue!).withOpacity(0.15),
+              BlendMode.srcATop,
+            ),
+            child: content,
+          )
+        : content;
+    
+    // Transparenz anwenden
+    if (widgetTransparency > 0) {
+      styledContent = Opacity(
+        opacity: 1 - (widgetTransparency * 0.5), // Max 50% transparent
+        child: styledContent,
+      );
+    }
 
     if (_isEditMode) {
       return AnimatedBuilder(
@@ -252,22 +287,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
           );
         },
         child: GestureDetector(
-          onLongPress: () => _showWidgetOptions(widget, userId, tokens),
-          onPanStart: (_) {
+          behavior: HitTestBehavior.opaque,
+          // Sofortiges Dragging ohne Verzögerung
+          onPanStart: (details) {
             setState(() {
               _draggedWidgetId = widget.id;
               _dragOffset = Offset.zero;
             });
+            HapticFeedback.selectionClick();
           },
           onPanUpdate: (details) {
-            setState(() {
-              _dragOffset += details.delta;
-            });
+            if (_draggedWidgetId == widget.id) {
+              setState(() {
+                _dragOffset += details.delta;
+              });
+            }
           },
           onPanEnd: (details) {
-            _handleDragEnd(widget, userId, cellWidth, cellHeight);
+            if (_draggedWidgetId == widget.id) {
+              _handleDragEnd(widget, userId, cellWidth, cellHeight);
+            }
           },
           child: Stack(
+            clipBehavior: Clip.none,
             children: [
               // Widget mit Edit-Overlay
               Container(
@@ -280,29 +322,74 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(tokens.radiusMedium),
-                  child: content,
+                  child: styledContent,
                 ),
               ),
-              // Delete Button
+              
+              // Delete Button - größer und in Primary Color
               Positioned(
-                top: -8,
-                left: -8,
+                top: -10,
+                left: -10,
                 child: GestureDetector(
                   onTap: () => _deleteWidget(widget.id, userId),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: tokens.primary,
+                      shape: BoxShape.circle,
+                      boxShadow: tokens.shadowSmall,
+                    ),
+                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                  ),
+                ),
+              ),
+              
+              // Color Picker Button - Pinsel Icon
+              Positioned(
+                top: -10,
+                right: -10,
+                child: GestureDetector(
+                  onTap: () => _showColorPicker(widget, userId, tokens),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: tokens.secondary,
+                      shape: BoxShape.circle,
+                      boxShadow: tokens.shadowSmall,
+                    ),
+                    child: const Icon(Icons.brush, color: Colors.white, size: 16),
+                  ),
+                ),
+              ),
+              
+              // Resize Handle - unten rechts
+              Positioned(
+                bottom: -6,
+                right: -6,
+                child: GestureDetector(
+                  onPanStart: (_) {
+                    setState(() {
+                      _resizingWidgetId = widget.id;
+                      _resizeOffset = Offset.zero;
+                    });
+                  },
+                  onPanUpdate: (details) {
+                    setState(() {
+                      _resizeOffset += details.delta;
+                    });
+                  },
+                  onPanEnd: (_) => _handleResizeEnd(widget, userId, cellWidth, cellHeight),
                   child: Container(
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.3),
-                          blurRadius: 4,
-                        ),
-                      ],
+                      color: tokens.primary,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: tokens.shadowSmall,
                     ),
-                    child: const Icon(Icons.remove, color: Colors.white, size: 16),
+                    child: const Icon(Icons.open_in_full, color: Colors.white, size: 14),
                   ),
                 ),
               ),
@@ -315,7 +402,137 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     // Normal Mode - Long Press aktiviert Edit Mode
     return GestureDetector(
       onLongPress: _enterEditMode,
-      child: content,
+      child: styledContent,
+    );
+  }
+  
+  void _handleResizeEnd(HomeWidget widget, String userId, double cellWidth, double cellHeight) {
+    if (_resizingWidgetId != widget.id) return;
+    
+    // Berechne neue Größe basierend auf Resize-Offset
+    final deltaWidth = (_resizeOffset.dx / (cellWidth + cellPadding)).round();
+    final deltaHeight = (_resizeOffset.dy / (cellHeight + cellPadding)).round();
+    
+    // Bestimme neue Größe
+    final currentWidth = widget.size.gridWidth;
+    final currentHeight = widget.size.gridHeight;
+    final newWidth = (currentWidth + deltaWidth).clamp(1, 4);
+    final newHeight = (currentHeight + deltaHeight).clamp(1, 2);
+    
+    // Finde passende Größe
+    HomeWidgetSize? newSize;
+    for (final size in HomeWidgetSize.values) {
+      if (size.gridWidth == newWidth && size.gridHeight == newHeight) {
+        newSize = size;
+        break;
+      }
+    }
+    
+    // Falls keine exakte Übereinstimmung, finde nächstbeste
+    if (newSize == null) {
+      if (newWidth >= 4) {
+        newSize = HomeWidgetSize.wide;
+      } else if (newWidth >= 2 && newHeight >= 2) {
+        newSize = HomeWidgetSize.large;
+      } else if (newHeight >= 2) {
+        newSize = HomeWidgetSize.tall;
+      } else if (newWidth >= 2) {
+        newSize = HomeWidgetSize.medium;
+      } else {
+        newSize = HomeWidgetSize.small;
+      }
+    }
+    
+    if (newSize != widget.size) {
+      ref.read(homeScreenConfigProvider(userId).notifier).resizeWidget(widget.id, newSize);
+      HapticFeedback.selectionClick();
+    }
+    
+    setState(() {
+      _resizingWidgetId = null;
+      _resizeOffset = Offset.zero;
+    });
+  }
+  
+  void _showColorPicker(HomeWidget widget, String userId, DesignTokens tokens) {
+    final colors = [
+      null, // Standard (kein Custom Color)
+      tokens.primary,
+      tokens.secondary,
+      Colors.red,
+      Colors.orange,
+      Colors.amber,
+      Colors.green,
+      Colors.teal,
+      Colors.blue,
+      Colors.indigo,
+      Colors.purple,
+      Colors.pink,
+    ];
+    
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Widget-Farbe wählen',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: tokens.textPrimary),
+              ),
+            ),
+            const Divider(),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: colors.map((color) {
+                  final isSelected = (color == null && widget.customColorValue == null) ||
+                      (color != null && widget.customColorValue == color.value);
+                  
+                  return GestureDetector(
+                    onTap: () {
+                      Navigator.pop(context);
+                      ref.read(homeScreenConfigProvider(userId).notifier)
+                          .updateWidgetColor(widget.id, color?.value);
+                      HapticFeedback.selectionClick();
+                    },
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color ?? tokens.surface,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isSelected ? tokens.primary : Colors.grey.shade300,
+                          width: isSelected ? 3 : 1,
+                        ),
+                        boxShadow: isSelected ? tokens.shadowSmall : null,
+                      ),
+                      child: color == null
+                          ? Icon(Icons.format_color_reset, color: tokens.textSecondary)
+                          : (isSelected ? const Icon(Icons.check, color: Colors.white) : null),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 

@@ -42,6 +42,7 @@ class HomeWidget extends Equatable {
   final int gridX; // Position im Grid (0-3 für 4-Spalten-Grid)
   final int gridY; // Zeile im Grid
   final bool visible;
+  final int? customColorValue; // Individuelle Widget-Farbe (null = Standard)
 
   const HomeWidget({
     required this.id,
@@ -50,6 +51,7 @@ class HomeWidget extends Equatable {
     this.gridX = 0,
     this.gridY = 0,
     this.visible = true,
+    this.customColorValue,
   });
 
   HomeWidget copyWith({
@@ -59,6 +61,8 @@ class HomeWidget extends Equatable {
     int? gridX,
     int? gridY,
     bool? visible,
+    int? customColorValue,
+    bool clearCustomColor = false,
   }) {
     return HomeWidget(
       id: id ?? this.id,
@@ -67,6 +71,7 @@ class HomeWidget extends Equatable {
       gridX: gridX ?? this.gridX,
       gridY: gridY ?? this.gridY,
       visible: visible ?? this.visible,
+      customColorValue: clearCustomColor ? null : (customColorValue ?? this.customColorValue),
     );
   }
 
@@ -84,6 +89,7 @@ class HomeWidget extends Equatable {
       gridX: json['grid_x'] as int? ?? 0,
       gridY: json['grid_y'] as int? ?? 0,
       visible: json['visible'] as bool? ?? true,
+      customColorValue: json['custom_color'] as int?,
     );
   }
 
@@ -95,11 +101,12 @@ class HomeWidget extends Equatable {
       'grid_x': gridX,
       'grid_y': gridY,
       'visible': visible,
+      if (customColorValue != null) 'custom_color': customColorValue,
     };
   }
 
   @override
-  List<Object?> get props => [id, type, size, gridX, gridY, visible];
+  List<Object?> get props => [id, type, size, gridX, gridY, visible, customColorValue];
 }
 
 /// Die gesamte Homescreen-Konfiguration

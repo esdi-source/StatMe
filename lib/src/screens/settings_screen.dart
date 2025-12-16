@@ -1,7 +1,10 @@
 /// Settings Screen
 
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../core/config/app_config.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
@@ -60,7 +63,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       dailyCalorieGoal: int.tryParse(_calorieGoalController.text) ?? 2000,
       dailyStepsGoal: int.tryParse(_stepsGoalController.text) ?? 10000,
       notificationsEnabled: _notificationsEnabled,
-      darkMode: ref.read(themePresetProvider) == ThemePreset.dark,
+      darkMode: false, // Dark Mode wurde entfernt
       themeColorValue: ref.read(designTokensProvider).primary.value,
     );
 
@@ -181,6 +184,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 16),
             _buildShapeStyleSelector(themeState, tokens),
+            const SizedBox(height: 24),
+
+            // Erweiterte Anpassungen Section (NEU)
+            Text(
+              'Erweiterte Anpassungen',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Passe Farben, Transparenz und Hintergrund an.',
+              style: TextStyle(color: tokens.textSecondary, fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            _buildAdvancedCustomizationSection(themeState, tokens),
             const SizedBox(height: 24),
 
             // Daily Goals Section
@@ -380,6 +397,370 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  /// Erweiterte Anpassungen Widget
+  Widget _buildAdvancedCustomizationSection(ThemeState themeState, DesignTokens tokens) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Intensität Slider
+            _buildIntensitySlider(themeState, tokens),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 16),
+            
+            // Benutzerdefinierte Farben
+            _buildCustomColorsSection(themeState, tokens),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 16),
+            
+            // Widget-Transparenz
+            _buildTransparencySlider(themeState, tokens),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 16),
+            
+            // Hintergrundbild
+            _buildBackgroundImageSection(themeState, tokens),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildIntensitySlider(ThemeState themeState, DesignTokens tokens) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.gradient, size: 20, color: tokens.primary),
+            const SizedBox(width: 8),
+            Text(
+              'Farbintensität',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: tokens.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: tokens.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${(themeState.intensity * 100).round()}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: tokens.primary,
+            inactiveTrackColor: tokens.divider,
+            thumbColor: tokens.primary,
+            overlayColor: tokens.primary.withOpacity(0.2),
+          ),
+          child: Slider(
+            value: themeState.intensity,
+            min: 0.0,
+            max: 1.0,
+            divisions: 20,
+            onChanged: (value) {
+              ref.read(themeStateProvider.notifier).setIntensity(value);
+            },
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Mild', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+            Text('Intensiv', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+          ],
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildCustomColorsSection(ThemeState themeState, DesignTokens tokens) {
+    final primaryColors = [
+      Colors.red,
+      Colors.pink,
+      Colors.purple,
+      Colors.deepPurple,
+      Colors.indigo,
+      Colors.blue,
+      Colors.lightBlue,
+      Colors.cyan,
+      Colors.teal,
+      Colors.green,
+      Colors.lightGreen,
+      Colors.lime,
+      Colors.yellow,
+      Colors.amber,
+      Colors.orange,
+      Colors.deepOrange,
+    ];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.palette, size: 20, color: tokens.primary),
+            const SizedBox(width: 8),
+            Text(
+              'Eigene Hauptfarbe',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: tokens.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            Switch(
+              value: themeState.useCustomColors,
+              onChanged: (value) {
+                ref.read(themeStateProvider.notifier).setUseCustomColors(value);
+              },
+              activeColor: tokens.primary,
+            ),
+          ],
+        ),
+        if (themeState.useCustomColors) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: primaryColors.map((color) {
+              final isSelected = themeState.customPrimaryColor?.value == color.value;
+              return GestureDetector(
+                onTap: () {
+                  ref.read(themeStateProvider.notifier).setCustomColors(primary: color);
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? Colors.white : Colors.transparent,
+                      width: 3,
+                    ),
+                    boxShadow: isSelected ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.5),
+                        blurRadius: 8,
+                        spreadRadius: 2,
+                      ),
+                    ] : null,
+                  ),
+                  child: isSelected
+                      ? const Icon(Icons.check, color: Colors.white, size: 18)
+                      : null,
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  Widget _buildTransparencySlider(ThemeState themeState, DesignTokens tokens) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.opacity, size: 20, color: tokens.primary),
+            const SizedBox(width: 8),
+            Text(
+              'Widget-Transparenz',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: tokens.textPrimary,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: tokens.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '${(themeState.widgetTransparency * 100).round()}%',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: tokens.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: tokens.primary,
+            inactiveTrackColor: tokens.divider,
+            thumbColor: tokens.primary,
+            overlayColor: tokens.primary.withOpacity(0.2),
+          ),
+          child: Slider(
+            value: themeState.widgetTransparency,
+            min: 0.0,
+            max: 1.0,
+            divisions: 20,
+            onChanged: (value) {
+              ref.read(themeStateProvider.notifier).setWidgetTransparency(value);
+            },
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Opak', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+            Text('Transparent', style: TextStyle(fontSize: 11, color: tokens.textSecondary)),
+          ],
+        ),
+      ],
+    );
+  }
+  
+  Widget _buildBackgroundImageSection(ThemeState themeState, DesignTokens tokens) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.image, size: 20, color: tokens.primary),
+            const SizedBox(width: 8),
+            Text(
+              'Hintergrundbild',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: tokens.textPrimary,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        
+        if (themeState.hasBackgroundImage) ...[
+          // Vorschau des aktuellen Hintergrundbilds
+          ClipRRect(
+            borderRadius: BorderRadius.circular(tokens.radiusMedium),
+            child: Stack(
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Image.network(
+                    themeState.backgroundImagePath!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      color: tokens.surface,
+                      child: Icon(Icons.broken_image, color: tokens.textSecondary, size: 48),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: GestureDetector(
+                    onTap: () {
+                      ref.read(themeStateProvider.notifier).clearBackgroundImage();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Icon(Icons.delete, color: Colors.white, size: 20),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickBackgroundImage(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Galerie'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => _pickBackgroundImage(ImageSource.camera),
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Kamera'),
+              ),
+            ),
+          ],
+        ),
+        
+        if (kIsWeb)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'Tipp: Im Web können Bilder per URL eingefügt werden',
+              style: TextStyle(fontSize: 11, color: tokens.textSecondary),
+            ),
+          ),
+      ],
+    );
+  }
+  
+  Future<void> _pickBackgroundImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        // Für Web: base64 Data URL verwenden
+        // Für Native: Dateipfad verwenden
+        if (kIsWeb) {
+          final bytes = await image.readAsBytes();
+          final base64 = 'data:image/jpeg;base64,${Uri.encodeFull(String.fromCharCodes(bytes))}';
+          ref.read(themeStateProvider.notifier).setBackgroundImage(image.path);
+        } else {
+          ref.read(themeStateProvider.notifier).setBackgroundImage(image.path);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Bild konnte nicht geladen werden: $e')),
+        );
+      }
+    }
   }
 
   /// Theme-Preset Auswahl Widget

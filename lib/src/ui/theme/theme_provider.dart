@@ -23,6 +23,9 @@ const String _intensityKey = 'theme_intensity';
 const String _customPrimaryKey = 'custom_primary_color';
 const String _customSecondaryKey = 'custom_secondary_color';
 const String _useCustomColorsKey = 'use_custom_colors';
+const String _backgroundImagePathKey = 'background_image_path';
+const String _customTextColorKey = 'custom_text_color';
+const String _widgetTransparencyKey = 'widget_transparency';
 
 // ============================================================================
 // THEME STATE
@@ -36,6 +39,9 @@ class ThemeState {
   final Color? customPrimaryColor;
   final Color? customSecondaryColor;
   final bool useCustomColors;
+  final String? backgroundImagePath; // Pfad zum Hintergrundbild
+  final Color? customTextColor; // Benutzerdefinierte Textfarbe
+  final double widgetTransparency; // 0.0 (opak) - 1.0 (transparent)
   
   const ThemeState({
     this.preset = ThemePreset.hell,
@@ -44,7 +50,13 @@ class ThemeState {
     this.customPrimaryColor,
     this.customSecondaryColor,
     this.useCustomColors = false,
+    this.backgroundImagePath,
+    this.customTextColor,
+    this.widgetTransparency = 0.0, // Standard: opak
   });
+  
+  /// Ob ein Hintergrundbild gesetzt ist
+  bool get hasBackgroundImage => backgroundImagePath != null && backgroundImagePath!.isNotEmpty;
   
   ThemeState copyWith({
     ThemePreset? preset,
@@ -53,6 +65,11 @@ class ThemeState {
     Color? customPrimaryColor,
     Color? customSecondaryColor,
     bool? useCustomColors,
+    String? backgroundImagePath,
+    Color? customTextColor,
+    double? widgetTransparency,
+    bool clearBackgroundImage = false,
+    bool clearTextColor = false,
   }) {
     return ThemeState(
       preset: preset ?? this.preset,
@@ -61,6 +78,9 @@ class ThemeState {
       customPrimaryColor: customPrimaryColor ?? this.customPrimaryColor,
       customSecondaryColor: customSecondaryColor ?? this.customSecondaryColor,
       useCustomColors: useCustomColors ?? this.useCustomColors,
+      backgroundImagePath: clearBackgroundImage ? null : (backgroundImagePath ?? this.backgroundImagePath),
+      customTextColor: clearTextColor ? null : (customTextColor ?? this.customTextColor),
+      widgetTransparency: widgetTransparency ?? this.widgetTransparency,
     );
   }
   
@@ -95,11 +115,15 @@ class ThemeState {
           intensity == other.intensity &&
           customPrimaryColor == other.customPrimaryColor &&
           customSecondaryColor == other.customSecondaryColor &&
-          useCustomColors == other.useCustomColors;
+          useCustomColors == other.useCustomColors &&
+          backgroundImagePath == other.backgroundImagePath &&
+          customTextColor == other.customTextColor &&
+          widgetTransparency == other.widgetTransparency;
   
   @override
   int get hashCode => Object.hash(
-    preset, shape, intensity, customPrimaryColor, customSecondaryColor, useCustomColors
+    preset, shape, intensity, customPrimaryColor, customSecondaryColor, 
+    useCustomColors, backgroundImagePath, customTextColor, widgetTransparency,
   );
 }
 
@@ -133,19 +157,26 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
       final shapeIndex = prefs.getInt(_shapeStyleKey) ?? prefs.getInt('shape_style');
       final intensity = prefs.getDouble(_intensityKey) ?? 0.7;
       final useCustom = prefs.getBool(_useCustomColorsKey) ?? false;
+      final widgetTransparency = prefs.getDouble(_widgetTransparencyKey) ?? 0.0;
+      final backgroundImagePath = prefs.getString(_backgroundImagePathKey);
       
       // Custom Colors laden
       Color? customPrimary;
       Color? customSecondary;
+      Color? customTextColor;
       
       final primaryValue = prefs.getInt(_customPrimaryKey);
       final secondaryValue = prefs.getInt(_customSecondaryKey);
+      final textColorValue = prefs.getInt(_customTextColorKey);
       
       if (primaryValue != null) {
         customPrimary = Color(primaryValue);
       }
       if (secondaryValue != null) {
         customSecondary = Color(secondaryValue);
+      }
+      if (textColorValue != null) {
+        customTextColor = Color(textColorValue);
       }
       
       final preset = presetIndex != null && presetIndex < ThemePreset.values.length
@@ -163,6 +194,9 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
         customPrimaryColor: customPrimary,
         customSecondaryColor: customSecondary,
         useCustomColors: useCustom,
+        backgroundImagePath: backgroundImagePath,
+        customTextColor: customTextColor,
+        widgetTransparency: widgetTransparency.clamp(0.0, 1.0),
       );
       state.applyToTokens();
     } catch (e) {
@@ -179,12 +213,21 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
       await prefs.setInt(_shapeStyleKey, state.shape.index);
       await prefs.setDouble(_intensityKey, state.intensity);
       await prefs.setBool(_useCustomColorsKey, state.useCustomColors);
+      await prefs.setDouble(_widgetTransparencyKey, state.widgetTransparency);
       
       if (state.customPrimaryColor != null) {
         await prefs.setInt(_customPrimaryKey, state.customPrimaryColor!.value);
       }
       if (state.customSecondaryColor != null) {
         await prefs.setInt(_customSecondaryKey, state.customSecondaryColor!.value);
+      }
+      if (state.customTextColor != null) {
+        await prefs.setInt(_customTextColorKey, state.customTextColor!.value);
+      }
+      if (state.backgroundImagePath != null) {
+        await prefs.setString(_backgroundImagePathKey, state.backgroundImagePath!);
+      } else {
+        await prefs.remove(_backgroundImagePathKey);
       }
     } catch (e) {
       // Fehler beim Speichern ignorieren
@@ -273,6 +316,41 @@ class ThemeNotifier extends StateNotifier<ThemeState> {
     await setShape(newShape);
   }
   
+  /// Setzt das Hintergrundbild
+  Future<void> setBackgroundImage(String? imagePath) async {
+    if (imagePath == null) {
+      state = state.copyWith(clearBackgroundImage: true);
+    } else {
+      state = state.copyWith(backgroundImagePath: imagePath);
+    }
+    await _saveToPrefs();
+  }
+  
+  /// Entfernt das Hintergrundbild
+  Future<void> clearBackgroundImage() async {
+    state = state.copyWith(clearBackgroundImage: true);
+    await _saveToPrefs();
+  }
+  
+  /// Setzt die benutzerdefinierte Textfarbe
+  Future<void> setCustomTextColor(Color? color) async {
+    if (color == null) {
+      state = state.copyWith(clearTextColor: true);
+    } else {
+      state = state.copyWith(customTextColor: color);
+    }
+    await _saveToPrefs();
+  }
+  
+  /// Setzt die Widget-Transparenz (0.0 opak - 1.0 transparent)
+  Future<void> setWidgetTransparency(double transparency) async {
+    final clampedTransparency = transparency.clamp(0.0, 1.0);
+    if (state.widgetTransparency == clampedTransparency) return;
+    
+    state = state.copyWith(widgetTransparency: clampedTransparency);
+    await _saveToPrefs();
+  }
+  
   /// Setzt alle Einstellungen auf Standard zurück
   Future<void> resetToDefaults() async {
     state = const ThemeState();
@@ -311,12 +389,6 @@ final designTokensProvider = Provider<DesignTokens>((ref) {
   return themeState.tokens;
 });
 
-/// Provider um zu prüfen ob Dark Theme aktiv ist
-final isDarkThemeProvider = Provider<bool>((ref) {
-  final preset = ref.watch(themePresetProvider);
-  return preset == ThemePreset.dark;
-});
-
 /// Provider um zu prüfen ob Custom Colors aktiv sind
 final useCustomColorsProvider = Provider<bool>((ref) {
   return ref.watch(themeStateProvider).useCustomColors;
@@ -325,4 +397,24 @@ final useCustomColorsProvider = Provider<bool>((ref) {
 /// Provider für Custom Primary Color
 final customPrimaryColorProvider = Provider<Color?>((ref) {
   return ref.watch(themeStateProvider).customPrimaryColor;
+});
+
+/// Provider für Hintergrundbild-Pfad
+final backgroundImagePathProvider = Provider<String?>((ref) {
+  return ref.watch(themeStateProvider).backgroundImagePath;
+});
+
+/// Provider um zu prüfen ob ein Hintergrundbild gesetzt ist
+final hasBackgroundImageProvider = Provider<bool>((ref) {
+  return ref.watch(themeStateProvider).hasBackgroundImage;
+});
+
+/// Provider für benutzerdefinierte Textfarbe
+final customTextColorProvider = Provider<Color?>((ref) {
+  return ref.watch(themeStateProvider).customTextColor;
+});
+
+/// Provider für Widget-Transparenz
+final widgetTransparencyProvider = Provider<double>((ref) {
+  return ref.watch(themeStateProvider).widgetTransparency;
 });
