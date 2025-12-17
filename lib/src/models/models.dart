@@ -15,3 +15,4 @@ export 'sport_model.dart';
 export 'skin_model.dart';
 export 'hair_model.dart';
 export 'statistics_model.dart';
+export 'digestion_model.dart';

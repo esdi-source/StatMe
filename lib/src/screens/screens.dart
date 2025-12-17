@@ -52,3 +52,6 @@ export 'hair/hair_entry_screen.dart';
 export 'hair/hair_event_screen.dart';
 export 'hair/hair_products_screen.dart';
 export 'hair/hair_history_screen.dart';
+
+// Digestion (Verdauung) Module
+export 'digestion_screen.dart';

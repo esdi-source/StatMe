@@ -2092,3 +2092,134 @@ final hairCareStatisticsProvider = Provider.family<HairCareStatistics, String>((
     days: 7,
   );
 });
+
+// ============================================
+// DIGESTION PROVIDERS (Verdauung/Toilette)
+// ============================================
+
+/// Digestion Entries Notifier - Toilettengänge
+class DigestionEntriesNotifier extends StateNotifier<List<DigestionEntry>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  DigestionEntriesNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'digestion_entries';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => DigestionEntry.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  /// Holt Einträge für einen bestimmten Tag
+  List<DigestionEntry> getForDate(DateTime date) {
+    return state.where((e) => 
+      e.timestamp.year == date.year &&
+      e.timestamp.month == date.month &&
+      e.timestamp.day == date.day
+    ).toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+  
+  /// Holt Einträge für einen Zeitraum
+  List<DigestionEntry> getForRange(DateTime start, DateTime end) {
+    return state.where((e) {
+      return e.timestamp.isAfter(start.subtract(const Duration(days: 1))) &&
+             e.timestamp.isBefore(end.add(const Duration(days: 1)));
+    }).toList()..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+  
+  /// Letzter Eintrag
+  DigestionEntry? get lastEntry {
+    if (state.isEmpty) return null;
+    final sorted = [...state]..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    return sorted.first;
+  }
+  
+  /// Einträge von heute
+  List<DigestionEntry> get todayEntries {
+    final now = DateTime.now();
+    return getForDate(now);
+  }
+  
+  /// Anzahl Stuhlgänge heute
+  int get todayStoolCount {
+    return todayEntries.where((e) => 
+      e.type == ToiletType.stool || e.type == ToiletType.both
+    ).length;
+  }
+  
+  /// Durchschnittliche Konsistenz (letzte 7 Tage)
+  double? get avgConsistencyLast7Days {
+    final now = DateTime.now();
+    final week = getForRange(now.subtract(const Duration(days: 7)), now);
+    final stoolEntries = week.where((e) => e.consistency != null).toList();
+    if (stoolEntries.isEmpty) return null;
+    return stoolEntries.map((e) => e.consistency!.value).reduce((a, b) => a + b) 
+           / stoolEntries.length;
+  }
+  
+  /// Neuen Eintrag hinzufügen
+  Future<DigestionEntry> add(DigestionEntry entry) async {
+    state = [...state, entry];
+    await _save();
+    return entry;
+  }
+  
+  /// Eintrag aktualisieren
+  Future<void> update(DigestionEntry entry) async {
+    state = state.map((e) => e.id == entry.id ? entry : e).toList();
+    await _save();
+  }
+  
+  /// Eintrag löschen
+  Future<void> delete(String entryId) async {
+    state = state.where((e) => e.id != entryId).toList();
+    await _save();
+  }
+  
+  /// Statistik: Einträge pro Tag (letzte n Tage)
+  Map<DateTime, int> getEntriesPerDay(int days) {
+    final now = DateTime.now();
+    final result = <DateTime, int>{};
+    
+    for (var i = 0; i < days; i++) {
+      final date = DateTime(now.year, now.month, now.day).subtract(Duration(days: i));
+      result[date] = getForDate(date).length;
+    }
+    
+    return result;
+  }
+}
+
+final digestionEntriesProvider = StateNotifierProvider.family<DigestionEntriesNotifier, List<DigestionEntry>, String>((ref, userId) {
+  return DigestionEntriesNotifier(userId);
+});
+
+/// Provider für Tagesübersicht
+final digestionDaySummaryProvider = Provider.family<DigestionDaySummary, ({String userId, DateTime date})>((ref, params) {
+  final entries = ref.watch(digestionEntriesProvider(params.userId));
+  final dayEntries = entries.where((e) => 
+    e.timestamp.year == params.date.year &&
+    e.timestamp.month == params.date.month &&
+    e.timestamp.day == params.date.day
+  ).toList();
+  
+  return DigestionDaySummary(
+    date: params.date,
+    entries: dayEntries,
+  );
+});

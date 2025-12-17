@@ -648,6 +648,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _SkinWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SkinScreen()));
       case HomeWidgetType.hair:
         return _HairWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const HairScreen()));
+      case HomeWidgetType.digestion:
+        return _DigestionWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const DigestionScreen()));
       case HomeWidgetType.statistics:
         return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
@@ -790,6 +792,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.face_retouching_natural;
       case HomeWidgetType.hair:
         return Icons.content_cut;
+      case HomeWidgetType.digestion:
+        return Icons.science;
       case HomeWidgetType.statistics:
         return Icons.insights;
     }
@@ -1769,6 +1773,199 @@ class _HairWidget extends ConsumerWidget {
         ],
       ],
     );
+  }
+}
+
+class _DigestionWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final Color? customColor;
+  final VoidCallback? onTap;
+
+  const _DigestionWidget({required this.size, this.customColor, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final color = customColor ?? Colors.teal;
+    
+    if (user == null) {
+      return _UnifiedWidgetContainer(
+        color: color,
+        onTap: onTap,
+        child: _buildEmptyContent(color),
+      );
+    }
+    
+    final entries = ref.watch(digestionEntriesProvider(user.id));
+    
+    final now = DateTime.now();
+    final todayEntries = entries.where((e) => 
+      e.timestamp.year == now.year &&
+      e.timestamp.month == now.month &&
+      e.timestamp.day == now.day
+    ).toList();
+
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(todayEntries, entries, color),
+    );
+  }
+
+  Widget _buildEmptyContent(Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.science, size: 20, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Verdauung',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(List<DigestionEntry> todayEntries, List<DigestionEntry> allEntries, Color color) {
+    final bowelToday = todayEntries.where((e) => e.type == ToiletType.stool || e.type == ToiletType.both).length;
+    final urineToday = todayEntries.where((e) => e.type == ToiletType.urination || e.type == ToiletType.both).length;
+    
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: todayEntries.isNotEmpty
+                ? Text('$bowelToday', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: color))
+                : Icon(Icons.science, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Verdauung',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    // Berechne Durchschnittskonsistenz der letzten 7 Tage
+    final last7Days = allEntries.where((e) {
+      final daysDiff = DateTime.now().difference(e.timestamp).inDays;
+      return daysDiff <= 7 && (e.type == ToiletType.stool || e.type == ToiletType.both) && e.consistency != null;
+    }).toList();
+    
+    double? avgConsistency;
+    if (last7Days.isNotEmpty) {
+      avgConsistency = last7Days.map((e) => e.consistency!.value).reduce((a, b) => a + b) / last7Days.length;
+    }
+
+    // Mittlere und große Größen
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.science, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Verdauung',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            if (todayEntries.isNotEmpty) ...[
+              const Spacer(),
+              Icon(Icons.check_circle, size: 16, color: Colors.green),
+            ],
+          ],
+        ),
+        const Spacer(),
+        if (todayEntries.isNotEmpty) ...[
+          Row(
+            children: [
+              Text('🚽 $bowelToday', style: const TextStyle(fontSize: 14)),
+              const SizedBox(width: 12),
+              Text('💧 $urineToday', style: const TextStyle(fontSize: 14)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (avgConsistency != null)
+            Text(
+              'Ø Konsistenz: ${avgConsistency.toStringAsFixed(1)}',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade600,
+              ),
+            ),
+        ] else ...[
+          Text(
+            'Heute noch keine Einträge',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Tippen zum Eintragen',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+        if (size.isLarge && avgConsistency != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '📊 7-Tage Trend: ${_getConsistencyLabel(avgConsistency)}',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+  
+  String _getConsistencyLabel(double avg) {
+    if (avg < 2) return 'Zu fest';
+    if (avg < 3) return 'Fest';
+    if (avg < 5) return 'Normal ✓';
+    if (avg < 6) return 'Weich';
+    return 'Zu weich';
   }
 }
 

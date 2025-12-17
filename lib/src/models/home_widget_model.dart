@@ -15,6 +15,7 @@ enum HomeWidgetType {
   sport('Sport', 'fitness_center'),
   skin('Gesichtshaut', 'face_retouching_natural'),
   hair('Haarpflege', 'content_cut'),
+  digestion('Verdauung', 'science'),
   statistics('Statistik', 'insights');
 
   final String label;
