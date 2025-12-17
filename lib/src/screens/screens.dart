@@ -61,3 +61,6 @@ export 'supplement_screen.dart';
 
 // Media (Filme & Serien) Module
 export 'media_screen.dart';
+
+// Household (Haushalt) Module
+export 'household_screen.dart';

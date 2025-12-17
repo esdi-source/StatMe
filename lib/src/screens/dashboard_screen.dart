@@ -654,6 +654,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _SupplementsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SupplementScreen()));
       case HomeWidgetType.media:
         return _MediaWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const MediaScreen()));
+      case HomeWidgetType.household:
+        return _HouseholdWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const HouseholdScreen()));
       case HomeWidgetType.statistics:
         return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
@@ -802,6 +804,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.medication;
       case HomeWidgetType.media:
         return Icons.movie;
+      case HomeWidgetType.household:
+        return Icons.cleaning_services;
       case HomeWidgetType.statistics:
         return Icons.insights;
     }
@@ -2134,6 +2138,205 @@ class _MediaWidget extends ConsumerWidget {
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _HouseholdWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final Color? customColor;
+  final VoidCallback? onTap;
+
+  const _HouseholdWidget({required this.size, this.customColor, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final color = customColor ?? Colors.teal;
+    
+    if (user == null) {
+      return _UnifiedWidgetContainer(
+        color: color,
+        onTap: onTap,
+        child: _buildEmptyContent(color),
+      );
+    }
+    
+    final tasks = ref.watch(householdTasksProvider(user.id));
+    final completions = ref.watch(householdCompletionsProvider(user.id));
+    
+    // Berechne Status
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
+    final todayCompleted = completions.where((c) {
+      final d = c.completedAt;
+      return d.year == today.year && d.month == today.month && d.day == today.day && !c.wasSkipped;
+    }).length;
+    
+    // Überfällige und heute fällige
+    int overdueCount = 0;
+    int dueTodayCount = 0;
+    TaskWithStatus? nextDue;
+    
+    for (final task in tasks.where((t) => !t.isPaused && t.isRecurring)) {
+      final status = TaskWithStatus.calculate(task, completions);
+      if (status.isOverdue) {
+        overdueCount++;
+        nextDue ??= status;
+      } else if (status.isDueToday) {
+        dueTodayCount++;
+        nextDue ??= status;
+      }
+    }
+
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(tasks, todayCompleted, overdueCount, dueTodayCount, nextDue, color),
+    );
+  }
+
+  Widget _buildEmptyContent(Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.cleaning_services, size: 20, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Haushalt',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(List<HouseholdTask> tasks, int todayCompleted, int overdueCount, int dueTodayCount, TaskWithStatus? nextDue, Color color) {
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: overdueCount > 0
+                ? Text('$overdueCount', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red))
+                : todayCompleted > 0
+                    ? Text('✓$todayCompleted', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green))
+                    : Icon(Icons.cleaning_services, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Haushalt',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    // Mittlere und große Größen
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.cleaning_services, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Haushalt',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (overdueCount > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$overdueCount',
+                  style: TextStyle(fontSize: 10, color: Colors.red.shade700, fontWeight: FontWeight.bold),
+                ),
+              ),
+          ],
+        ),
+        const Spacer(),
+        if (tasks.isNotEmpty) ...[
+          Row(
+            children: [
+              Text('✓ $todayCompleted', style: TextStyle(fontSize: 14, color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+              Text(' heute', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              if (overdueCount + dueTodayCount > 0) ...[
+                const Spacer(),
+                Text('${overdueCount + dueTodayCount} offen', style: TextStyle(fontSize: 12, color: overdueCount > 0 ? Colors.red.shade600 : Colors.orange.shade600)),
+              ],
+            ],
+          ),
+          if (nextDue != null && size.isLarge) ...[
+            const SizedBox(height: 4),
+            Text(
+              '${nextDue.task.category.emoji} ${nextDue.task.name}',
+              style: TextStyle(
+                fontSize: 11,
+                color: nextDue.isOverdue ? Colors.red.shade600 : Colors.grey.shade600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ] else ...[
+          Text(
+            'Keine Aufgaben',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Tippen zum Einrichten',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
           ),
         ],
       ],

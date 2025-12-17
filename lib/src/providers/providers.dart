@@ -2545,3 +2545,118 @@ final mediaStatisticsProvider = Provider.family<MediaStatistics, String>((ref, u
   return MediaStatistics.calculate(entries);
 });
 
+// ==============================
+// Household (Haushalt) Provider
+// ==============================
+
+/// Household Tasks Notifier - verwaltet Haushaltsaufgaben
+class HouseholdTasksNotifier extends StateNotifier<List<HouseholdTask>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  HouseholdTasksNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'household_tasks';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => HouseholdTask.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  /// Aufgabe hinzufügen
+  Future<void> add(HouseholdTask task) async {
+    state = [...state, task];
+    await _save();
+  }
+  
+  /// Aufgabe aktualisieren
+  Future<void> update(HouseholdTask task) async {
+    state = state.map((t) => t.id == task.id ? task : t).toList();
+    await _save();
+  }
+  
+  /// Aufgabe löschen
+  Future<void> delete(String taskId) async {
+    state = state.where((t) => t.id != taskId).toList();
+    await _save();
+  }
+  
+  /// Aufgabe pausieren/fortsetzen
+  Future<void> togglePause(String taskId) async {
+    final task = state.firstWhere((t) => t.id == taskId);
+    await update(task.copyWith(isPaused: !task.isPaused, updatedAt: DateTime.now()));
+  }
+}
+
+final householdTasksProvider = StateNotifierProvider.family<HouseholdTasksNotifier, List<HouseholdTask>, String>((ref, userId) {
+  return HouseholdTasksNotifier(userId);
+});
+
+/// Household Completions Notifier - Erledigungen
+class HouseholdCompletionsNotifier extends StateNotifier<List<TaskCompletion>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  HouseholdCompletionsNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'household_completions';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => TaskCompletion.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  /// Erledigung hinzufügen
+  Future<void> add(TaskCompletion completion) async {
+    state = [...state, completion];
+    await _save();
+  }
+  
+  /// Letzte Erledigung für eine Aufgabe
+  TaskCompletion? lastCompletionFor(String taskId) {
+    final taskCompletions = state.where((c) => c.taskId == taskId && !c.wasSkipped).toList();
+    if (taskCompletions.isEmpty) return null;
+    taskCompletions.sort((a, b) => b.completedAt.compareTo(a.completedAt));
+    return taskCompletions.first;
+  }
+}
+
+final householdCompletionsProvider = StateNotifierProvider.family<HouseholdCompletionsNotifier, List<TaskCompletion>, String>((ref, userId) {
+  return HouseholdCompletionsNotifier(userId);
+});
+
+/// Provider für Household-Statistiken
+final householdStatisticsProvider = Provider.family<HouseholdStatistics, String>((ref, userId) {
+  final tasks = ref.watch(householdTasksProvider(userId));
+  final completions = ref.watch(householdCompletionsProvider(userId));
+  return HouseholdStatistics.calculate(tasks: tasks, completions: completions);
+});
+
