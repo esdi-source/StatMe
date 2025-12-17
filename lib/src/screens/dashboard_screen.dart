@@ -10,6 +10,7 @@ import '../providers/providers.dart';
 import '../models/models.dart';
 import '../models/home_widget_model.dart';
 import '../core/config/app_config.dart';
+import '../ui/widgets/color_picker_dialog.dart';
 import 'screens.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -326,70 +327,43 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
               ),
               
-              // Delete Button - größer und in Primary Color
+              // Zentraler minimaler Edit-Button
+              Positioned.fill(
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _showMinimalEditMenu(widget, userId, tokens),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: tokens.shadowSmall,
+                      ),
+                      child: const Icon(
+                        Icons.edit,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              
+              // Delete Button - nur noch oben links, dezenter
               Positioned(
-                top: -10,
-                left: -10,
+                top: -8,
+                left: -8,
                 child: GestureDetector(
                   onTap: () => _deleteWidget(widget.id, userId),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: tokens.primary,
-                      shape: BoxShape.circle,
-                      boxShadow: tokens.shadowSmall,
-                    ),
-                    child: const Icon(Icons.close, color: Colors.white, size: 18),
-                  ),
-                ),
-              ),
-              
-              // Color Picker Button - Pinsel Icon
-              Positioned(
-                top: -10,
-                right: -10,
-                child: GestureDetector(
-                  onTap: () => _showColorPicker(widget, userId, tokens),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: tokens.secondary,
-                      shape: BoxShape.circle,
-                      boxShadow: tokens.shadowSmall,
-                    ),
-                    child: const Icon(Icons.brush, color: Colors.white, size: 16),
-                  ),
-                ),
-              ),
-              
-              // Resize Handle - unten rechts
-              Positioned(
-                bottom: -6,
-                right: -6,
-                child: GestureDetector(
-                  onPanStart: (_) {
-                    setState(() {
-                      _resizingWidgetId = widget.id;
-                      _resizeOffset = Offset.zero;
-                    });
-                  },
-                  onPanUpdate: (details) {
-                    setState(() {
-                      _resizeOffset += details.delta;
-                    });
-                  },
-                  onPanEnd: (_) => _handleResizeEnd(widget, userId, cellWidth, cellHeight),
                   child: Container(
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: tokens.primary,
-                      borderRadius: BorderRadius.circular(6),
+                      color: Colors.red.shade400,
+                      shape: BoxShape.circle,
                       boxShadow: tokens.shadowSmall,
                     ),
-                    child: const Icon(Icons.open_in_full, color: Colors.white, size: 14),
+                    child: const Icon(Icons.close, color: Colors.white, size: 14),
                   ),
                 ),
               ),
@@ -417,7 +391,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     final currentWidth = widget.size.gridWidth;
     final currentHeight = widget.size.gridHeight;
     final newWidth = (currentWidth + deltaWidth).clamp(1, 4);
-    final newHeight = (currentHeight + deltaHeight).clamp(1, 2);
+    final newHeight = (currentHeight + deltaHeight).clamp(1, 3);
     
     // Finde passende Größe
     HomeWidgetSize? newSize;
@@ -430,7 +404,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     
     // Falls keine exakte Übereinstimmung, finde nächstbeste
     if (newSize == null) {
-      if (newWidth >= 4) {
+      if (newWidth >= 3 && newHeight >= 2) {
+        newSize = HomeWidgetSize.extraLarge;
+      } else if (newWidth >= 4) {
         newSize = HomeWidgetSize.wide;
       } else if (newWidth >= 2 && newHeight >= 2) {
         newSize = HomeWidgetSize.large;
@@ -454,86 +430,183 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     });
   }
   
-  void _showColorPicker(HomeWidget widget, String userId, DesignTokens tokens) {
-    final colors = [
-      null, // Standard (kein Custom Color)
-      tokens.primary,
-      tokens.secondary,
-      Colors.red,
-      Colors.orange,
-      Colors.amber,
-      Colors.green,
-      Colors.teal,
-      Colors.blue,
-      Colors.indigo,
-      Colors.purple,
-      Colors.pink,
-    ];
+  /// Zeigt minimales Edit-Menü mit Größe und Farbe
+  void _showMinimalEditMenu(HomeWidget widget, String userId, DesignTokens tokens) {
+    HapticFeedback.selectionClick();
     
     showModalBottomSheet(
       context: context,
-      builder: (context) => SafeArea(
-        child: Column(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              // Widget-Name
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(_getWidgetIcon(widget.type), color: tokens.primary),
+                    const SizedBox(width: 12),
+                    Text(
+                      widget.type.label,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const Divider(height: 1),
+              
+              // Größen-Auswahl als Grid
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Größe',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        HomeWidgetSize.small,
+                        HomeWidgetSize.medium,
+                        HomeWidgetSize.tall,
+                        HomeWidgetSize.large,
+                        HomeWidgetSize.wideHalf,
+                        HomeWidgetSize.wide,
+                        HomeWidgetSize.extraLarge,
+                        HomeWidgetSize.full,
+                      ].map((size) => _buildSizeChip(size, widget.size == size, () {
+                        ref.read(homeScreenConfigProvider(userId).notifier)
+                            .resizeWidget(widget.id, size);
+                        HapticFeedback.selectionClick();
+                      }, tokens)).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const Divider(height: 1),
+              
+              // Farbe
+              ListTile(
+                leading: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: widget.customColorValue != null 
+                        ? Color(widget.customColorValue!) 
+                        : tokens.primary.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: widget.customColorValue == null
+                      ? Icon(Icons.palette, size: 16, color: tokens.textSecondary)
+                      : null,
+                ),
+                title: const Text('Farbe anpassen'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showColorPicker(widget, userId, tokens);
+                },
+              ),
+              
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildSizeChip(HomeWidgetSize size, bool isSelected, VoidCallback onTap, DesignTokens tokens) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? tokens.primary : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isSelected ? tokens.primary : Colors.grey.shade300,
+          ),
+        ),
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
+            // Größen-Preview als Mini-Grid
+            _buildSizePreview(size, isSelected),
+            const SizedBox(width: 8),
+            Text(
+              '${size.gridWidth}×${size.gridHeight}',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : tokens.textPrimary,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Widget-Farbe wählen',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: tokens.textPrimary),
-              ),
-            ),
-            const Divider(),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: colors.map((color) {
-                  final isSelected = (color == null && widget.customColorValue == null) ||
-                      (color != null && widget.customColorValue == color.value);
-                  
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      ref.read(homeScreenConfigProvider(userId).notifier)
-                          .updateWidgetColor(widget.id, color?.value);
-                      HapticFeedback.selectionClick();
-                    },
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: color ?? tokens.surface,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected ? tokens.primary : Colors.grey.shade300,
-                          width: isSelected ? 3 : 1,
-                        ),
-                        boxShadow: isSelected ? tokens.shadowSmall : null,
-                      ),
-                      child: color == null
-                          ? Icon(Icons.format_color_reset, color: tokens.textSecondary)
-                          : (isSelected ? const Icon(Icons.check, color: Colors.white) : null),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 16),
           ],
         ),
       ),
     );
+  }
+  
+  Widget _buildSizePreview(HomeWidgetSize size, bool isSelected) {
+    final color = isSelected ? Colors.white : Colors.grey.shade400;
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: CustomPaint(
+        painter: _SizePreviewPainter(
+          width: size.gridWidth,
+          height: size.gridHeight,
+          color: color,
+        ),
+      ),
+    );
+  }
+  
+  void _showColorPicker(HomeWidget widget, String userId, DesignTokens tokens) async {
+    final color = await ColorPickerDialog.show(
+      context,
+      initialColor: widget.customColorValue != null 
+          ? Color(widget.customColorValue!)
+          : null,
+    );
+    
+    ref.read(homeScreenConfigProvider(userId).notifier)
+        .updateWidgetColor(widget.id, color?.value);
+    HapticFeedback.selectionClick();
   }
 
   void _handleDragEnd(HomeWidget widget, String userId, double cellWidth, double cellHeight) {
@@ -741,9 +814,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       case HomeWidgetSize.large:
         return Icons.crop_din;
       case HomeWidgetSize.wide:
+      case HomeWidgetSize.wideHalf:
         return Icons.panorama_wide_angle;
       case HomeWidgetSize.tall:
+      case HomeWidgetSize.tallMedium:
         return Icons.crop_portrait;
+      case HomeWidgetSize.largeTall:
+      case HomeWidgetSize.extraLarge:
+      case HomeWidgetSize.full:
+      case HomeWidgetSize.fullWide:
+        return Icons.aspect_ratio;
     }
   }
 
@@ -888,6 +968,44 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
 }
 
 // ============================================
+// SIZE PREVIEW PAINTER
+// ============================================
+
+class _SizePreviewPainter extends CustomPainter {
+  final int width;
+  final int height;
+  final Color color;
+
+  _SizePreviewPainter({
+    required this.width,
+    required this.height,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cellWidth = size.width / 4;
+    final cellHeight = size.height / 3;
+    
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, cellWidth * width, cellHeight * height),
+      const Radius.circular(2),
+    );
+    canvas.drawRRect(rect, paint);
+  }
+
+  @override
+  bool shouldRepaint(_SizePreviewPainter oldDelegate) =>
+      width != oldDelegate.width || 
+      height != oldDelegate.height || 
+      color != oldDelegate.color;
+}
+
+// ============================================
 // EDIT MODE BUTTON
 // ============================================
 
@@ -952,14 +1070,14 @@ class _GreetingWidget extends ConsumerWidget {
         child: Row(
           children: [
             CircleAvatar(
-              radius: size == HomeWidgetSize.small ? 20 : 28,
+              radius: size.isSmall ? 20 : 28,
               backgroundColor: tokens.primary.withOpacity(0.1),
               child: Text(
                 user?.displayName?.isNotEmpty == true
                     ? user!.displayName![0].toUpperCase()
                     : user?.email[0].toUpperCase() ?? 'D',
                 style: TextStyle(
-                  fontSize: size == HomeWidgetSize.small ? 16 : 20,
+                  fontSize: size.isSmall ? 16 : 20,
                   fontWeight: FontWeight.bold,
                   color: tokens.primary,
                 ),
@@ -974,11 +1092,11 @@ class _GreetingWidget extends ConsumerWidget {
                   Text(
                     '$greeting!',
                     style: TextStyle(
-                      fontSize: size == HomeWidgetSize.small ? 14 : 18,
+                      fontSize: size.isSmall ? 14 : 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (size != HomeWidgetSize.small)
+                  if (!size.isSmall)
                     Text(
                       DateFormat('EEEE, d. MMMM', 'de_DE').format(DateTime.now()),
                       style: TextStyle(
@@ -1407,7 +1525,7 @@ class _TimerWidget extends ConsumerWidget {
                   color: Colors.white,
                 ),
               ),
-              if (size != HomeWidgetSize.small) ...[
+              if (!size.isSmall) ...[
                 const SizedBox(height: 8),
                 Text(
                   '$totalMinutesToday min',
@@ -1482,7 +1600,7 @@ class _SchoolWidget extends ConsumerWidget {
                   color: Colors.white,
                 ),
               ),
-              if (size != HomeWidgetSize.small) ...[
+              if (!size.isSmall) ...[
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1576,7 +1694,7 @@ class _SportWidget extends ConsumerWidget {
                   color: Colors.white,
                 ),
               ),
-              if (size != HomeWidgetSize.small) ...[
+              if (!size.isSmall) ...[
                 const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1586,7 +1704,7 @@ class _SportWidget extends ConsumerWidget {
                     _buildBadge(Icons.today, todaySessions, Colors.lightBlue),
                   ],
                 ),
-                if (size == HomeWidgetSize.large) ...[
+                if (size.isLarge) ...[
                   const SizedBox(height: 8),
                   Text(
                     '$weekSessions Einheiten diese Woche',
@@ -1682,7 +1800,7 @@ class _SkinWidget extends ConsumerWidget {
                   color: Colors.white,
                 ),
               ),
-              if (size != HomeWidgetSize.small) ...[
+              if (!size.isSmall) ...[
                 const SizedBox(height: 8),
                 if (todayEntry != null)
                   Text(
@@ -1704,7 +1822,7 @@ class _SkinWidget extends ConsumerWidget {
                       ),
                     ),
                   ),
-                if (size == HomeWidgetSize.large && dailySteps.isNotEmpty) ...[
+                if (size.isLarge && dailySteps.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     'Routine: $completedToday/${dailySteps.length}',
@@ -1850,7 +1968,7 @@ class _StatisticsWidget extends ConsumerWidget {
       }
     }
     
-    final isSmall = size == HomeWidgetSize.small;
+    final isSmall = size.isSmall;
 
     return Card(
       clipBehavior: Clip.antiAlias,

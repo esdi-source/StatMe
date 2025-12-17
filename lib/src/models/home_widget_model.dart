@@ -23,19 +23,40 @@ enum HomeWidgetType {
   const HomeWidgetType(this.label, this.iconName);
 }
 
-/// Widget-Größe im Grid (wie bei iOS: 1x1 klein, 2x2 mittel, etc.)
+/// Widget-Größe im Grid - erweitert für flexible Layouts
 enum HomeWidgetSize {
-  small(1, 1, 'Klein (1x1)'),
-  medium(2, 1, 'Mittel (2x1)'),
-  large(2, 2, 'Groß (2x2)'),
-  wide(4, 1, 'Breit (4x1)'),
-  tall(1, 2, 'Hoch (1x2)');
+  // Basis-Größen
+  small(1, 1, 'Klein (1×1)'),
+  medium(2, 1, 'Mittel (2×1)'),
+  large(2, 2, 'Groß (2×2)'),
+  
+  // Erweiterte Größen
+  wide(4, 1, 'Breit (4×1)'),
+  tall(1, 2, 'Hoch (1×2)'),
+  wideHalf(3, 1, 'Breit-Halb (3×1)'),
+  tallMedium(1, 3, 'Hoch-Mittel (1×3)'),
+  largeTall(2, 3, 'Groß-Hoch (2×3)'),
+  extraLarge(3, 2, 'Extra-Groß (3×2)'),
+  full(3, 3, 'Voll (3×3)'),
+  fullWide(4, 2, 'Voll-Breit (4×2)');
 
   final int gridWidth;
   final int gridHeight;
   final String label;
 
   const HomeWidgetSize(this.gridWidth, this.gridHeight, this.label);
+  
+  /// Gesamtfläche in Grid-Zellen
+  int get area => gridWidth * gridHeight;
+  
+  /// Ist dies eine kleine Größe? (1-2 Zellen)
+  bool get isSmall => area <= 2;
+  
+  /// Ist dies eine mittlere Größe? (3-4 Zellen)
+  bool get isMedium => area >= 3 && area <= 4;
+  
+  /// Ist dies eine große Größe? (5+ Zellen)
+  bool get isLarge => area >= 5;
 }
 
 /// Ein einzelnes Widget auf dem Homescreen
