@@ -8,6 +8,7 @@ import '../models/book_model.dart';
 import '../models/micro_widget_model.dart';
 import '../models/timer_widget_model.dart';
 import '../services/google_books_service.dart';
+import '../ui/widgets/book_cover_widget.dart';
 import 'book_search_screen.dart';
 import 'book_detail_screen.dart';
 import 'barcode_scanner_screen.dart';
@@ -897,93 +898,13 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
   // HELPER METHODS
   // ============================================
 
-  /// Generiert die Open Library Cover URL basierend auf ISBN
-  String? _getOpenLibraryCoverUrl(BookModel book) {
-    if (book.isbn != null && book.isbn!.isNotEmpty) {
-      // Open Library Covers API: https://covers.openlibrary.org/b/isbn/{isbn}-L.jpg
-      // Größen: S (small), M (medium), L (large)
-      return 'https://covers.openlibrary.org/b/isbn/${book.isbn}-L.jpg';
-    }
-    return null;
-  }
-
   Widget _buildBookCover(BookModel book, DesignTokens tokens) {
-    // 1. Zuerst vorhandene coverUrl verwenden (Google Books)
-    if (book.coverUrl != null && book.coverUrl!.isNotEmpty) {
-      return Image.network(
-        book.coverUrl!,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            color: tokens.surface,
-            child: Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                    : null,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (_, __, ___) => _buildOpenLibraryCoverOrDefault(book, tokens),
-      );
-    }
-    
-    // 2. Fallback: Open Library Cover versuchen
-    return _buildOpenLibraryCoverOrDefault(book, tokens);
-  }
-
-  Widget _buildOpenLibraryCoverOrDefault(BookModel book, DesignTokens tokens) {
-    final openLibraryUrl = _getOpenLibraryCoverUrl(book);
-    
-    if (openLibraryUrl != null) {
-      return Image.network(
-        openLibraryUrl,
-        fit: BoxFit.cover,
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            color: tokens.surface,
-            child: Center(
-              child: CircularProgressIndicator(
-                value: loadingProgress.expectedTotalBytes != null
-                    ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                    : null,
-                strokeWidth: 2,
-              ),
-            ),
-          );
-        },
-        errorBuilder: (_, __, ___) => _buildDefaultCover(book, tokens),
-      );
-    }
-    
-    return _buildDefaultCover(book, tokens);
-  }
-
-  Widget _buildDefaultCover(BookModel book, DesignTokens tokens) {
-    return Container(
-      color: tokens.primary.withOpacity(0.1),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.menu_book, size: 32, color: tokens.primary),
-            const SizedBox(height: 4),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Text(
-                book.title,
-                maxLines: 2,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 9, color: tokens.textSecondary),
-              ),
-            ),
-          ],
-        ),
-      ),
+    // Verwende das neue BookCoverWidget mit intelligenter Ladung
+    return CompactBookCover(
+      book: book,
+      width: double.infinity,
+      height: double.infinity,
+      borderRadius: BorderRadius.zero, // Card clippt bereits
     );
   }
 

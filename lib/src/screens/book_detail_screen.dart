@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
 import '../models/book_model.dart';
+import '../ui/widgets/book_cover_widget.dart';
 
 class BookDetailScreen extends ConsumerStatefulWidget {
   final BookModel book;
@@ -97,13 +98,15 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(tokens.radiusSmall),
-            child: SizedBox(
-              width: 100,
-              height: 150,
-              child: _buildCover(tokens),
-            ),
+          // Neues Cover-Widget mit Retry und Upload
+          DetailBookCover(
+            book: _book,
+            width: 100,
+            height: 150,
+            onCoverUpdated: () {
+              // Buch neu laden um aktualisiertes Cover zu erhalten
+              setState(() {});
+            },
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -141,46 +144,6 @@ class _BookDetailScreenState extends ConsumerState<BookDetailScreen> {
                   ),
                 ],
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCover(DesignTokens tokens) {
-    if (_book.coverUrl != null && _book.coverUrl!.isNotEmpty) {
-      String coverUrl = _book.coverUrl!;
-      coverUrl = coverUrl.replaceFirst('http://', 'https://');
-      if (coverUrl.contains('zoom=')) {
-        coverUrl = coverUrl.replaceFirst(RegExp(r'zoom=\d'), 'zoom=3');
-      }
-      
-      return Image.network(
-        coverUrl,
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => _buildPlaceholderCover(tokens),
-      );
-    }
-    return _buildPlaceholderCover(tokens);
-  }
-
-  Widget _buildPlaceholderCover(DesignTokens tokens) {
-    return Container(
-      color: tokens.divider,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.menu_book, size: 32, color: tokens.textDisabled),
-          const SizedBox(height: 4),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              _book.title,
-              textAlign: TextAlign.center,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 8, color: tokens.textSecondary),
             ),
           ),
         ],
