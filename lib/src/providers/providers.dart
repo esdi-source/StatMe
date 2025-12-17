@@ -645,19 +645,30 @@ class HomeScreenConfigNotifier extends StateNotifier<HomeScreenConfig?> {
     await _save();
   }
   
-  /// Widget-Position ändern
+  /// Widget-Position ändern mit Kollisionserkennung
   Future<void> moveWidget(String widgetId, int newGridX, int newGridY) async {
     if (state == null) return;
     
-    final widgets = state!.widgets.map((w) {
-      if (w.id == widgetId) {
-        return w.copyWith(
-          gridX: newGridX.clamp(0, state!.gridColumns - w.size.gridWidth),
-          gridY: newGridY.clamp(0, 99),
-        );
-      }
-      return w;
-    }).toList();
+    final gridColumns = state!.gridColumns;
+    var widgets = List<HomeWidget>.from(state!.widgets);
+    
+    final widgetIndex = widgets.indexWhere((w) => w.id == widgetId);
+    if (widgetIndex == -1) return;
+    
+    var widget = widgets[widgetIndex];
+    
+    // Stelle sicher, dass das Widget nicht über den Rand hinausgeht
+    final clampedX = newGridX.clamp(0, gridColumns - widget.size.gridWidth);
+    final clampedY = newGridY.clamp(0, 99);
+    
+    widget = widget.copyWith(
+      gridX: clampedX,
+      gridY: clampedY,
+    );
+    widgets[widgetIndex] = widget;
+    
+    // Finde alle Kollisionen und verschiebe andere Widgets nach unten
+    widgets = _resolveCollisions(widgets, widgetId, gridColumns);
     
     state = state!.copyWith(widgets: widgets);
     await _save();

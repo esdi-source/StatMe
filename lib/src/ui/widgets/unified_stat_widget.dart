@@ -42,8 +42,8 @@ class UnifiedStatWidget extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: color.withOpacity(0.2),
-          width: 1.5,
+          color: color.withOpacity(0.4), // Erhöht von 0.2
+          width: 2,
         ),
       ),
       child: InkWell(
@@ -54,8 +54,8 @@ class UnifiedStatWidget extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                color.withOpacity(0.08),
-                color.withOpacity(0.03),
+                color.withOpacity(0.20), // Erhöht von 0.08
+                color.withOpacity(0.08), // Erhöht von 0.03
               ],
             ),
           ),

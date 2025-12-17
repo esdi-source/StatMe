@@ -28,6 +28,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   Offset _dragOffset = Offset.zero;
   String? _resizingWidgetId;
   Offset _resizeOffset = Offset.zero;
+  HomeWidgetSize? _previewSize; // Live-Preview für Resize
   
   // Animation für Wackeln im Edit-Mode
   late AnimationController _wiggleController;
@@ -276,11 +277,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     }
 
     if (_isEditMode) {
+      // Berechne Preview-Größe während Resize
+      final isResizing = _resizingWidgetId == widget.id;
+      final displaySize = isResizing && _previewSize != null ? _previewSize! : widget.size;
+      
       return AnimatedBuilder(
         animation: _wiggleAnimation,
         builder: (context, child) {
           return Transform.rotate(
-            angle: _wiggleAnimation.value,
+            angle: isResizing ? 0 : _wiggleAnimation.value,
             child: child,
           );
         },
@@ -314,8 +319,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(tokens.radiusMedium),
                   border: Border.all(
-                    color: tokens.primary.withOpacity(0.5),
-                    width: 2,
+                    color: isResizing ? Colors.blue : tokens.primary.withOpacity(0.5),
+                    width: isResizing ? 3 : 2,
                   ),
                 ),
                 child: ClipRRect(
@@ -324,29 +329,30 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                 ),
               ),
               
-              // Zentraler minimaler Edit-Button
-              Positioned.fill(
-                child: Center(
-                  child: GestureDetector(
-                    onTap: () => _showMinimalEditMenu(widget, userId, tokens),
+              // Größen-Anzeige während Resize
+              if (isResizing)
+                Positioned.fill(
+                  child: Center(
                     child: Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.blue.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(12),
-                        boxShadow: tokens.shadowSmall,
+                        boxShadow: tokens.shadowMedium,
                       ),
-                      child: const Icon(
-                        Icons.edit,
-                        color: Colors.white,
-                        size: 20,
+                      child: Text(
+                        '${displaySize.gridWidth}×${displaySize.gridHeight}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
               
-              // Delete Button - nur noch oben links, dezenter
+              // Delete Button - oben links
               Positioned(
                 top: -8,
                 left: -8,
@@ -364,6 +370,73 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
                   ),
                 ),
               ),
+              
+              // Farb-Button - oben rechts
+              Positioned(
+                top: -8,
+                right: -8,
+                child: GestureDetector(
+                  onTap: () => _showColorPicker(widget, userId, tokens),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: widget.customColorValue != null 
+                          ? Color(widget.customColorValue!) 
+                          : tokens.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: tokens.shadowSmall,
+                    ),
+                    child: widget.customColorValue == null 
+                        ? const Icon(Icons.palette, color: Colors.white, size: 12)
+                        : null,
+                  ),
+                ),
+              ),
+              
+              // Resize Handle - unten rechts (Hauptgriff)
+              Positioned(
+                bottom: -10,
+                right: -10,
+                child: GestureDetector(
+                  onPanStart: (details) {
+                    setState(() {
+                      _resizingWidgetId = widget.id;
+                      _resizeOffset = Offset.zero;
+                      _previewSize = widget.size;
+                    });
+                    HapticFeedback.selectionClick();
+                  },
+                  onPanUpdate: (details) {
+                    if (_resizingWidgetId == widget.id) {
+                      setState(() {
+                        _resizeOffset += details.delta;
+                        _previewSize = _calculatePreviewSize(widget, cellWidth, cellHeight);
+                      });
+                    }
+                  },
+                  onPanEnd: (details) {
+                    if (_resizingWidgetId == widget.id) {
+                      _handleResizeEnd(widget, userId, cellWidth, cellHeight);
+                    }
+                  },
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: tokens.shadowSmall,
+                    ),
+                    child: const Icon(
+                      Icons.open_in_full,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -375,6 +448,39 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
       onLongPress: _enterEditMode,
       child: styledContent,
     );
+  }
+  
+  /// Berechnet die Vorschau-Größe während des Resize
+  HomeWidgetSize _calculatePreviewSize(HomeWidget widget, double cellWidth, double cellHeight) {
+    final deltaWidth = (_resizeOffset.dx / (cellWidth + cellPadding)).round();
+    final deltaHeight = (_resizeOffset.dy / (cellHeight + cellPadding)).round();
+    
+    final newWidth = (widget.size.gridWidth + deltaWidth).clamp(1, 4);
+    final newHeight = (widget.size.gridHeight + deltaHeight).clamp(1, 3);
+    
+    // Finde passende Größe
+    for (final size in HomeWidgetSize.values) {
+      if (size.gridWidth == newWidth && size.gridHeight == newHeight) {
+        return size;
+      }
+    }
+    
+    // Fallback: Finde nächstbeste Größe
+    return _findBestSize(newWidth, newHeight);
+  }
+  
+  HomeWidgetSize _findBestSize(int width, int height) {
+    if (width >= 3 && height >= 3) return HomeWidgetSize.full;
+    if (width >= 3 && height >= 2) return HomeWidgetSize.extraLarge;
+    if (width >= 4 && height >= 2) return HomeWidgetSize.fullWide;
+    if (width >= 4) return HomeWidgetSize.wide;
+    if (width >= 3) return HomeWidgetSize.wideHalf;
+    if (width >= 2 && height >= 3) return HomeWidgetSize.largeTall;
+    if (width >= 2 && height >= 2) return HomeWidgetSize.large;
+    if (height >= 3) return HomeWidgetSize.tallMedium;
+    if (height >= 2) return HomeWidgetSize.tall;
+    if (width >= 2) return HomeWidgetSize.medium;
+    return HomeWidgetSize.small;
   }
   
   void _handleResizeEnd(HomeWidget widget, String userId, double cellWidth, double cellHeight) {
@@ -424,177 +530,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     setState(() {
       _resizingWidgetId = null;
       _resizeOffset = Offset.zero;
+      _previewSize = null;
     });
-  }
-  
-  /// Zeigt minimales Edit-Menü mit Größe und Farbe
-  void _showMinimalEditMenu(HomeWidget widget, String userId, DesignTokens tokens) {
-    HapticFeedback.selectionClick();
-    
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              
-              // Widget-Name
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(_getWidgetIcon(widget.type), color: tokens.primary),
-                    const SizedBox(width: 12),
-                    Text(
-                      widget.type.label,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const Divider(height: 1),
-              
-              // Größen-Auswahl als Grid
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Größe',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        HomeWidgetSize.small,
-                        HomeWidgetSize.medium,
-                        HomeWidgetSize.tall,
-                        HomeWidgetSize.large,
-                        HomeWidgetSize.wideHalf,
-                        HomeWidgetSize.wide,
-                        HomeWidgetSize.extraLarge,
-                        HomeWidgetSize.full,
-                      ].map((size) => _buildSizeChip(size, widget.size == size, () {
-                        ref.read(homeScreenConfigProvider(userId).notifier)
-                            .resizeWidget(widget.id, size);
-                        HapticFeedback.selectionClick();
-                      }, tokens)).toList(),
-                    ),
-                  ],
-                ),
-              ),
-              
-              const Divider(height: 1),
-              
-              // Farbe
-              ListTile(
-                leading: Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: widget.customColorValue != null 
-                        ? Color(widget.customColorValue!) 
-                        : tokens.primary.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
-                  ),
-                  child: widget.customColorValue == null
-                      ? Icon(Icons.palette, size: 16, color: tokens.textSecondary)
-                      : null,
-                ),
-                title: const Text('Farbe anpassen'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showColorPicker(widget, userId, tokens);
-                },
-              ),
-              
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildSizeChip(HomeWidgetSize size, bool isSelected, VoidCallback onTap, DesignTokens tokens) {
-    // Aktuell ausgewählte Größe wird ROT markiert
-    final selectedColor = Colors.red.shade400;
-    
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? selectedColor : Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isSelected ? selectedColor : Colors.grey.shade300,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Größen-Preview als Mini-Grid
-            _buildSizePreview(size, isSelected),
-            const SizedBox(width: 8),
-            Text(
-              '${size.gridWidth}×${size.gridHeight}',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : tokens.textPrimary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  Widget _buildSizePreview(HomeWidgetSize size, bool isSelected) {
-    final color = isSelected ? Colors.white : Colors.grey.shade400;
-    return SizedBox(
-      width: 16,
-      height: 16,
-      child: CustomPaint(
-        painter: _SizePreviewPainter(
-          width: size.gridWidth,
-          height: size.gridHeight,
-          color: color,
-        ),
-      ),
-    );
   }
   
   void _showColorPicker(HomeWidget widget, String userId, DesignTokens tokens) async {
@@ -698,134 +635,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         ],
       ),
     );
-  }
-
-  void _showWidgetOptions(HomeWidget widget, String userId, DesignTokens tokens) {
-    HapticFeedback.selectionClick();
-    
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                widget.type.label,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const Divider(),
-            
-            // Größe ändern
-            ListTile(
-              leading: const Icon(Icons.aspect_ratio),
-              title: const Text('Größe ändern'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: () {
-                Navigator.pop(context);
-                _showSizeDialog(widget, userId, tokens);
-              },
-            ),
-            
-            // Widget löschen
-            ListTile(
-              leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('Widget entfernen', style: TextStyle(color: Colors.red)),
-              onTap: () {
-                Navigator.pop(context);
-                _deleteWidget(widget.id, userId);
-              },
-            ),
-            
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showSizeDialog(HomeWidget widget, String userId, DesignTokens tokens) {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'Größe wählen',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const Divider(),
-            
-            ...HomeWidgetSize.values.map((size) => ListTile(
-              leading: Icon(
-                _getSizeIcon(size),
-                color: widget.size == size ? tokens.primary : null,
-              ),
-              title: Text(size.label),
-              subtitle: Text('${size.gridWidth}×${size.gridHeight} Felder'),
-              trailing: widget.size == size 
-                  ? Icon(Icons.check, color: tokens.primary)
-                  : null,
-              onTap: () {
-                Navigator.pop(context);
-                ref.read(homeScreenConfigProvider(userId).notifier).resizeWidget(
-                  widget.id,
-                  size,
-                );
-              },
-            )),
-            
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _getSizeIcon(HomeWidgetSize size) {
-    switch (size) {
-      case HomeWidgetSize.small:
-        return Icons.crop_square;
-      case HomeWidgetSize.medium:
-        return Icons.crop_16_9;
-      case HomeWidgetSize.large:
-        return Icons.crop_din;
-      case HomeWidgetSize.wide:
-      case HomeWidgetSize.wideHalf:
-        return Icons.panorama_wide_angle;
-      case HomeWidgetSize.tall:
-      case HomeWidgetSize.tallMedium:
-        return Icons.crop_portrait;
-      case HomeWidgetSize.largeTall:
-      case HomeWidgetSize.extraLarge:
-      case HomeWidgetSize.full:
-      case HomeWidgetSize.fullWide:
-        return Icons.aspect_ratio;
-    }
   }
 
   void _showAddWidgetDialog(String userId, DesignTokens tokens) {
@@ -966,44 +775,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   void _navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
   }
-}
-
-// ============================================
-// SIZE PREVIEW PAINTER
-// ============================================
-
-class _SizePreviewPainter extends CustomPainter {
-  final int width;
-  final int height;
-  final Color color;
-
-  _SizePreviewPainter({
-    required this.width,
-    required this.height,
-    required this.color,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final cellWidth = size.width / 4;
-    final cellHeight = size.height / 3;
-    
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-    
-    final rect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, cellWidth * width, cellHeight * height),
-      const Radius.circular(2),
-    );
-    canvas.drawRRect(rect, paint);
-  }
-
-  @override
-  bool shouldRepaint(_SizePreviewPainter oldDelegate) =>
-      width != oldDelegate.width || 
-      height != oldDelegate.height || 
-      color != oldDelegate.color;
 }
 
 // ============================================
@@ -2013,8 +1784,8 @@ class _UnifiedWidgetContainer extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: color.withOpacity(0.2),
-          width: 1.5,
+          color: color.withOpacity(0.4), // Erhöht von 0.2
+          width: 2,
         ),
       ),
       child: InkWell(
@@ -2025,8 +1796,8 @@ class _UnifiedWidgetContainer extends StatelessWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                color.withOpacity(0.08),
-                color.withOpacity(0.03),
+                color.withOpacity(0.20), // Erhöht von 0.08
+                color.withOpacity(0.08), // Erhöht von 0.03
               ],
             ),
           ),
