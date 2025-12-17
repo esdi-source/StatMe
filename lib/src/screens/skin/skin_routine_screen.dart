@@ -31,6 +31,7 @@ class _SkinRoutineScreenState extends ConsumerState<SkinRoutineScreen> with Sing
   Widget build(BuildContext context) {
     final tokens = ref.watch(designTokensProvider);
     final steps = ref.watch(skinCareStepsNotifierProvider);
+    final completions = ref.watch(skinCareCompletionsNotifierProvider);
     
     final dailySteps = steps.where((s) => s.isDaily).toList()
       ..sort((a, b) => a.order.compareTo(b.order));
@@ -51,8 +52,8 @@ class _SkinRoutineScreenState extends ConsumerState<SkinRoutineScreen> with Sing
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildStepsList(tokens, dailySteps, isDaily: true),
-          _buildStepsList(tokens, occasionalSteps, isDaily: false),
+          _buildStepsList(tokens, dailySteps, completions, isDaily: true),
+          _buildStepsList(tokens, occasionalSteps, completions, isDaily: false),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -62,7 +63,7 @@ class _SkinRoutineScreenState extends ConsumerState<SkinRoutineScreen> with Sing
     );
   }
 
-  Widget _buildStepsList(DesignTokens tokens, List<SkinCareStep> steps, {required bool isDaily}) {
+  Widget _buildStepsList(DesignTokens tokens, List<SkinCareStep> steps, List<SkinCareCompletion> completions, {required bool isDaily}) {
     if (steps.isEmpty) {
       return Center(
         child: Column(
@@ -108,8 +109,7 @@ class _SkinRoutineScreenState extends ConsumerState<SkinRoutineScreen> with Sing
       },
       itemBuilder: (context, index) {
         final step = steps[index];
-        // TODO: Implement via SkinCareCompletion provider
-        const isCompleted = false;
+        final isCompleted = completions.any((c) => c.stepId == step.id);
         
         return _buildStepCard(tokens, step, isCompleted, key: ValueKey(step.id));
       },
@@ -165,7 +165,7 @@ class _SkinRoutineScreenState extends ConsumerState<SkinRoutineScreen> with Sing
         child: ListTile(
           leading: GestureDetector(
             onTap: () {
-              // TODO: Toggle via SkinCareCompletion provider
+              ref.read(skinCareCompletionsNotifierProvider.notifier).toggle(step.id);
             },
             child: Container(
               padding: const EdgeInsets.all(8),

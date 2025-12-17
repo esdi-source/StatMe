@@ -1724,3 +1724,53 @@ final skinPhotosNotifierProvider = StateNotifierProvider<SkinPhotosNotifier, Lis
   final repository = ref.watch(skinRepositoryProvider);
   return SkinPhotosNotifier(repository);
 });
+
+/// Skin Care Completions Notifier (Abhaken der Pflegeroutine)
+class SkinCareCompletionsNotifier extends StateNotifier<List<SkinCareCompletion>> {
+  final SkinRepository _repository;
+  String? _userId;
+  DateTime _currentDate = DateTime.now();
+  
+  SkinCareCompletionsNotifier(this._repository) : super([]);
+  
+  Future<void> loadForDate(String userId, DateTime date) async {
+    _userId = userId;
+    _currentDate = DateTime(date.year, date.month, date.day);
+    state = await _repository.getCompletionsForDate(userId, _currentDate);
+  }
+  
+  bool isCompleted(String stepId) {
+    return state.any((c) => c.stepId == stepId);
+  }
+  
+  Future<void> toggle(String stepId) async {
+    final userId = _userId;
+    if (userId == null) return;
+    
+    final existing = state.where((c) => c.stepId == stepId).firstOrNull;
+    
+    if (existing != null) {
+      // Remove completion
+      await _repository.deleteCompletion(existing.id);
+      state = state.where((c) => c.id != existing.id).toList();
+    } else {
+      // Add completion
+      final completion = SkinCareCompletion(
+        id: 'completion_${DateTime.now().millisecondsSinceEpoch}',
+        userId: userId,
+        stepId: stepId,
+        date: _currentDate,
+        completedAt: DateTime.now(),
+      );
+      final created = await _repository.addCompletion(completion);
+      state = [...state, created];
+    }
+  }
+  
+  int get completedCount => state.length;
+}
+
+final skinCareCompletionsNotifierProvider = StateNotifierProvider<SkinCareCompletionsNotifier, List<SkinCareCompletion>>((ref) {
+  final repository = ref.watch(skinRepositoryProvider);
+  return SkinCareCompletionsNotifier(repository);
+});

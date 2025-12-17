@@ -41,6 +41,7 @@ class _SkinScreenState extends ConsumerState<SkinScreen> {
       ref.read(skinProductsNotifierProvider.notifier).load(user.id),
       ref.read(skinNotesNotifierProvider.notifier).load(user.id),
       ref.read(skinPhotosNotifierProvider.notifier).load(user.id),
+      ref.read(skinCareCompletionsNotifierProvider.notifier).loadForDate(user.id, DateTime.now()),
     ]);
   }
 
@@ -50,6 +51,7 @@ class _SkinScreenState extends ConsumerState<SkinScreen> {
     final entries = ref.watch(skinEntriesNotifierProvider);
     final steps = ref.watch(skinCareStepsNotifierProvider);
     final notes = ref.watch(skinNotesNotifierProvider);
+    final completions = ref.watch(skinCareCompletionsNotifierProvider);
     
     final todayEntry = ref.read(skinEntriesNotifierProvider.notifier).getForDate(DateTime.now());
     final avgCondition = ref.read(skinEntriesNotifierProvider.notifier).getAverageCondition(7);
@@ -79,7 +81,7 @@ class _SkinScreenState extends ConsumerState<SkinScreen> {
         onRefresh: _loadData,
         child: entries.isEmpty && steps.isEmpty
             ? _buildEmptyState(tokens)
-            : _buildContent(tokens, todayEntry, avgCondition, steps, entries, notes),
+            : _buildContent(tokens, todayEntry, avgCondition, steps, entries, notes, completions),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _navigateTo(SkinEntryScreen(date: DateTime.now())),
@@ -157,10 +159,10 @@ class _SkinScreenState extends ConsumerState<SkinScreen> {
     List<SkinCareStep> steps,
     List<SkinEntry> entries,
     List<SkinNote> notes,
+    List<SkinCareCompletion> completions,
   ) {
     final dailySteps = steps.where((s) => s.isDaily).toList();
-    // TODO: Implement via SkinCareCompletion
-    final completedToday = 0;
+    final completedToday = completions.length;
 
     return ListView(
       padding: const EdgeInsets.all(16),
