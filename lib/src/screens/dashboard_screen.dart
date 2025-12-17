@@ -354,88 +354,79 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               
               // Delete Button - oben links
               Positioned(
-                top: -8,
-                left: -8,
+                top: -6,
+                left: -6,
                 child: GestureDetector(
                   onTap: () => _deleteWidget(widget.id, userId),
                   child: Container(
-                    width: 24,
-                    height: 24,
+                    width: 20,
+                    height: 20,
                     decoration: BoxDecoration(
                       color: Colors.red.shade400,
                       shape: BoxShape.circle,
                       boxShadow: tokens.shadowSmall,
                     ),
-                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                    child: const Icon(Icons.close, color: Colors.white, size: 12),
                   ),
                 ),
               ),
               
-              // Farb-Button - oben rechts
-              Positioned(
-                top: -8,
-                right: -8,
-                child: GestureDetector(
-                  onTap: () => _showColorPicker(widget, userId, tokens),
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: widget.customColorValue != null 
-                          ? Color(widget.customColorValue!) 
-                          : tokens.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: tokens.shadowSmall,
+              // Farb-Button - Mitte (Pinsel für Farbauswahl)
+              Positioned.fill(
+                child: Center(
+                  child: GestureDetector(
+                    onTap: () => _showColorPicker(widget, userId, tokens),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: (widget.customColorValue != null 
+                            ? Color(widget.customColorValue!) 
+                            : tokens.primary).withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: tokens.shadowMedium,
+                      ),
+                      child: const Icon(Icons.brush, color: Colors.white, size: 20),
                     ),
-                    child: widget.customColorValue == null 
-                        ? const Icon(Icons.palette, color: Colors.white, size: 12)
-                        : null,
                   ),
                 ),
               ),
               
-              // Resize Handle - unten rechts (Hauptgriff)
-              Positioned(
-                bottom: -10,
-                right: -10,
-                child: GestureDetector(
-                  onPanStart: (details) {
-                    setState(() {
-                      _resizingWidgetId = widget.id;
-                      _resizeOffset = Offset.zero;
-                      _previewSize = widget.size;
-                    });
-                    HapticFeedback.selectionClick();
-                  },
-                  onPanUpdate: (details) {
-                    if (_resizingWidgetId == widget.id) {
-                      setState(() {
-                        _resizeOffset += details.delta;
-                        _previewSize = _calculatePreviewSize(widget, cellWidth, cellHeight);
-                      });
-                    }
-                  },
-                  onPanEnd: (details) {
-                    if (_resizingWidgetId == widget.id) {
-                      _handleResizeEnd(widget, userId, cellWidth, cellHeight);
-                    }
-                  },
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: Colors.blue,
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: tokens.shadowSmall,
-                    ),
-                    child: const Icon(
-                      Icons.open_in_full,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-                ),
+              // Resize Handles - alle 4 Ecken (klein und proportional)
+              // Oben rechts
+              _buildResizeHandle(
+                widget: widget,
+                userId: userId,
+                cellWidth: cellWidth,
+                cellHeight: cellHeight,
+                tokens: tokens,
+                alignment: Alignment.topRight,
+                top: -5,
+                right: -5,
+              ),
+              // Unten links
+              _buildResizeHandle(
+                widget: widget,
+                userId: userId,
+                cellWidth: cellWidth,
+                cellHeight: cellHeight,
+                tokens: tokens,
+                alignment: Alignment.bottomLeft,
+                bottom: -5,
+                left: -5,
+              ),
+              // Unten rechts (Hauptgriff)
+              _buildResizeHandle(
+                widget: widget,
+                userId: userId,
+                cellWidth: cellWidth,
+                cellHeight: cellHeight,
+                tokens: tokens,
+                alignment: Alignment.bottomRight,
+                bottom: -5,
+                right: -5,
+                isPrimary: true,
               ),
             ],
           ),
@@ -481,6 +472,67 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     if (height >= 2) return HomeWidgetSize.tall;
     if (width >= 2) return HomeWidgetSize.medium;
     return HomeWidgetSize.small;
+  }
+  
+  /// Baut einen einzelnen Resize-Handle für eine Ecke
+  Widget _buildResizeHandle({
+    required HomeWidget widget,
+    required String userId,
+    required double cellWidth,
+    required double cellHeight,
+    required DesignTokens tokens,
+    required Alignment alignment,
+    double? top,
+    double? bottom,
+    double? left,
+    double? right,
+    bool isPrimary = false,
+  }) {
+    // Handle-Größe proportional zur Widget-Größe, aber mit Grenzen
+    final handleSize = isPrimary ? 16.0 : 12.0;
+    
+    return Positioned(
+      top: top,
+      bottom: bottom,
+      left: left,
+      right: right,
+      child: GestureDetector(
+        onPanStart: (details) {
+          setState(() {
+            _resizingWidgetId = widget.id;
+            _resizeOffset = Offset.zero;
+            _previewSize = widget.size;
+          });
+          HapticFeedback.selectionClick();
+        },
+        onPanUpdate: (details) {
+          if (_resizingWidgetId == widget.id) {
+            setState(() {
+              _resizeOffset += details.delta;
+              _previewSize = _calculatePreviewSize(widget, cellWidth, cellHeight);
+            });
+          }
+        },
+        onPanEnd: (details) {
+          if (_resizingWidgetId == widget.id) {
+            _handleResizeEnd(widget, userId, cellWidth, cellHeight);
+          }
+        },
+        child: Container(
+          width: handleSize,
+          height: handleSize,
+          decoration: BoxDecoration(
+            color: isPrimary ? Colors.blue : Colors.blue.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(isPrimary ? 4 : 3),
+            border: Border.all(color: Colors.white, width: 1),
+            boxShadow: tokens.shadowSmall,
+          ),
+          child: isPrimary 
+              ? const Icon(Icons.open_in_full, color: Colors.white, size: 10)
+              : null,
+        ),
+      ),
+    );
   }
   
   void _handleResizeEnd(HomeWidget widget, String userId, double cellWidth, double cellHeight) {
