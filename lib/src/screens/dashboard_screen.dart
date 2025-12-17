@@ -652,6 +652,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _DigestionWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const DigestionScreen()));
       case HomeWidgetType.supplements:
         return _SupplementsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SupplementScreen()));
+      case HomeWidgetType.media:
+        return _MediaWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const MediaScreen()));
       case HomeWidgetType.statistics:
         return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
@@ -798,6 +800,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.science;
       case HomeWidgetType.supplements:
         return Icons.medication;
+      case HomeWidgetType.media:
+        return Icons.movie;
       case HomeWidgetType.statistics:
         return Icons.insights;
     }
@@ -1950,6 +1954,186 @@ class _SupplementsWidget extends ConsumerWidget {
               fontSize: 10,
               color: Colors.grey.shade500,
             ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MediaWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final Color? customColor;
+  final VoidCallback? onTap;
+
+  const _MediaWidget({required this.size, this.customColor, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final color = customColor ?? Colors.indigo;
+    
+    if (user == null) {
+      return _UnifiedWidgetContainer(
+        color: color,
+        onTap: onTap,
+        child: _buildEmptyContent(color),
+      );
+    }
+    
+    final entries = ref.watch(userMediaEntriesProvider(user.id));
+    final watchlist = entries.where((e) => e.status == MediaStatus.watchlist).toList();
+    final watched = entries.where((e) => e.status == MediaStatus.watched).toList();
+    final watching = entries.where((e) => e.status == MediaStatus.watching).toList();
+    
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(watchlist, watched, watching, entries, color),
+    );
+  }
+
+  Widget _buildEmptyContent(Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.movie, size: 20, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Filme & Serien',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(List<UserMediaEntry> watchlist, List<UserMediaEntry> watched, List<UserMediaEntry> watching, List<UserMediaEntry> all, Color color) {
+    // Berechne Durchschnittsbewertung
+    final ratedEntries = watched.where((e) => e.rating != null).toList();
+    final avgRating = ratedEntries.isNotEmpty
+        ? ratedEntries.map((e) => e.rating!.overall).reduce((a, b) => a + b) / ratedEntries.length
+        : 0.0;
+    
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: all.isNotEmpty
+                ? Text('${watched.length}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color))
+                : Icon(Icons.movie, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Filme',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    // Mittlere und große Größen
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.movie, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Filme & Serien',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        if (all.isNotEmpty) ...[
+          Row(
+            children: [
+              Text('🎬 ${watched.length}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+              const SizedBox(width: 8),
+              Text('📋 ${watchlist.length}', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              if (watching.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Text('▶️ ${watching.length}', style: TextStyle(fontSize: 12, color: color)),
+              ],
+            ],
+          ),
+          if (ratedEntries.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              '⭐ ${avgRating.toStringAsFixed(1)} Durchschnitt',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.amber.shade700,
+              ),
+            ),
+          ],
+        ] else ...[
+          Text(
+            'Keine Einträge',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Tippen zum Durchstöbern',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+        if (size.isLarge && watched.isNotEmpty && watched.last.rating != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            '📺 Zuletzt: ${watched.last.media.title}',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ],

@@ -58,3 +58,6 @@ export 'digestion_screen.dart';
 
 // Supplement Module
 export 'supplement_screen.dart';
+
+// Media (Filme & Serien) Module
+export 'media_screen.dart';

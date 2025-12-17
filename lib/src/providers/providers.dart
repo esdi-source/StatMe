@@ -2391,3 +2391,157 @@ final supplementStatisticsProvider = Provider.family<SupplementStatistics, ({Str
   );
 });
 
+// ==============================
+// Media (Filme & Serien) Provider
+// ==============================
+
+/// User Media Entries Notifier - verwaltet Filme & Serien
+class UserMediaEntriesNotifier extends StateNotifier<List<UserMediaEntry>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  UserMediaEntriesNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'user_media_entries';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => UserMediaEntry.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  /// Media-Eintrag hinzufügen
+  Future<void> add(UserMediaEntry entry) async {
+    // Prüfe ob bereits vorhanden (basierend auf tmdbId)
+    final exists = state.any((e) => e.media.tmdbId == entry.media.tmdbId && e.media.type == entry.media.type);
+    if (!exists) {
+      state = [...state, entry];
+      await _save();
+    }
+  }
+  
+  /// Media-Eintrag aktualisieren
+  Future<void> update(UserMediaEntry entry) async {
+    state = state.map((e) => e.id == entry.id ? entry : e).toList();
+    await _save();
+  }
+  
+  /// Media-Eintrag löschen
+  Future<void> delete(String entryId) async {
+    state = state.where((e) => e.id != entryId).toList();
+    await _save();
+  }
+  
+  /// Eintrag per TMDB-ID finden
+  UserMediaEntry? findByTmdbId(int tmdbId, MediaType type) {
+    try {
+      return state.firstWhere((e) => e.media.tmdbId == tmdbId && e.media.type == type);
+    } catch (_) {
+      return null;
+    }
+  }
+  
+  /// Status eines Eintrags ändern
+  Future<void> updateStatus(String entryId, MediaStatus status) async {
+    final entry = state.firstWhere((e) => e.id == entryId);
+    final updatedEntry = entry.copyWith(
+      status: status,
+      watchedDate: status == MediaStatus.watched ? DateTime.now() : entry.watchedDate,
+      updatedAt: DateTime.now(),
+    );
+    await update(updatedEntry);
+  }
+  
+  /// Bewertung hinzufügen/aktualisieren
+  Future<void> addRating(String entryId, MediaRating rating) async {
+    final entry = state.firstWhere((e) => e.id == entryId);
+    final updatedEntry = entry.copyWith(
+      rating: rating,
+      status: MediaStatus.watched,
+      watchedDate: entry.watchedDate ?? DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await update(updatedEntry);
+  }
+  
+  /// Episode als gesehen markieren
+  Future<void> markEpisodeWatched(String entryId, int seasonNumber, int episodeNumber, bool watched) async {
+    final entry = state.firstWhere((e) => e.id == entryId);
+    final episodeCode = 'S${seasonNumber.toString().padLeft(2, '0')}E${episodeNumber.toString().padLeft(2, '0')}';
+    
+    Set<String> newWatchedEpisodes;
+    if (watched) {
+      newWatchedEpisodes = {...entry.watchedEpisodes, episodeCode};
+    } else {
+      newWatchedEpisodes = entry.watchedEpisodes.where((e) => e != episodeCode).toSet();
+    }
+    
+    await update(entry.copyWith(
+      watchedEpisodes: newWatchedEpisodes,
+      currentSeason: seasonNumber,
+      currentEpisode: episodeNumber,
+      updatedAt: DateTime.now(),
+    ));
+  }
+  
+  /// Ganze Staffel als gesehen markieren
+  Future<void> markSeasonWatched(String entryId, int seasonNumber, bool watched, List<int> episodeNumbers) async {
+    final entry = state.firstWhere((e) => e.id == entryId);
+    
+    Set<String> newWatchedEpisodes = {...entry.watchedEpisodes};
+    for (final ep in episodeNumbers) {
+      final code = 'S${seasonNumber.toString().padLeft(2, '0')}E${ep.toString().padLeft(2, '0')}';
+      if (watched) {
+        newWatchedEpisodes.add(code);
+      } else {
+        newWatchedEpisodes.remove(code);
+      }
+    }
+    
+    await update(entry.copyWith(
+      watchedEpisodes: newWatchedEpisodes,
+      updatedAt: DateTime.now(),
+    ));
+  }
+  
+  /// Einträge nach Status filtern
+  List<UserMediaEntry> getByStatus(MediaStatus status) {
+    return state.where((e) => e.status == status).toList();
+  }
+  
+  /// Merkliste abrufen
+  List<UserMediaEntry> get watchlist => getByStatus(MediaStatus.watchlist);
+  
+  /// Gesehene abrufen
+  List<UserMediaEntry> get watched => getByStatus(MediaStatus.watched);
+  
+  /// Abgebrochene abrufen
+  List<UserMediaEntry> get dropped => getByStatus(MediaStatus.dropped);
+  
+  /// Aktuell am schauen (Serien)
+  List<UserMediaEntry> get watching => getByStatus(MediaStatus.watching);
+}
+
+final userMediaEntriesProvider = StateNotifierProvider.family<UserMediaEntriesNotifier, List<UserMediaEntry>, String>((ref, userId) {
+  return UserMediaEntriesNotifier(userId);
+});
+
+/// Provider für Media-Statistiken
+final mediaStatisticsProvider = Provider.family<MediaStatistics, String>((ref, userId) {
+  final entries = ref.watch(userMediaEntriesProvider(userId));
+  return MediaStatistics.calculate(entries);
+});
+

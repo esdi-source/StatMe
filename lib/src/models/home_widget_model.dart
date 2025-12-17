@@ -17,6 +17,7 @@ enum HomeWidgetType {
   hair('Haarpflege', 'content_cut'),
   digestion('Verdauung', 'science'),
   supplements('Supplements', 'medication'),
+  media('Filme & Serien', 'movie'),
   statistics('Statistik', 'insights');
 
   final String label;
