@@ -663,24 +663,89 @@ class HomeScreenConfigNotifier extends StateNotifier<HomeScreenConfig?> {
     await _save();
   }
   
-  /// Widget-Größe ändern
+  /// Widget-Größe ändern mit Kollisionserkennung
   Future<void> resizeWidget(String widgetId, HomeWidgetSize newSize) async {
     if (state == null) return;
     
-    final widgets = state!.widgets.map((w) {
-      if (w.id == widgetId) {
-        // Stelle sicher, dass das Widget nicht über den Rand hinausgeht
-        final maxX = state!.gridColumns - newSize.gridWidth;
-        return w.copyWith(
-          size: newSize,
-          gridX: w.gridX.clamp(0, maxX),
-        );
-      }
-      return w;
-    }).toList();
+    final gridColumns = state!.gridColumns;
+    var widgets = List<HomeWidget>.from(state!.widgets);
+    
+    final widgetIndex = widgets.indexWhere((w) => w.id == widgetId);
+    if (widgetIndex == -1) return;
+    
+    var widget = widgets[widgetIndex];
+    
+    // Stelle sicher, dass das Widget nicht über den Rand hinausgeht
+    final maxX = gridColumns - newSize.gridWidth;
+    var newX = widget.gridX.clamp(0, maxX.clamp(0, gridColumns - 1));
+    var newY = widget.gridY;
+    
+    // Aktualisiere das Widget mit der neuen Größe
+    widget = widget.copyWith(
+      size: newSize,
+      gridX: newX,
+      gridY: newY,
+    );
+    widgets[widgetIndex] = widget;
+    
+    // Finde alle Kollisionen und verschiebe andere Widgets nach unten
+    widgets = _resolveCollisions(widgets, widgetId, gridColumns);
     
     state = state!.copyWith(widgets: widgets);
     await _save();
+  }
+  
+  /// Kollisionen auflösen - verschiebt überlappende Widgets nach unten
+  List<HomeWidget> _resolveCollisions(List<HomeWidget> widgets, String movedWidgetId, int gridColumns) {
+    var result = List<HomeWidget>.from(widgets);
+    var changed = true;
+    var iterations = 0;
+    const maxIterations = 50; // Schutz vor Endlosschleifen
+    
+    while (changed && iterations < maxIterations) {
+      changed = false;
+      iterations++;
+      
+      final movedWidget = result.firstWhere((w) => w.id == movedWidgetId);
+      
+      for (var i = 0; i < result.length; i++) {
+        final otherWidget = result[i];
+        if (otherWidget.id == movedWidgetId) continue;
+        
+        if (_widgetsOverlap(movedWidget, otherWidget)) {
+          // Verschiebe das andere Widget unter das bewegte Widget
+          final newY = movedWidget.gridY + movedWidget.size.gridHeight;
+          result[i] = otherWidget.copyWith(gridY: newY);
+          changed = true;
+        }
+      }
+    }
+    
+    // Sortiere nach Y-Position und räume Lücken auf
+    result.sort((a, b) => a.gridY.compareTo(b.gridY));
+    
+    return result;
+  }
+  
+  /// Prüft, ob zwei Widgets sich überlappen
+  bool _widgetsOverlap(HomeWidget a, HomeWidget b) {
+    // Berechne die Grenzen von Widget A
+    final aLeft = a.gridX;
+    final aRight = a.gridX + a.size.gridWidth;
+    final aTop = a.gridY;
+    final aBottom = a.gridY + a.size.gridHeight;
+    
+    // Berechne die Grenzen von Widget B
+    final bLeft = b.gridX;
+    final bRight = b.gridX + b.size.gridWidth;
+    final bTop = b.gridY;
+    final bBottom = b.gridY + b.size.gridHeight;
+    
+    // Prüfe auf Überlappung (keine Überlappung wenn getrennt)
+    final horizontalOverlap = aLeft < bRight && aRight > bLeft;
+    final verticalOverlap = aTop < bBottom && aBottom > bTop;
+    
+    return horizontalOverlap && verticalOverlap;
   }
   
   /// Widget-Farbe ändern

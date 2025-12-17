@@ -11,6 +11,7 @@ import '../models/models.dart';
 import '../models/home_widget_model.dart';
 import '../core/config/app_config.dart';
 import '../ui/widgets/color_picker_dialog.dart';
+import '../ui/widgets/unified_stat_widget.dart';
 import 'screens.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -257,24 +258,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     double cellHeight,
   ) {
     final widgetTransparency = ref.watch(widgetTransparencyProvider);
-    final content = _buildWidgetContent(widget, tokens);
     
-    // Widget-spezifische Farbe anwenden wenn gesetzt
-    Widget styledContent = widget.customColorValue != null
-        ? ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              Color(widget.customColorValue!).withOpacity(0.15),
-              BlendMode.srcATop,
-            ),
-            child: content,
-          )
-        : content;
+    // Widget-spezifische Farbe ermitteln - wird direkt an Content weitergegeben
+    final customColor = widget.customColorValue != null 
+        ? Color(widget.customColorValue!) 
+        : null;
     
-    // Transparenz anwenden
+    final content = _buildWidgetContent(widget, tokens, customColor);
+    
+    // Transparenz anwenden wenn gesetzt
+    Widget styledContent = content;
     if (widgetTransparency > 0) {
       styledContent = Opacity(
         opacity: 1 - (widgetTransparency * 0.5), // Max 50% transparent
-        child: styledContent,
+        child: content,
       );
     }
 
@@ -550,15 +547,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
   }
   
   Widget _buildSizeChip(HomeWidgetSize size, bool isSelected, VoidCallback onTap, DesignTokens tokens) {
+    // Aktuell ausgewählte Größe wird ROT markiert
+    final selectedColor = Colors.red.shade400;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? tokens.primary : Colors.grey.shade100,
+          color: isSelected ? selectedColor : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? tokens.primary : Colors.grey.shade300,
+            color: isSelected ? selectedColor : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
           ),
         ),
         child: Row(
@@ -630,36 +631,34 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
     });
   }
 
-  Widget _buildWidgetContent(HomeWidget widget, DesignTokens tokens) {
+  Widget _buildWidgetContent(HomeWidget widget, DesignTokens tokens, Color? customColor) {
     switch (widget.type) {
       case HomeWidgetType.greeting:
-        return _GreetingWidget(size: widget.size);
+        return _GreetingWidget(size: widget.size, customColor: customColor);
       case HomeWidgetType.calories:
-        return _CaloriesWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const FoodScreen()));
+        return _CaloriesWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const FoodScreen()));
       case HomeWidgetType.water:
-        return _WaterWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const WaterScreen()));
+        return _WaterWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const WaterScreen()));
       case HomeWidgetType.steps:
-        return _StepsWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const StepsScreen()));
+        return _StepsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StepsScreen()));
       case HomeWidgetType.sleep:
-        return _SleepWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SleepScreen()));
+        return _SleepWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SleepScreen()));
       case HomeWidgetType.mood:
-        return _MoodWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const MoodScreen()));
+        return _MoodWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const MoodScreen()));
       case HomeWidgetType.todos:
-        return _TodosWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const TodosScreen()));
-      case HomeWidgetType.quickAdd:
-        return _QuickAddWidget(size: widget.size, isEditMode: _isEditMode);
+        return _TodosWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const TodosScreen()));
       case HomeWidgetType.books:
-        return _BooksWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const BooksScreen()));
+        return _BooksWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const BooksScreen()));
       case HomeWidgetType.timer:
-        return _TimerWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const TimerWidgetScreen()));
+        return _TimerWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const TimerWidgetScreen()));
       case HomeWidgetType.school:
-        return _SchoolWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SchoolScreen()));
+        return _SchoolWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SchoolScreen()));
       case HomeWidgetType.sport:
-        return _SportWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SportScreen()));
+        return _SportWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SportScreen()));
       case HomeWidgetType.skin:
-        return _SkinWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SkinScreen()));
+        return _SkinWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SkinScreen()));
       case HomeWidgetType.statistics:
-        return _StatisticsWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
+        return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
   }
 
@@ -916,8 +915,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.check_circle;
       case HomeWidgetType.greeting:
         return Icons.waving_hand;
-      case HomeWidgetType.quickAdd:
-        return Icons.add_circle;
       case HomeWidgetType.books:
         return Icons.menu_book;
       case HomeWidgetType.timer:
@@ -1041,18 +1038,19 @@ class _EditModeButton extends StatelessWidget {
 }
 
 // ============================================
-// WIDGET IMPLEMENTATIONS
+// WIDGET IMPLEMENTATIONS - EINHEITLICHES DESIGN
 // ============================================
 
 class _GreetingWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
 
-  const _GreetingWidget({required this.size});
+  const _GreetingWidget({required this.size, this.customColor});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(authNotifierProvider).valueOrNull;
-    final tokens = ref.watch(designTokensProvider);
+    final color = customColor ?? const Color(0xFF6366F1);
     
     final hour = DateTime.now().hour;
     String greeting;
@@ -1064,51 +1062,53 @@ class _GreetingWidget extends ConsumerWidget {
       greeting = 'Guten Abend';
     }
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: size.isSmall ? 20 : 28,
-              backgroundColor: tokens.primary.withOpacity(0.1),
-              child: Text(
-                user?.displayName?.isNotEmpty == true
-                    ? user!.displayName![0].toUpperCase()
-                    : user?.email[0].toUpperCase() ?? 'D',
-                style: TextStyle(
-                  fontSize: size.isSmall ? 16 : 20,
-                  fontWeight: FontWeight.bold,
-                  color: tokens.primary,
-                ),
+    return _UnifiedWidgetContainer(
+      color: color,
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: size.isSmall ? 18 : 24,
+            backgroundColor: color.withOpacity(0.15),
+            child: Text(
+              user?.displayName?.isNotEmpty == true
+                  ? user!.displayName![0].toUpperCase()
+                  : user?.email[0].toUpperCase() ?? 'D',
+              style: TextStyle(
+                fontSize: size.isSmall ? 14 : 18,
+                fontWeight: FontWeight.bold,
+                color: color,
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$greeting!',
-                    style: TextStyle(
-                      fontSize: size.isSmall ? 14 : 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$greeting!',
+                  style: TextStyle(
+                    fontSize: size.isSmall ? 12 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
                   ),
-                  if (!size.isSmall)
-                    Text(
-                      DateFormat('EEEE, d. MMMM', 'de_DE').format(DateTime.now()),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: tokens.textSecondary,
-                      ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (!size.isSmall)
+                  Text(
+                    DateFormat('EEEE, d. MMMM', 'de_DE').format(DateTime.now()),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey.shade600,
                     ),
-                ],
-              ),
+                    maxLines: 1,
+                  ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -1116,29 +1116,29 @@ class _GreetingWidget extends ConsumerWidget {
 
 class _CaloriesWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _CaloriesWidget({required this.size, this.onTap});
+  const _CaloriesWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final foodLogs = ref.watch(foodLogNotifierProvider);
     final settings = ref.watch(settingsNotifierProvider);
-    final tokens = ref.watch(designTokensProvider);
     
     final total = foodLogs.fold<double>(0, (sum, log) => sum + log.calories);
     final goal = settings?.dailyCalorieGoal ?? 2000;
     final progress = (total / goal).clamp(0.0, 1.0);
 
-    return _StatWidgetCard(
+    return UnifiedStatWidget(
+      size: size,
       title: 'Kalorien',
       value: total.toStringAsFixed(0),
       unit: 'kcal',
-      icon: Icons.restaurant,
-      color: Colors.orange,
-      progress: progress,
       subtitle: 'von $goal kcal',
-      size: size,
+      icon: Icons.restaurant,
+      color: customColor ?? Colors.orange,
+      progress: progress,
       onTap: onTap,
     );
   }
@@ -1146,9 +1146,10 @@ class _CaloriesWidget extends ConsumerWidget {
 
 class _WaterWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _WaterWidget({required this.size, this.onTap});
+  const _WaterWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1159,15 +1160,15 @@ class _WaterWidget extends ConsumerWidget {
     final goal = settings?.dailyWaterGoalMl ?? 2500;
     final progress = (total / goal).clamp(0.0, 1.0);
 
-    return _StatWidgetCard(
+    return UnifiedStatWidget(
+      size: size,
       title: 'Wasser',
       value: '$total',
       unit: 'ml',
-      icon: Icons.water_drop,
-      color: Colors.blue,
-      progress: progress,
       subtitle: 'von $goal ml',
-      size: size,
+      icon: Icons.water_drop,
+      color: customColor ?? Colors.blue,
+      progress: progress,
       onTap: onTap,
     );
   }
@@ -1175,9 +1176,10 @@ class _WaterWidget extends ConsumerWidget {
 
 class _StepsWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _StepsWidget({required this.size, this.onTap});
+  const _StepsWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1188,15 +1190,15 @@ class _StepsWidget extends ConsumerWidget {
     final goal = settings?.dailyStepsGoal ?? 10000;
     final progress = (current / goal).clamp(0.0, 1.0);
 
-    return _StatWidgetCard(
+    return UnifiedStatWidget(
+      size: size,
       title: 'Schritte',
       value: '$current',
       unit: '',
+      subtitle: 'von ${(goal / 1000).toStringAsFixed(0)}k Schritte',
       icon: Icons.directions_walk,
-      color: Colors.green,
+      color: customColor ?? Colors.green,
       progress: progress,
-      subtitle: 'von ${(goal / 1000).toStringAsFixed(0)}k',
-      size: size,
       onTap: onTap,
     );
   }
@@ -1204,9 +1206,10 @@ class _StepsWidget extends ConsumerWidget {
 
 class _SleepWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _SleepWidget({required this.size, this.onTap});
+  const _SleepWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1214,17 +1217,17 @@ class _SleepWidget extends ConsumerWidget {
     
     final duration = sleep?.formattedDuration ?? '--';
     final minutes = sleep?.durationMinutes ?? 0;
-    final progress = (minutes / 480).clamp(0.0, 1.0); // 8h Ziel
+    final progress = (minutes / 480).clamp(0.0, 1.0);
 
-    return _StatWidgetCard(
+    return UnifiedStatWidget(
+      size: size,
       title: 'Schlaf',
       value: duration,
       unit: '',
+      subtitle: 'Ziel: 8 Stunden',
       icon: Icons.bedtime,
-      color: Colors.purple,
+      color: customColor ?? Colors.purple,
       progress: progress,
-      subtitle: 'Ziel: 8h',
-      size: size,
       onTap: onTap,
     );
   }
@@ -1232,60 +1235,116 @@ class _SleepWidget extends ConsumerWidget {
 
 class _MoodWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _MoodWidget({required this.size, this.onTap});
+  const _MoodWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final mood = ref.watch(moodNotifierProvider);
-    final tokens = ref.watch(designTokensProvider);
+    final color = customColor ?? const Color(0xFFEC4899);
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (mood != null) ...[
-                Text(mood.moodEmoji, style: const TextStyle(fontSize: 32)),
-                const SizedBox(height: 4),
-                Text(
-                  mood.moodLabel,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: tokens.textPrimary,
-                  ),
-                ),
-              ] else ...[
-                Icon(Icons.add_reaction, size: 32, color: tokens.textSecondary),
-                const SizedBox(height: 4),
-                Text(
-                  'Stimmung',
-                  style: TextStyle(color: tokens.textSecondary),
-                ),
-              ],
-            ],
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(mood, color),
+    );
+  }
+
+  Widget _buildContent(MoodLogModel? mood, Color color) {
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: mood != null
+                ? Text(mood.moodEmoji, style: const TextStyle(fontSize: 18))
+                : Icon(Icons.mood, size: 20, color: color),
           ),
+          const SizedBox(height: 4),
+          Text(
+            'Stimmung',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.mood, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Stimmung',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
         ),
-      ),
+        const Spacer(),
+        if (mood != null) ...[
+          Text(mood.moodEmoji, style: const TextStyle(fontSize: 32)),
+          const SizedBox(height: 4),
+          Text(
+            mood.moodLabel,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+            maxLines: 1,
+          ),
+        ] else ...[
+          Icon(Icons.add_reaction, size: 32, color: Colors.grey.shade400),
+          const SizedBox(height: 4),
+          Text(
+            'Tippen zum Eintragen',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
 
 class _TodosWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _TodosWidget({required this.size, this.onTap});
+  const _TodosWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final todos = ref.watch(todoNotifierProvider);
-    final tokens = ref.watch(designTokensProvider);
+    final color = customColor ?? Colors.green;
     
     final today = DateTime.now();
     final todayTodos = todos.where((t) => 
@@ -1295,199 +1354,226 @@ class _TodosWidget extends ConsumerWidget {
       t.startDate.day == today.day
     ).toList();
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'ToDos (${todayTodos.length})',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: todayTodos.isEmpty
-                    ? Center(
-                        child: Text(
-                          'Alles erledigt! 🎉',
-                          style: TextStyle(color: tokens.textSecondary),
-                        ),
-                      )
-                    : ListView.builder(
-                        itemCount: math.min(todayTodos.length, 4),
-                        itemBuilder: (context, index) {
-                          final todo = todayTodos[index];
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 2),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.circle_outlined,
-                                  size: 16,
-                                  color: tokens.textSecondary,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    todo.title,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(todayTodos, color),
     );
   }
-}
 
-class _QuickAddWidget extends ConsumerWidget {
-  final HomeWidgetSize size;
-  final bool isEditMode;
+  Widget _buildContent(List<dynamic> todayTodos, Color color) {
+    // Dynamische Anzahl der angezeigten Items je nach Größe
+    int maxItems = 0;
+    if (size == HomeWidgetSize.small) maxItems = 0;
+    else if (size == HomeWidgetSize.medium || size == HomeWidgetSize.tall) maxItems = 2;
+    else if (size == HomeWidgetSize.large) maxItems = 4;
+    else if (size.isLarge) maxItems = 6;
+    else maxItems = 3;
 
-  const _QuickAddWidget({required this.size, required this.isEditMode});
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.check_circle, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${todayTodos.length}',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.shade800,
+            ),
+          ),
+        ],
+      );
+    }
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = ref.watch(designTokensProvider);
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.check_circle, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
             Text(
-              'Schnell hinzufügen',
+              'ToDos',
               style: TextStyle(
-                fontSize: 11,
-                color: tokens.textSecondary,
-                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
               ),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _QuickAddButton(
-                  icon: Icons.restaurant,
-                  color: Colors.orange,
-                  onTap: isEditMode ? null : () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const FoodScreen()),
-                  ),
-                ),
-                _QuickAddButton(
-                  icon: Icons.water_drop,
-                  color: Colors.blue,
-                  onTap: isEditMode ? null : () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const WaterScreen()),
-                  ),
-                ),
-              ],
+            const Spacer(),
+            Text(
+              '${todayTodos.length}',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _QuickAddButton extends StatelessWidget {
-  final IconData icon;
-  final Color color;
-  final VoidCallback? onTap;
-
-  const _QuickAddButton({
-    required this.icon,
-    required this.color,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: color),
-      ),
+        if (maxItems > 0) ...[
+          const SizedBox(height: 8),
+          Expanded(
+            child: todayTodos.isEmpty
+                ? Center(
+                    child: Text(
+                      '✓ Alles erledigt!',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontSize: 12,
+                      ),
+                    ),
+                  )
+                : ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: math.min(todayTodos.length, maxItems),
+                    itemBuilder: (context, index) {
+                      final todo = todayTodos[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          children: [
+                            Icon(Icons.circle_outlined, size: 14, color: Colors.grey.shade400),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                todo.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ],
     );
   }
 }
 
 class _BooksWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _BooksWidget({required this.size, this.onTap});
+  const _BooksWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = ref.watch(designTokensProvider);
+    final color = customColor ?? Colors.brown;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.menu_book, size: 28, color: Colors.brown),
-              const SizedBox(height: 4),
-              Text(
-                'Bücher',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: tokens.textPrimary,
-                ),
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(color),
+    );
+  }
+
+  Widget _buildContent(Color color) {
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.menu_book, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Bücher',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
               ),
-            ],
+              child: Icon(Icons.menu_book, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Bücher',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        Text(
+          'Leseliste',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.grey.shade800,
           ),
         ),
-      ),
+        Text(
+          'Tippen zum Öffnen',
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey.shade500,
+          ),
+        ),
+      ],
     );
   }
 }
 
 class _TimerWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _TimerWidget({required this.size, this.onTap});
+  const _TimerWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = ref.watch(designTokensProvider);
     final timerSessions = ref.watch(timerSessionsProvider);
+    final color = customColor ?? Colors.deepPurple;
     
-    // Heutige Sessions zählen
     final today = DateTime.now();
     final todaySessions = timerSessions.where((s) => 
       s.startTime.year == today.year &&
@@ -1499,268 +1585,91 @@ class _TimerWidget extends ConsumerWidget {
       0, (sum, s) => sum + s.durationMinutes
     );
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(Icons.timer, size: 28, color: Colors.white),
-              const SizedBox(height: 4),
-              Text(
-                'Timer',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              if (!size.isSmall) ...[
-                const SizedBox(height: 8),
-                Text(
-                  '$totalMinutesToday min',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  'heute',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
+    return UnifiedStatWidget(
+      size: size,
+      title: 'Timer',
+      value: '$totalMinutesToday',
+      unit: 'min',
+      subtitle: 'heute fokussiert',
+      icon: Icons.timer,
+      color: color,
+      progress: (totalMinutesToday / 120).clamp(0.0, 1.0),
+      onTap: onTap,
     );
   }
 }
 
 class _SchoolWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _SchoolWidget({required this.size, this.onTap});
+  const _SchoolWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = ref.watch(designTokensProvider);
     final homework = ref.watch(homeworkNotifierProvider);
-    final events = ref.watch(schoolEventsNotifierProvider);
+    final color = customColor ?? Colors.indigo;
     
-    // Offene Hausaufgaben
     final pendingHomework = homework.where((h) => h.status != HomeworkStatus.done).length;
-    
-    // Anstehende Termine diese Woche
-    final now = DateTime.now();
-    final endOfWeek = now.add(Duration(days: 7 - now.weekday));
-    final upcomingEvents = events.where((e) => 
-      e.date.isAfter(now.subtract(const Duration(days: 1))) &&
-      e.date.isBefore(endOfWeek)
-    ).length;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.indigo.shade400, Colors.indigo.shade700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(Icons.school, size: 28, color: Colors.white),
-              const SizedBox(height: 4),
-              Text(
-                'Schule',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              if (!size.isSmall) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildBadge(Icons.assignment, pendingHomework, Colors.orange),
-                    const SizedBox(width: 8),
-                    _buildBadge(Icons.event, upcomingEvents, Colors.lightBlue),
-                  ],
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBadge(IconData icon, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            '$count',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
+    return UnifiedStatWidget(
+      size: size,
+      title: 'Schule',
+      value: '$pendingHomework',
+      unit: '',
+      subtitle: 'offene Aufgaben',
+      icon: Icons.school,
+      color: color,
+      progress: pendingHomework > 0 ? 0.5 : 1.0,
+      onTap: onTap,
     );
   }
 }
 
 class _SportWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _SportWidget({required this.size, this.onTap});
+  const _SportWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = ref.watch(designTokensProvider);
     final sessions = ref.watch(sportSessionsNotifierProvider);
     final streak = ref.watch(sportStreakProvider);
+    final color = customColor ?? Colors.green;
     
-    // Heute trainiert?
     final now = DateTime.now();
-    final todaySessions = sessions.where((s) =>
-      s.date.year == now.year &&
-      s.date.month == now.month &&
-      s.date.day == now.day
-    ).length;
-    
-    // Diese Woche
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
     final weekSessions = sessions.where((s) => s.date.isAfter(startOfWeek)).length;
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.green.shade400, Colors.green.shade700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(Icons.fitness_center, size: 28, color: Colors.white),
-              const SizedBox(height: 4),
-              Text(
-                'Sport',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              if (!size.isSmall) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildBadge(Icons.local_fire_department, streak.currentStreak, Colors.orange),
-                    const SizedBox(width: 8),
-                    _buildBadge(Icons.today, todaySessions, Colors.lightBlue),
-                  ],
-                ),
-                if (size.isLarge) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    '$weekSessions Einheiten diese Woche',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBadge(IconData icon, int count, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 4),
-          Text(
-            '$count',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
+    return UnifiedStatWidget(
+      size: size,
+      title: 'Sport',
+      value: '${streak.currentStreak}',
+      unit: 'Tage',
+      subtitle: '$weekSessions Einheiten diese Woche',
+      icon: Icons.fitness_center,
+      color: color,
+      progress: (weekSessions / 5).clamp(0.0, 1.0),
+      onTap: onTap,
     );
   }
 }
 
 class _SkinWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
-  const _SkinWidget({required this.size, this.onTap});
+  const _SkinWidget({required this.size, this.customColor, this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = ref.watch(designTokensProvider);
     final entries = ref.watch(skinEntriesNotifierProvider);
-    final steps = ref.watch(skinCareStepsNotifierProvider);
+    final color = customColor ?? Colors.pink;
     
-    // Heutiger Eintrag?
     final now = DateTime.now();
     final todayEntry = entries.cast<SkinEntry?>().firstWhere(
       (e) => e != null && 
@@ -1769,194 +1678,110 @@ class _SkinWidget extends ConsumerWidget {
              e.date.day == now.day,
       orElse: () => null,
     );
-    
-    // Routine Progress heute - vereinfacht ohne completedDates
-    final dailySteps = steps.where((s) => s.isDaily).toList();
-    final completedToday = 0; // TODO: Implement via completions provider
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.pink.shade300, Colors.pink.shade600],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(todayEntry, color),
+    );
+  }
+
+  Widget _buildContent(SkinEntry? todayEntry, Color color) {
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: todayEntry != null
+                ? Text(todayEntry.overallCondition.emoji, style: const TextStyle(fontSize: 18))
+                : Icon(Icons.face_retouching_natural, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Haut',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.face_retouching_natural, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Haut',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        if (todayEntry != null) ...[
+          Text(todayEntry.overallCondition.emoji, style: const TextStyle(fontSize: 28)),
+          const SizedBox(height: 4),
+          Text(
+            'Heute eingetragen',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
             ),
           ),
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(Icons.face_retouching_natural, size: 28, color: Colors.white),
-              const SizedBox(height: 4),
-              Text(
-                'Haut',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              if (!size.isSmall) ...[
-                const SizedBox(height: 8),
-                if (todayEntry != null)
-                  Text(
-                    todayEntry.overallCondition.emoji,
-                    style: const TextStyle(fontSize: 24),
-                  )
-                else
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Kein Eintrag',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ),
-                if (size.isLarge && dailySteps.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Routine: $completedToday/${dailySteps.length}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ],
-            ],
+        ] else ...[
+          Icon(Icons.add, size: 28, color: Colors.grey.shade400),
+          const SizedBox(height: 4),
+          Text(
+            'Eintrag hinzufügen',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
           ),
-        ),
-      ),
+        ],
+      ],
     );
   }
 }
 
-class _StatWidgetCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String unit;
-  final IconData icon;
-  final Color color;
-  final double progress;
-  final String subtitle;
-  final HomeWidgetSize size;
-  final VoidCallback? onTap;
-
-  const _StatWidgetCard({
-    required this.title,
-    required this.value,
-    required this.unit,
-    required this.icon,
-    required this.color,
-    required this.progress,
-    required this.subtitle,
-    required this.size,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(icon, color: color, size: 18),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (unit.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 2, bottom: 3),
-                      child: Text(
-                        unit,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 6),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 4,
-                  backgroundColor: color.withOpacity(0.2),
-                  valueColor: AlwaysStoppedAnimation(color),
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.grey.shade500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Statistics Widget für Dashboard
 class _StatisticsWidget extends ConsumerWidget {
   final HomeWidgetSize size;
+  final Color? customColor;
   final VoidCallback? onTap;
 
   const _StatisticsWidget({
     required this.size,
+    this.customColor,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final tokens = ref.watch(designTokensProvider);
     final moodHistory = ref.watch(moodHistoryProvider);
+    final color = customColor ?? Colors.deepPurple;
     
-    // Berechne Durchschnitt der letzten 7 Tage
     double? avgMood;
     if (moodHistory.isNotEmpty) {
       final last7Days = moodHistory.where((m) {
@@ -1967,11 +1792,48 @@ class _StatisticsWidget extends ConsumerWidget {
         avgMood = last7Days.map((m) => m.mood).reduce((a, b) => a + b) / last7Days.length;
       }
     }
-    
-    final isSmall = size.isSmall;
 
+    return UnifiedStatWidget(
+      size: size,
+      title: 'Statistik',
+      value: avgMood != null ? 'Ø ${avgMood.toStringAsFixed(1)}' : '--',
+      unit: '',
+      subtitle: '7-Tage Stimmung',
+      icon: Icons.insights,
+      color: color,
+      progress: avgMood != null ? avgMood / 10 : null,
+      onTap: onTap,
+    );
+  }
+}
+
+// ============================================
+// EINHEITLICHER WIDGET CONTAINER
+// ============================================
+
+class _UnifiedWidgetContainer extends StatelessWidget {
+  final Color color;
+  final Widget child;
+  final VoidCallback? onTap;
+
+  const _UnifiedWidgetContainer({
+    required this.color,
+    required this.child,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return Card(
+      elevation: 0,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: color.withOpacity(0.2),
+          width: 1.5,
+        ),
+      ),
       child: InkWell(
         onTap: onTap,
         child: Container(
@@ -1980,61 +1842,13 @@ class _StatisticsWidget extends ConsumerWidget {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.deepPurple.shade400,
-                Colors.deepPurple.shade700,
+                color.withOpacity(0.08),
+                color.withOpacity(0.03),
               ],
             ),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.insights, color: Colors.white, size: 18),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Statistik',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                if (avgMood != null) ...[
-                  Text(
-                    'Ø ${avgMood.toStringAsFixed(1)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    '7-Tage Stimmung',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 11,
-                    ),
-                  ),
-                ] else ...[
-                  const Icon(Icons.show_chart, color: Colors.white54, size: 32),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Auswertung starten',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
+          padding: const EdgeInsets.all(12),
+          child: child,
         ),
       ),
     );

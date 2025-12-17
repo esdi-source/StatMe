@@ -9,7 +9,6 @@ enum HomeWidgetType {
   mood('Stimmung', 'mood'),
   todos('ToDos', 'check_circle'),
   greeting('Begrüßung', 'waving_hand'),
-  quickAdd('Schnell hinzufügen', 'add_circle'),
   books('Bücher', 'menu_book'),
   timer('Timer', 'timer'),
   school('Schule', 'school'),
@@ -192,7 +191,7 @@ class HomeScreenConfig extends Equatable {
           gridX: 3,
           gridY: 1,
         ),
-        // Dritte Reihe: Stimmung (mittel) + Schnell hinzufügen (mittel)
+        // Dritte Reihe: Stimmung (mittel) + Bücher (mittel)
         const HomeWidget(
           id: 'mood_1',
           type: HomeWidgetType.mood,
@@ -201,8 +200,8 @@ class HomeScreenConfig extends Equatable {
           gridY: 2,
         ),
         const HomeWidget(
-          id: 'quickadd_1',
-          type: HomeWidgetType.quickAdd,
+          id: 'books_1',
+          type: HomeWidgetType.books,
           size: HomeWidgetSize.medium,
           gridX: 2,
           gridY: 2,
