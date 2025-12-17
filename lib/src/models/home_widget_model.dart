@@ -14,7 +14,8 @@ enum HomeWidgetType {
   timer('Timer', 'timer'),
   school('Schule', 'school'),
   sport('Sport', 'fitness_center'),
-  skin('Gesichtshaut', 'face_retouching_natural');
+  skin('Gesichtshaut', 'face_retouching_natural'),
+  statistics('Statistik', 'insights');
 
   final String label;
   final String iconName;

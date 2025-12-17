@@ -13,3 +13,4 @@ export 'timer_widget_model.dart';
 export 'school_model.dart';
 export 'sport_model.dart';
 export 'skin_model.dart';
+export 'statistics_model.dart';

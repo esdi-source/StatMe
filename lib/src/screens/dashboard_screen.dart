@@ -130,9 +130,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
               ),
             ] else ...[
               IconButton(
-                icon: const Icon(Icons.bar_chart),
-                tooltip: 'Statistiken',
-                onPressed: () => _navigateTo(const StatsScreen()),
+                icon: const Icon(Icons.insights),
+                tooltip: 'Statistik',
+                onPressed: () => _navigateTo(const StatisticsScreen()),
               ),
               IconButton(
                 icon: const Icon(Icons.settings),
@@ -585,6 +585,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _SportWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SportScreen()));
       case HomeWidgetType.skin:
         return _SkinWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const SkinScreen()));
+      case HomeWidgetType.statistics:
+        return _StatisticsWidget(size: widget.size, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
   }
 
@@ -846,6 +848,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.fitness_center;
       case HomeWidgetType.skin:
         return Icons.face_retouching_natural;
+      case HomeWidgetType.statistics:
+        return Icons.insights;
     }
   }
 
@@ -1812,6 +1816,106 @@ class _StatWidgetCard extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Statistics Widget für Dashboard
+class _StatisticsWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final VoidCallback? onTap;
+
+  const _StatisticsWidget({
+    required this.size,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = ref.watch(designTokensProvider);
+    final moodHistory = ref.watch(moodHistoryProvider);
+    
+    // Berechne Durchschnitt der letzten 7 Tage
+    double? avgMood;
+    if (moodHistory.isNotEmpty) {
+      final last7Days = moodHistory.where((m) {
+        final daysDiff = DateTime.now().difference(m.date).inDays;
+        return daysDiff <= 7;
+      }).toList();
+      if (last7Days.isNotEmpty) {
+        avgMood = last7Days.map((m) => m.mood).reduce((a, b) => a + b) / last7Days.length;
+      }
+    }
+    
+    final isSmall = size == HomeWidgetSize.small;
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.deepPurple.shade400,
+                Colors.deepPurple.shade700,
+              ],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.insights, color: Colors.white, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Statistik',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                if (avgMood != null) ...[
+                  Text(
+                    'Ø ${avgMood.toStringAsFixed(1)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '7-Tage Stimmung',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 11,
+                    ),
+                  ),
+                ] else ...[
+                  const Icon(Icons.show_chart, color: Colors.white54, size: 32),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Auswertung starten',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),

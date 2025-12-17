@@ -466,6 +466,21 @@ final moodNotifierProvider = StateNotifierProvider<MoodNotifier, MoodLogModel?>(
   return MoodNotifier(ref.watch(moodRepositoryProvider));
 });
 
+/// Mood History Notifier for statistics
+class MoodHistoryNotifier extends StateNotifier<List<MoodLogModel>> {
+  final MoodRepository _repository;
+  
+  MoodHistoryNotifier(this._repository) : super([]);
+  
+  Future<void> loadRange(String userId, DateTime start, DateTime end) async {
+    state = await _repository.getMoodRange(userId, start, end);
+  }
+}
+
+final moodHistoryProvider = StateNotifierProvider<MoodHistoryNotifier, List<MoodLogModel>>((ref) {
+  return MoodHistoryNotifier(ref.watch(moodRepositoryProvider));
+});
+
 // ============================================
 // BOOK PROVIDERS
 // ============================================
