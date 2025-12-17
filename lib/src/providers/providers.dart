@@ -1854,3 +1854,230 @@ final skinCareCompletionsNotifierProvider = StateNotifierProvider<SkinCareComple
   final repository = ref.watch(skinRepositoryProvider);
   return SkinCareCompletionsNotifier(repository);
 });
+
+// ============================================
+// HAIR CARE PROVIDERS
+// ============================================
+
+/// Hair Care Entries Notifier - Tägliche Haarpflege
+class HairCareEntriesNotifier extends StateNotifier<List<HairCareEntry>> {
+  SharedPreferences? _prefs;
+  final String _oderId;
+  
+  HairCareEntriesNotifier(this._oderId) : super([]);
+  
+  static const _storageKey = 'hair_care_entries';
+  
+  String get _userKey => '${_storageKey}_$_oderId';
+  
+  Future<void> init(SharedPreferences prefs) async {
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => HairCareEntry.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) return;
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  HairCareEntry? getForDate(DateTime date) {
+    return state.cast<HairCareEntry?>().firstWhere(
+      (e) => e != null && 
+             e.date.year == date.year &&
+             e.date.month == date.month &&
+             e.date.day == date.day,
+      orElse: () => null,
+    );
+  }
+  
+  List<HairCareEntry> getForRange(DateTime start, DateTime end) {
+    return state.where((e) {
+      return e.date.isAfter(start.subtract(const Duration(days: 1))) &&
+             e.date.isBefore(end.add(const Duration(days: 1)));
+    }).toList()..sort((a, b) => a.date.compareTo(b.date));
+  }
+  
+  Future<HairCareEntry> addOrUpdate(HairCareEntry entry) async {
+    final existing = getForDate(entry.date);
+    if (existing != null) {
+      final updated = entry.copyWith(id: existing.id, createdAt: existing.createdAt);
+      state = state.map((e) => e.id == existing.id ? updated : e).toList();
+      await _save();
+      return updated;
+    } else {
+      state = [...state, entry];
+      await _save();
+      return entry;
+    }
+  }
+  
+  Future<void> delete(String entryId) async {
+    state = state.where((e) => e.id != entryId).toList();
+    await _save();
+  }
+  
+  /// Statistik für die letzten n Tage
+  int getWashDaysInRange(int days) {
+    final now = DateTime.now();
+    final start = now.subtract(Duration(days: days));
+    return getForRange(start, now).where((e) => 
+      e.careTypes.contains(HairCareType.washed) || 
+      e.careTypes.contains(HairCareType.shampoo) ||
+      e.careTypes.contains(HairCareType.waterOnly)
+    ).length;
+  }
+}
+
+final hairCareEntriesProvider = StateNotifierProvider.family<HairCareEntriesNotifier, List<HairCareEntry>, String>((ref, oderId) {
+  final notifier = HairCareEntriesNotifier(oderId);
+  
+  ref.watch(sharedPreferencesProvider).whenData((prefs) {
+    notifier.init(prefs);
+  });
+  
+  return notifier;
+});
+
+/// Hair Events Notifier - Besondere Ereignisse (Haarschnitt, Färben etc.)
+class HairEventsNotifier extends StateNotifier<List<HairEvent>> {
+  SharedPreferences? _prefs;
+  final String _oderId;
+  
+  HairEventsNotifier(this._oderId) : super([]);
+  
+  static const _storageKey = 'hair_events';
+  
+  String get _userKey => '${_storageKey}_$_oderId';
+  
+  Future<void> init(SharedPreferences prefs) async {
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => HairEvent.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) return;
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  List<HairEvent> getRecent(int count) {
+    final sorted = [...state]..sort((a, b) => b.date.compareTo(a.date));
+    return sorted.take(count).toList();
+  }
+  
+  HairEvent? getLastOfType(HairEventType type) {
+    final filtered = state.where((e) => e.eventType == type).toList();
+    if (filtered.isEmpty) return null;
+    filtered.sort((a, b) => b.date.compareTo(a.date));
+    return filtered.first;
+  }
+  
+  int daysSinceLastHaircut() {
+    final last = getLastOfType(HairEventType.haircut);
+    if (last == null) return -1;
+    return DateTime.now().difference(last.date).inDays;
+  }
+  
+  Future<HairEvent> add(HairEvent event) async {
+    state = [...state, event];
+    await _save();
+    return event;
+  }
+  
+  Future<void> update(HairEvent event) async {
+    state = state.map((e) => e.id == event.id ? event : e).toList();
+    await _save();
+  }
+  
+  Future<void> delete(String eventId) async {
+    state = state.where((e) => e.id != eventId).toList();
+    await _save();
+  }
+}
+
+final hairEventsProvider = StateNotifierProvider.family<HairEventsNotifier, List<HairEvent>, String>((ref, oderId) {
+  final notifier = HairEventsNotifier(oderId);
+  
+  ref.watch(sharedPreferencesProvider).whenData((prefs) {
+    notifier.init(prefs);
+  });
+  
+  return notifier;
+});
+
+/// Hair Products Notifier - Pflegeprodukte
+class HairProductsNotifier extends StateNotifier<List<HairProduct>> {
+  SharedPreferences? _prefs;
+  final String _oderId;
+  
+  HairProductsNotifier(this._oderId) : super([]);
+  
+  static const _storageKey = 'hair_products';
+  
+  String get _userKey => '${_storageKey}_$_oderId';
+  
+  Future<void> init(SharedPreferences prefs) async {
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => HairProduct.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) return;
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  List<HairProduct> get activeProducts => state.where((p) => p.isActive).toList();
+  
+  List<HairProduct> getByCategory(HairProductCategory category) {
+    return state.where((p) => p.category == category).toList();
+  }
+  
+  Future<HairProduct> add(HairProduct product) async {
+    state = [...state, product];
+    await _save();
+    return product;
+  }
+  
+  Future<void> update(HairProduct product) async {
+    state = state.map((p) => p.id == product.id ? product : p).toList();
+    await _save();
+  }
+  
+  Future<void> delete(String productId) async {
+    state = state.where((p) => p.id != productId).toList();
+    await _save();
+  }
+}
+
+final hairProductsProvider = StateNotifierProvider.family<HairProductsNotifier, List<HairProduct>, String>((ref, oderId) {
+  final notifier = HairProductsNotifier(oderId);
+  
+  ref.watch(sharedPreferencesProvider).whenData((prefs) {
+    notifier.init(prefs);
+  });
+  
+  return notifier;
+});
+
+/// Hair Care Statistics Provider
+final hairCareStatisticsProvider = Provider.family<HairCareStatistics, String>((ref, oderId) {
+  final entries = ref.watch(hairCareEntriesProvider(oderId));
+  final events = ref.watch(hairEventsProvider(oderId));
+  
+  return HairCareStatistics.calculate(
+    entries: entries,
+    events: events,
+    days: 7,
+  );
+});

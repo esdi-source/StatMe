@@ -45,3 +45,10 @@ export 'skin/skin_routine_screen.dart';
 export 'skin/skin_products_screen.dart';
 export 'skin/skin_history_screen.dart';
 export 'skin/skin_photos_screen.dart';
+
+// Hair (Haarpflege) Module
+export 'hair/hair_screen.dart';
+export 'hair/hair_entry_screen.dart';
+export 'hair/hair_event_screen.dart';
+export 'hair/hair_products_screen.dart';
+export 'hair/hair_history_screen.dart';

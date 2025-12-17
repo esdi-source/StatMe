@@ -657,6 +657,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _SportWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SportScreen()));
       case HomeWidgetType.skin:
         return _SkinWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SkinScreen()));
+      case HomeWidgetType.hair:
+        return _HairWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const HairScreen()));
       case HomeWidgetType.statistics:
         return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
@@ -925,6 +927,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.fitness_center;
       case HomeWidgetType.skin:
         return Icons.face_retouching_natural;
+      case HomeWidgetType.hair:
+        return Icons.content_cut;
       case HomeWidgetType.statistics:
         return Icons.insights;
     }
@@ -1757,6 +1761,185 @@ class _SkinWidget extends ConsumerWidget {
             'Eintrag hinzufügen',
             style: TextStyle(
               fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _HairWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final Color? customColor;
+  final VoidCallback? onTap;
+
+  const _HairWidget({required this.size, this.customColor, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final color = customColor ?? Colors.brown;
+    
+    if (user == null) {
+      return _UnifiedWidgetContainer(
+        color: color,
+        onTap: onTap,
+        child: _buildEmptyContent(color),
+      );
+    }
+    
+    final entries = ref.watch(hairCareEntriesProvider(user.id));
+    final events = ref.watch(hairEventsProvider(user.id));
+    final stats = ref.watch(hairCareStatisticsProvider(user.id));
+    
+    final now = DateTime.now();
+    final todayEntry = entries.cast<HairCareEntry?>().firstWhere(
+      (e) => e != null && 
+             e.date.year == now.year &&
+             e.date.month == now.month &&
+             e.date.day == now.day,
+      orElse: () => null,
+    );
+
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(todayEntry, stats, events, color),
+    );
+  }
+
+  Widget _buildEmptyContent(Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.content_cut, size: 20, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Haarpflege',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(HairCareEntry? todayEntry, HairCareStatistics stats, List<HairEvent> events, Color color) {
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: todayEntry != null && todayEntry.careTypes.isNotEmpty
+                ? Text(todayEntry.careTypes.first.emoji, style: const TextStyle(fontSize: 18))
+                : Icon(Icons.content_cut, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Haarpflege',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    // Mittlere und große Größen
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.content_cut, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Haarpflege',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            if (todayEntry != null) ...[
+              const Spacer(),
+              Icon(Icons.check_circle, size: 16, color: Colors.green),
+            ],
+          ],
+        ),
+        const Spacer(),
+        if (todayEntry != null) ...[
+          Wrap(
+            spacing: 4,
+            children: todayEntry.careTypes.take(3).map((t) => 
+              Text(t.emoji, style: const TextStyle(fontSize: 16))
+            ).toList(),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            todayEntry.careTypes.map((t) => t.label).take(2).join(', '),
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ] else ...[
+          // Zeige Statistik statt leerer Zustand
+          if (stats.daysSinceLastWash >= 0)
+            Text(
+              stats.daysSinceLastWash == 0 
+                  ? 'Heute gewaschen' 
+                  : 'Vor ${stats.daysSinceLastWash}d gewaschen',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            )
+          else
+            Text(
+              'Tippen zum Eintragen',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey.shade500,
+              ),
+            ),
+        ],
+        if (size.isLarge && stats.daysSinceLastHaircut >= 0) ...[
+          const SizedBox(height: 4),
+          Text(
+            '✂️ Letzter Schnitt: vor ${stats.daysSinceLastHaircut} Tagen',
+            style: TextStyle(
+              fontSize: 10,
               color: Colors.grey.shade500,
             ),
           ),

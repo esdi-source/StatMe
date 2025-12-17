@@ -4,7 +4,7 @@
 /// Größenabhängige Designs für konsistente Darstellung.
 
 import 'package:flutter/material.dart';
-import '../models/home_widget_model.dart';
+import '../../models/home_widget_model.dart';
 
 /// Standard-Farbe für alle Widgets (neutral, einheitlich)
 const Color kDefaultWidgetColor = Color(0xFF6366F1); // Indigo

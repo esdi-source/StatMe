@@ -14,6 +14,7 @@ enum HomeWidgetType {
   school('Schule', 'school'),
   sport('Sport', 'fitness_center'),
   skin('Gesichtshaut', 'face_retouching_natural'),
+  hair('Haarpflege', 'content_cut'),
   statistics('Statistik', 'insights');
 
   final String label;
