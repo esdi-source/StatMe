@@ -2223,3 +2223,171 @@ final digestionDaySummaryProvider = Provider.family<DigestionDaySummary, ({Strin
     entries: dayEntries,
   );
 });
+
+// ============================================
+// SUPPLEMENT PROVIDERS
+// ============================================
+
+/// Supplements Notifier - Nahrungsergänzungsmittel
+class SupplementsNotifier extends StateNotifier<List<Supplement>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  SupplementsNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'supplements';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => Supplement.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  /// Aktive (nicht pausierte) Supplements
+  List<Supplement> get active => state.where((s) => !s.isPaused).toList();
+  
+  /// Supplement nach ID
+  Supplement? getById(String id) {
+    return state.cast<Supplement?>().firstWhere((s) => s?.id == id, orElse: () => null);
+  }
+  
+  /// Supplements nach Kategorie
+  List<Supplement> byCategory(SupplementCategory category) {
+    return state.where((s) => s.category == category).toList();
+  }
+  
+  /// Neues Supplement hinzufügen
+  Future<Supplement> add(Supplement supplement) async {
+    state = [...state, supplement];
+    await _save();
+    return supplement;
+  }
+  
+  /// Supplement aktualisieren
+  Future<void> update(Supplement supplement) async {
+    state = state.map((s) => s.id == supplement.id ? supplement : s).toList();
+    await _save();
+  }
+  
+  /// Supplement löschen
+  Future<void> delete(String supplementId) async {
+    state = state.where((s) => s.id != supplementId).toList();
+    await _save();
+  }
+}
+
+final supplementsProvider = StateNotifierProvider.family<SupplementsNotifier, List<Supplement>, String>((ref, userId) {
+  return SupplementsNotifier(userId);
+});
+
+/// Supplement Intakes Notifier - Einnahmen
+class SupplementIntakesNotifier extends StateNotifier<List<SupplementIntake>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  SupplementIntakesNotifier(this._userId) : super([]);
+  
+  static const _storageKey = 'supplement_intakes';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => SupplementIntake.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  /// Einnahmen für einen bestimmten Tag
+  List<SupplementIntake> getForDate(DateTime date) {
+    return state.where((e) => 
+      e.timestamp.year == date.year &&
+      e.timestamp.month == date.month &&
+      e.timestamp.day == date.day
+    ).toList()..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  }
+  
+  /// Einnahmen für einen Zeitraum
+  List<SupplementIntake> getForRange(DateTime start, DateTime end) {
+    return state.where((e) {
+      return e.timestamp.isAfter(start.subtract(const Duration(days: 1))) &&
+             e.timestamp.isBefore(end.add(const Duration(days: 1)));
+    }).toList()..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+  
+  /// Einnahmen heute
+  List<SupplementIntake> get todayIntakes {
+    final now = DateTime.now();
+    return getForDate(now);
+  }
+  
+  /// Einnahmen eines bestimmten Supplements heute
+  List<SupplementIntake> todayIntakesFor(String supplementId) {
+    return todayIntakes.where((i) => i.supplementId == supplementId).toList();
+  }
+  
+  /// Neue Einnahme hinzufügen
+  Future<SupplementIntake> add(SupplementIntake intake) async {
+    state = [...state, intake];
+    await _save();
+    return intake;
+  }
+  
+  /// Einnahme aktualisieren
+  Future<void> update(SupplementIntake intake) async {
+    state = state.map((i) => i.id == intake.id ? intake : i).toList();
+    await _save();
+  }
+  
+  /// Einnahme löschen
+  Future<void> delete(String intakeId) async {
+    state = state.where((i) => i.id != intakeId).toList();
+    await _save();
+  }
+  
+  /// Alle Einnahmen eines Supplements löschen
+  Future<void> deleteForSupplement(String supplementId) async {
+    state = state.where((i) => i.supplementId != supplementId).toList();
+    await _save();
+  }
+}
+
+final supplementIntakesProvider = StateNotifierProvider.family<SupplementIntakesNotifier, List<SupplementIntake>, String>((ref, userId) {
+  return SupplementIntakesNotifier(userId);
+});
+
+/// Provider für Supplement-Statistiken
+final supplementStatisticsProvider = Provider.family<SupplementStatistics, ({String userId, int days})>((ref, params) {
+  final supplements = ref.watch(supplementsProvider(params.userId));
+  final intakes = ref.watch(supplementIntakesProvider(params.userId));
+  
+  return SupplementStatistics.calculate(
+    supplements: supplements,
+    intakes: intakes,
+    days: params.days,
+  );
+});
+

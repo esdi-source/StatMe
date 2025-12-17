@@ -55,3 +55,6 @@ export 'hair/hair_history_screen.dart';
 
 // Digestion (Verdauung) Module
 export 'digestion_screen.dart';
+
+// Supplement Module
+export 'supplement_screen.dart';

@@ -650,6 +650,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _HairWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const HairScreen()));
       case HomeWidgetType.digestion:
         return _DigestionWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const DigestionScreen()));
+      case HomeWidgetType.supplements:
+        return _SupplementsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SupplementScreen()));
       case HomeWidgetType.statistics:
         return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
@@ -794,6 +796,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.content_cut;
       case HomeWidgetType.digestion:
         return Icons.science;
+      case HomeWidgetType.supplements:
+        return Icons.medication;
       case HomeWidgetType.statistics:
         return Icons.insights;
     }
@@ -1765,6 +1769,183 @@ class _HairWidget extends ConsumerWidget {
           const SizedBox(height: 4),
           Text(
             '✂️ Letzter Schnitt: vor ${stats.daysSinceLastHaircut} Tagen',
+            style: TextStyle(
+              fontSize: 10,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _SupplementsWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final Color? customColor;
+  final VoidCallback? onTap;
+
+  const _SupplementsWidget({required this.size, this.customColor, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final color = customColor ?? Colors.deepOrange;
+    
+    if (user == null) {
+      return _UnifiedWidgetContainer(
+        color: color,
+        onTap: onTap,
+        child: _buildEmptyContent(color),
+      );
+    }
+    
+    final supplements = ref.watch(supplementsProvider(user.id));
+    final intakes = ref.watch(supplementIntakesProvider(user.id));
+    
+    final now = DateTime.now();
+    final todayIntakes = intakes.where((i) => 
+      i.timestamp.year == now.year &&
+      i.timestamp.month == now.month &&
+      i.timestamp.day == now.day
+    ).toList();
+    
+    final activeSupplements = supplements.where((s) => !s.isPaused).toList();
+
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(activeSupplements, todayIntakes, supplements, color),
+    );
+  }
+
+  Widget _buildEmptyContent(Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.medication, size: 20, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Supplements',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(List<Supplement> active, List<SupplementIntake> todayIntakes, List<Supplement> all, Color color) {
+    final takenToday = todayIntakes.map((i) => i.supplementId).toSet();
+    final takenCount = active.where((s) => takenToday.contains(s.id)).length;
+    
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: active.isNotEmpty
+                ? Text('$takenCount/${active.length}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color))
+                : Icon(Icons.medication, size: 20, color: color),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Supplements',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    // Mittlere und große Größen
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.medication, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Supplements',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            if (takenCount == active.length && active.isNotEmpty) ...[
+              const Spacer(),
+              Icon(Icons.check_circle, size: 16, color: Colors.green),
+            ],
+          ],
+        ),
+        const Spacer(),
+        if (active.isNotEmpty) ...[
+          Row(
+            children: [
+              Text('✓ $takenCount', style: TextStyle(fontSize: 14, color: Colors.green.shade700, fontWeight: FontWeight.bold)),
+              Text(' / ${active.length}', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            takenCount == active.length 
+                ? 'Alle eingenommen!'
+                : '${active.length - takenCount} noch offen',
+            style: TextStyle(
+              fontSize: 11,
+              color: takenCount == active.length ? Colors.green.shade600 : Colors.grey.shade600,
+            ),
+          ),
+        ] else ...[
+          Text(
+            'Keine Supplements',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Tippen zum Anlegen',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+        if (size.isLarge && todayIntakes.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(
+            '📊 Heute: ${todayIntakes.length} Einnahmen',
             style: TextStyle(
               fontSize: 10,
               color: Colors.grey.shade500,

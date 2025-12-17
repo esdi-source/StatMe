@@ -16,6 +16,7 @@ enum HomeWidgetType {
   skin('Gesichtshaut', 'face_retouching_natural'),
   hair('Haarpflege', 'content_cut'),
   digestion('Verdauung', 'science'),
+  supplements('Supplements', 'medication'),
   statistics('Statistik', 'insights');
 
   final String label;
