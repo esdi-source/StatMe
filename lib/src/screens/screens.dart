@@ -64,3 +64,6 @@ export 'media_screen.dart';
 
 // Household (Haushalt) Module
 export 'household_screen.dart';
+
+// Recipe (Rezepte) Module
+export 'recipe_screen.dart';

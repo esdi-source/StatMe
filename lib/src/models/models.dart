@@ -19,3 +19,4 @@ export 'digestion_model.dart';
 export 'supplement_model.dart';
 export 'media_model.dart';
 export 'household_model.dart';
+export 'recipe_model.dart';

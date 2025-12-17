@@ -656,6 +656,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _MediaWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const MediaScreen()));
       case HomeWidgetType.household:
         return _HouseholdWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const HouseholdScreen()));
+      case HomeWidgetType.recipes:
+        return _RecipesWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const RecipeScreen()));
       case HomeWidgetType.statistics:
         return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
@@ -806,6 +808,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.movie;
       case HomeWidgetType.household:
         return Icons.cleaning_services;
+      case HomeWidgetType.recipes:
+        return Icons.restaurant_menu;
       case HomeWidgetType.statistics:
         return Icons.insights;
     }
@@ -2333,6 +2337,190 @@ class _HouseholdWidget extends ConsumerWidget {
           const SizedBox(height: 2),
           Text(
             'Tippen zum Einrichten',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _RecipesWidget extends ConsumerWidget {
+  final HomeWidgetSize size;
+  final Color? customColor;
+  final VoidCallback? onTap;
+
+  const _RecipesWidget({required this.size, this.customColor, this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).valueOrNull;
+    final color = customColor ?? Colors.orange;
+    
+    if (user == null) {
+      return _UnifiedWidgetContainer(
+        color: color,
+        onTap: onTap,
+        child: _buildEmptyContent(color),
+      );
+    }
+    
+    final recipes = ref.watch(recipesProvider(user.id));
+    final stats = RecipeStatistics.calculate(recipes);
+    
+    return _UnifiedWidgetContainer(
+      color: color,
+      onTap: onTap,
+      child: _buildContent(recipes, stats, color),
+    );
+  }
+
+  Widget _buildEmptyContent(Color color) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(Icons.restaurant_menu, size: 20, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Rezepte',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey.shade700,
+          ),
+          maxLines: 1,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(List<Recipe> recipes, RecipeStatistics stats, Color color) {
+    if (size.isSmall) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: recipes.isEmpty
+                ? Icon(Icons.restaurant_menu, size: 20, color: color)
+                : Text('${stats.totalRecipes}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Rezepte',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+            maxLines: 1,
+          ),
+        ],
+      );
+    }
+
+    // Mittlere und große Größen
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.restaurant_menu, size: 18, color: color),
+            ),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Rezepte',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (stats.favoritesCount > 0)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.star, size: 12, color: Colors.amber),
+                  const SizedBox(width: 2),
+                  Text(
+                    '${stats.favoritesCount}',
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade700, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+          ],
+        ),
+        const Spacer(),
+        if (recipes.isNotEmpty) ...[
+          Row(
+            children: [
+              Text('${stats.wishlistCount}', style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.bold)),
+              Text(' Merkliste', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              const Spacer(),
+              Text('${stats.cookedCount} gekocht', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+            ],
+          ),
+          if (stats.avgRating > 0 && size.isLarge) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.star, size: 14, color: Colors.amber),
+                const SizedBox(width: 4),
+                Text(
+                  stats.avgRating.toStringAsFixed(1),
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                ),
+                Text(' Durchschnitt', style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+              ],
+            ),
+          ],
+          if (stats.longNotCooked.isNotEmpty && size.isLarge) ...[
+            const SizedBox(height: 4),
+            Text(
+              '⏰ ${stats.longNotCooked.first.title}',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.orange.shade600,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ] else ...[
+          Text(
+            'Keine Rezepte',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Tippen zum Hinzufügen',
             style: TextStyle(
               fontSize: 11,
               color: Colors.grey.shade500,

@@ -19,6 +19,7 @@ enum HomeWidgetType {
   supplements('Supplements', 'medication'),
   media('Filme & Serien', 'movie'),
   household('Haushalt', 'cleaning_services'),
+  recipes('Rezepte', 'restaurant_menu'),
   statistics('Statistik', 'insights');
 
   final String label;

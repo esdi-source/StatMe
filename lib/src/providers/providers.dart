@@ -2660,3 +2660,66 @@ final householdStatisticsProvider = Provider.family<HouseholdStatistics, String>
   return HouseholdStatistics.calculate(tasks: tasks, completions: completions);
 });
 
+// ============================================================================
+// RECIPE PROVIDERS
+// ============================================================================
+
+/// Recipes Notifier - Rezepte verwalten
+class RecipesNotifier extends StateNotifier<List<Recipe>> {
+  SharedPreferences? _prefs;
+  final String _userId;
+  
+  RecipesNotifier(this._userId) : super([]) {
+    load();
+  }
+  
+  static const _storageKey = 'recipes';
+  
+  String get _userKey => '${_storageKey}_$_userId';
+  
+  Future<void> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    _prefs = prefs;
+    final jsonStr = _prefs!.getString(_userKey);
+    if (jsonStr != null) {
+      final list = jsonDecode(jsonStr) as List;
+      state = list.map((e) => Recipe.fromJson(e as Map<String, dynamic>)).toList();
+    }
+  }
+  
+  Future<void> _save() async {
+    if (_prefs == null) {
+      _prefs = await SharedPreferences.getInstance();
+    }
+    await _prefs!.setString(_userKey, jsonEncode(state.map((e) => e.toJson()).toList()));
+  }
+  
+  /// Rezept hinzufügen
+  Future<void> addRecipe(Recipe recipe) async {
+    state = [...state, recipe];
+    await _save();
+  }
+  
+  /// Rezept aktualisieren
+  Future<void> updateRecipe(Recipe recipe) async {
+    state = state.map((r) => r.id == recipe.id ? recipe : r).toList();
+    await _save();
+  }
+  
+  /// Rezept löschen
+  Future<void> removeRecipe(String recipeId) async {
+    state = state.where((r) => r.id != recipeId).toList();
+    await _save();
+  }
+}
+
+final recipesProvider = StateNotifierProvider.family<RecipesNotifier, List<Recipe>, String>((ref, userId) {
+  return RecipesNotifier(userId);
+});
+
+/// Provider für Rezept-Statistiken
+final recipeStatisticsProvider = Provider.family<RecipeStatistics, String>((ref, userId) {
+  final recipes = ref.watch(recipesProvider(userId));
+  return RecipeStatistics.calculate(recipes);
+});
+
