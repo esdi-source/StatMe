@@ -1,6 +1,7 @@
 /// Onboarding Screen - Erster App-Start Setup
 /// Klarer Start ohne Überforderung, Nutzer wählt was relevant ist
 
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -198,61 +199,125 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await themeNotifier.setIntensity(_intensity);
     await themeNotifier.setCustomColors(primary: _selectedColor);
 
-    // 2. Dashboard-Widgets erstellen
+    // 2. Dashboard-Widgets erstellen mit intelligenter Platzierung
     final selectedWidgets = _widgetSelections.where((w) => w.isSelected).toList();
     
-    // Sortiere nach Wichtigkeit (wichtigere zuerst)
-    selectedWidgets.sort((a, b) => b.importance.value.compareTo(a.importance.value));
+    // Mische die Widgets für zufällige Anordnung
+    selectedWidgets.shuffle(Random());
 
-    // Erstelle Widget-Liste mit Positionen
+    // Erstelle Widget-Liste mit Positionen (keine Überschneidungen)
     final widgets = <HomeWidget>[];
-    int currentRow = 0;
-    int currentCol = 0;
     const maxCols = 4;
+    
+    // Grid-Belegung tracken (true = belegt)
+    final grid = <int, Set<int>>{}; // Row -> Set of occupied columns
+    
+    // Funktion um freie Position zu finden
+    (int, int) findFreePosition(int width, int height) {
+      int row = 0;
+      while (true) {
+        for (int col = 0; col <= maxCols - width; col++) {
+          bool fits = true;
+          // Prüfe ob alle benötigten Zellen frei sind
+          for (int r = row; r < row + height && fits; r++) {
+            for (int c = col; c < col + width && fits; c++) {
+              if (grid[r]?.contains(c) ?? false) {
+                fits = false;
+              }
+            }
+          }
+          if (fits) {
+            // Markiere Zellen als belegt
+            for (int r = row; r < row + height; r++) {
+              grid.putIfAbsent(r, () => <int>{});
+              for (int c = col; c < col + width; c++) {
+                grid[r]!.add(c);
+              }
+            }
+            return (col, row);
+          }
+        }
+        row++;
+        if (row > 50) break; // Sicherheitslimit
+      }
+      return (0, row);
+    }
+    
+    // Farbvarianten generieren basierend auf ausgewählter Farbe
+    List<Color> generateColorVariants(Color baseColor, int count) {
+      final hsl = HSLColor.fromColor(baseColor);
+      final variants = <Color>[];
+      
+      for (int i = 0; i < count; i++) {
+        // Variiere Hue leicht (-30 bis +30 Grad)
+        final hueShift = (i * 25) % 60 - 30;
+        final newHue = (hsl.hue + hueShift) % 360;
+        
+        // Variiere Saturation und Lightness leicht
+        final satShift = ((i * 7) % 20 - 10) / 100;
+        final lightShift = ((i * 11) % 16 - 8) / 100;
+        
+        final newSat = (hsl.saturation + satShift).clamp(0.3, 1.0);
+        final newLight = (hsl.lightness + lightShift).clamp(0.3, 0.7);
+        
+        variants.add(HSLColor.fromAHSL(1.0, newHue, newSat, newLight).toColor());
+      }
+      
+      return variants;
+    }
+    
+    final colorVariants = generateColorVariants(_selectedColor, selectedWidgets.length + 2);
+    int colorIndex = 0;
+    
+    // Zufällige Größen für Widgets (gewichtet)
+    HomeWidgetSize getRandomSize() {
+      final rand = Random();
+      final roll = rand.nextInt(100);
+      if (roll < 35) {
+        return HomeWidgetSize.small; // 35% - 1x1
+      } else if (roll < 60) {
+        return HomeWidgetSize.medium; // 25% - 2x1
+      } else if (roll < 80) {
+        return HomeWidgetSize.tall; // 20% - 1x2
+      } else {
+        return HomeWidgetSize.large; // 20% - 2x2
+      }
+    }
 
-    // Begrüßung immer oben
+    // Begrüßung immer oben (breit)
+    final greetingPos = findFreePosition(4, 1);
     widgets.add(HomeWidget(
       id: 'greeting_${const Uuid().v4()}',
       type: HomeWidgetType.greeting,
       size: HomeWidgetSize.wide,
-      gridX: 0,
-      gridY: currentRow,
+      gridX: greetingPos.$1,
+      gridY: greetingPos.$2,
     ));
-    currentRow++;
 
+    // Widgets platzieren
     for (final selection in selectedWidgets) {
-      final size = selection.importance.toSize();
+      final size = getRandomSize();
+      final pos = findFreePosition(size.gridWidth, size.gridHeight);
       
-      // Prüfe ob Widget in aktuelle Reihe passt
-      if (currentCol + size.gridWidth > maxCols) {
-        currentRow += 1;
-        currentCol = 0;
-      }
-
       widgets.add(HomeWidget(
         id: '${selection.type.name}_${const Uuid().v4()}',
         type: selection.type,
         size: size,
-        gridX: currentCol,
-        gridY: currentRow,
-        customColorValue: _selectedColor.value,
+        gridX: pos.$1,
+        gridY: pos.$2,
+        customColorValue: colorVariants[colorIndex % colorVariants.length].value,
       ));
-
-      currentCol += size.gridWidth;
-      
-      // Bei großen Widgets ggf. Zeile erhöhen
-      if (size.gridHeight > 1) {
-        // Komplexere Logik könnte hier rein
-      }
+      colorIndex++;
     }
 
     // Statistik-Widget am Ende
+    final statsPos = findFreePosition(2, 1);
     widgets.add(HomeWidget(
       id: 'statistics_${const Uuid().v4()}',
       type: HomeWidgetType.statistics,
       size: HomeWidgetSize.medium,
-      gridX: 0,
-      gridY: currentRow + 2,
+      gridX: statsPos.$1,
+      gridY: statsPos.$2,
     ));
 
     // 3. Speichere Konfiguration
