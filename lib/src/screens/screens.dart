@@ -67,3 +67,6 @@ export 'household_screen.dart';
 
 // Recipe (Rezepte) Module
 export 'recipe_screen.dart';
+
+// Onboarding
+export 'onboarding_screen.dart';

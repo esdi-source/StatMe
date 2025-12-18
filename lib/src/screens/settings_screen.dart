@@ -11,6 +11,7 @@ import '../models/models.dart';
 import '../ui/theme/app_theme.dart';
 import '../ui/theme/design_tokens.dart';
 import '../ui/theme/theme_provider.dart';
+import 'onboarding_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -352,6 +353,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       AppConfig.isDemoMode ? 'Lokal (In-Memory)' : 'Cloud (Supabase)',
                     ),
                   ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.refresh),
+                    title: const Text('Setup erneut starten'),
+                    subtitle: const Text('Onboarding wiederholen'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _restartOnboarding(context),
+                  ),
                 ],
               ),
             ),
@@ -397,6 +406,41 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  /// Setup erneut starten
+  Future<void> _restartOnboarding(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Setup erneut starten?'),
+        content: const Text(
+          'Das Onboarding wird erneut angezeigt. '
+          'Du kannst deine Widgets und das Design neu konfigurieren.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Neu starten'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Onboarding zurücksetzen
+      await ref.read(onboardingCompleteProvider.notifier).reset();
+      
+      // App neu laden
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+        ref.invalidate(onboardingCompleteProvider);
+      }
+    }
   }
 
   /// Erweiterte Anpassungen Widget

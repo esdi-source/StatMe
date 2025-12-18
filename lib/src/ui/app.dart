@@ -7,6 +7,7 @@ import '../providers/providers.dart';
 import 'theme/app_theme.dart';
 import 'theme/theme_provider.dart';
 import '../screens/screens.dart';
+import '../screens/onboarding_screen.dart';
 
 class StatMeApp extends ConsumerWidget {
   const StatMeApp({super.key});
@@ -14,6 +15,7 @@ class StatMeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authNotifierProvider);
+    final onboardingComplete = ref.watch(onboardingCompleteProvider);
     // Neues Theme-System - Design Tokens basiert
     final tokens = ref.watch(designTokensProvider);
     
@@ -45,6 +47,15 @@ class StatMeApp extends ConsumerWidget {
           }
           
           if (user != null) {
+            // Prüfe ob Onboarding abgeschlossen ist
+            if (!onboardingComplete) {
+              return OnboardingScreen(
+                onComplete: () {
+                  // Force rebuild
+                  ref.invalidate(onboardingCompleteProvider);
+                },
+              );
+            }
             return const MainNavigationScreen();
           }
           return const LoginScreen();
