@@ -582,6 +582,9 @@ class HomeScreenConfigNotifier extends StateNotifier<HomeScreenConfig?> {
   Future<void> load() async {
     if (_prefs == null) return;
     
+    // Wenn state bereits gesetzt ist (z.B. durch Onboarding), nicht überschreiben
+    if (state != null) return;
+    
     final jsonStr = _prefs!.getString(_userKey);
     if (jsonStr != null) {
       try {
@@ -779,8 +782,16 @@ class HomeScreenConfigNotifier extends StateNotifier<HomeScreenConfig?> {
   
   /// Komplettes Layout ersetzen
   Future<void> setWidgets(List<HomeWidget> widgets) async {
-    if (state == null) return;
-    state = state!.copyWith(widgets: widgets);
+    // Initialisiere prefs falls noch nicht geschehen
+    _prefs ??= await SharedPreferences.getInstance();
+    
+    // Erstelle neuen State (auch wenn aktuell null)
+    state = HomeScreenConfig(
+      oderId: _oderId,
+      widgets: widgets,
+      gridColumns: 4,
+      updatedAt: DateTime.now(),
+    );
     await _save();
   }
   
