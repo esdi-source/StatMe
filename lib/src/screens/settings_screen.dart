@@ -410,6 +410,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   /// Setup erneut starten
   Future<void> _restartOnboarding(BuildContext context) async {
+    final user = ref.read(authNotifierProvider).valueOrNull;
+    if (user == null) return;
+    
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -432,13 +435,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
 
     if (confirmed == true) {
-      // Onboarding zurücksetzen
-      await ref.read(onboardingCompleteProvider.notifier).reset();
+      // Onboarding zurücksetzen (user-spezifisch)
+      await ref.read(userOnboardingProvider(user.id).notifier).reset();
       
       // App neu laden
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
-        ref.invalidate(onboardingCompleteProvider);
+        ref.invalidate(userOnboardingProvider(user.id));
       }
     }
   }

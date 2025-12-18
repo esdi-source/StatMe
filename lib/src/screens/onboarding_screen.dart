@@ -265,8 +265,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
     await ref.read(homeScreenConfigProvider(user.id).notifier).setWidgets(widgets);
 
-    // 4. Onboarding als abgeschlossen markieren
-    await ref.read(onboardingCompleteProvider.notifier).setComplete();
+    // 4. Onboarding als abgeschlossen markieren (user-spezifisch)
+    await ref.read(userOnboardingProvider(user.id).notifier).setComplete();
 
     // 5. Callback ausführen
     HapticFeedback.mediumImpact();
@@ -926,32 +926,50 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 }
 
 // ============================================================================
-// ONBOARDING COMPLETE PROVIDER
+// ONBOARDING COMPLETE PROVIDER (User-specific)
 // ============================================================================
 
-/// Provider um zu prüfen ob Onboarding abgeschlossen ist
-class OnboardingCompleteNotifier extends StateNotifier<bool> {
-  OnboardingCompleteNotifier() : super(false) {
+/// Provider um zu prüfen ob Onboarding für einen User abgeschlossen ist
+class UserOnboardingNotifier extends StateNotifier<bool> {
+  final String _userId;
+  SharedPreferences? _prefs;
+  
+  UserOnboardingNotifier(this._userId) : super(false) {
     _load();
   }
 
-  static const _key = 'onboarding_complete';
+  String get _key => 'onboarding_complete_$_userId';
 
   Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    state = prefs.getBool(_key) ?? false;
+    _prefs = await SharedPreferences.getInstance();
+    state = _prefs!.getBool(_key) ?? false;
   }
 
   Future<void> setComplete() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_key, true);
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setBool(_key, true);
     state = true;
   }
 
   Future<void> reset() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_key, false);
+    _prefs ??= await SharedPreferences.getInstance();
+    await _prefs!.setBool(_key, false);
     state = false;
+  }
+}
+
+/// User-spezifischer Onboarding Provider
+final userOnboardingProvider =
+    StateNotifierProvider.family<UserOnboardingNotifier, bool, String>((ref, userId) {
+  return UserOnboardingNotifier(userId);
+});
+
+/// Legacy provider für Abwärtskompatibilität (Settings)
+class OnboardingCompleteNotifier extends StateNotifier<bool> {
+  OnboardingCompleteNotifier() : super(true); // Default true für bestehende User
+  
+  void setFromUser(bool value) {
+    state = value;
   }
 }
 
