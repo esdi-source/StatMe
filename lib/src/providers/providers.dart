@@ -11,16 +11,31 @@ import '../core/config/app_config.dart';
 import '../models/models.dart';
 import '../models/home_widget_model.dart';
 import '../models/micro_widget_model.dart';
-import '../models/timer_widget_model.dart';
 import '../repositories/repositories.dart';
 import '../services/in_memory_database.dart';
 import '../services/openfoodfacts_service.dart';
 import '../services/google_books_service.dart';
 import '../services/exercise_db_service.dart';
+import '../services/data_migration_service.dart';
+import '../services/supabase_data_service.dart';
 
 // Re-export Theme Provider für einfacheren Zugriff
 export '../ui/theme/theme_provider.dart';
 export '../ui/theme/design_tokens.dart' show ThemePreset, ShapeStyle, DesignTokens;
+
+/// Zentrale Event-Logging Funktion für alle Provider
+Future<void> _logWidgetEvent(String widgetName, String eventType, Map<String, dynamic> payload) async {
+  if (AppConfig.isDemoMode) return;
+  try {
+    await SupabaseDataService.instance.logEvent(
+      widgetName: widgetName,
+      eventType: eventType,
+      payload: payload,
+    );
+  } catch (e) {
+    // Silently fail - Event-Logging soll App nicht crashen
+  }
+}
 
 // ============================================
 // REPOSITORY PROVIDERS
@@ -132,8 +147,7 @@ final bookRepositoryProvider = Provider<BookRepository>((ref) {
   if (AppConfig.isDemoMode) {
     return DemoBookRepository();
   }
-  // TODO: Implement SupabaseBookRepository when needed
-  return DemoBookRepository();
+  return SupabaseBookRepository(Supabase.instance.client);
 });
 
 // ============================================
@@ -824,177 +838,207 @@ final inMemoryDatabaseProvider = Provider<InMemoryDatabase>((ref) {
 });
 
 // ============================================
-// TIMER SESSIONS PROVIDER
-// ============================================
-
-/// Timer Sessions Notifier - Verwaltet Timer-Sessions für alle Aktivitäten
-class TimerSessionsNotifier extends StateNotifier<List<TimerSessionModel>> {
-  SharedPreferences? _prefs;
-  final String _userId;
-  
-  TimerSessionsNotifier(this._userId) : super([]);
-  
-  static const _storageKey = 'timer_sessions';
-  
-  String get _userKey => '${_storageKey}_$_userId';
-  
-  Future<void> init(SharedPreferences prefs) async {
-    _prefs = prefs;
-    await load();
-  }
-  
-  Future<void> load() async {
-    if (_prefs == null) return;
-    
-    final jsonStr = _prefs!.getString(_userKey);
-    if (jsonStr != null) {
-      try {
-        final List<dynamic> jsonList = jsonDecode(jsonStr);
-        state = jsonList
-            .map((j) => TimerSessionModel.fromJson(j as Map<String, dynamic>))
-            .toList();
-      } catch (e) {
-        state = [];
-      }
-    }
-  }
-  
-  Future<void> _save() async {
-    if (_prefs == null) return;
-    final jsonList = state.map((s) => s.toJson()).toList();
-    await _prefs!.setString(_userKey, jsonEncode(jsonList));
-  }
-  
-  Future<void> addSession(TimerSessionModel session) async {
-    state = [session, ...state];
-    await _save();
-  }
-  
-  Future<void> deleteSession(String sessionId) async {
-    state = state.where((s) => s.id != sessionId).toList();
-    await _save();
-  }
-  
-  /// Alle Sessions für eine Aktivität
-  List<TimerSessionModel> getSessionsForActivity(TimerActivityType type) {
-    return state.where((s) => s.activityType == type).toList();
-  }
-  
-  /// Sessions für einen Zeitraum
-  List<TimerSessionModel> getSessionsInRange(DateTime start, DateTime end) {
-    return state.where((s) => 
-        s.startTime.isAfter(start) && s.startTime.isBefore(end)
-    ).toList();
-  }
-}
-
-/// Timer Sessions Provider
-final timerSessionsProvider = StateNotifierProvider<TimerSessionsNotifier, List<TimerSessionModel>>((ref) {
-  final user = ref.watch(authNotifierProvider).valueOrNull;
-  final userId = user?.id ?? 'demo';
-  final notifier = TimerSessionsNotifier(userId);
-  
-  ref.watch(sharedPreferencesProvider).whenData((prefs) {
-    notifier.init(prefs);
-  });
-  
-  return notifier;
-});
-
-// ============================================
 // MICRO WIDGETS PROVIDER
 // ============================================
 
-/// MicroWidgets Notifier - Verwaltet kleine abhakbare Gewohnheits-Widgets
+/// MicroWidgets Notifier - Verwaltet kleine abhakbare Gewohnheits-Widgets in Supabase
 class MicroWidgetsNotifier extends StateNotifier<List<MicroWidgetModel>> {
-  SharedPreferences? _prefs;
   final String _userId;
+  final SupabaseClient? _client;
   
-  MicroWidgetsNotifier(this._userId) : super([]);
+  MicroWidgetsNotifier(this._userId, this._client) : super([]);
   
-  static const _storageKey = 'micro_widgets';
-  
-  String get _userKey => '${_storageKey}_$_userId';
-  
-  Future<void> init(SharedPreferences prefs) async {
-    _prefs = prefs;
-    await load();
+  Future<void> _logWidgetEvent(String widgetName, String eventType, Map<String, dynamic> payload) async {
+    try {
+      await SupabaseDataService.instance.logEvent(
+        widgetName: widgetName,
+        eventType: eventType,
+        payload: payload,
+      );
+    } catch (e) {
+      print('Error logging widget event: $e');
+    }
   }
   
   Future<void> load() async {
-    if (_prefs == null) return;
+    if (_client == null || _userId == 'demo') {
+      state = [];
+      return;
+    }
     
-    final jsonStr = _prefs!.getString(_userKey);
-    if (jsonStr != null) {
-      try {
-        final List<dynamic> jsonList = jsonDecode(jsonStr);
-        state = jsonList
-            .map((j) => MicroWidgetModel.fromJson(j as Map<String, dynamic>))
+    try {
+      final response = await _client!
+          .from('micro_widgets')
+          .select()
+          .eq('user_id', _userId)
+          .eq('is_active', true)
+          .order('sort_order', ascending: true);
+      
+      state = await Future.wait((response as List).map((json) async {
+        // Lade auch die Completions
+        final completionsResponse = await _client!
+            .from('micro_widget_completions')
+            .select()
+            .eq('widget_id', json['id'])
+            .order('date', ascending: false)
+            .limit(30);
+        
+        final completedDates = (completionsResponse as List)
+            .map((d) => DateTime.parse(d['date'] as String))
             .toList();
         
-        // Check for period resets
-        _checkAndResetPeriods();
-      } catch (e) {
-        state = [];
-      }
+        return MicroWidgetModel(
+          id: json['id'] as String,
+          userId: _userId,
+          type: MicroWidgetType.values.firstWhere(
+            (t) => t.name == (json['type'] as String? ?? 'custom'),
+            orElse: () => MicroWidgetType.custom,
+          ),
+          title: json['title'] as String? ?? 'Habit',
+          targetCount: json['target_count'] as int? ?? 1,
+          frequency: GoalFrequency.values.firstWhere(
+            (f) => f.name == (json['frequency'] as String? ?? 'weekly'),
+            orElse: () => GoalFrequency.weekly,
+          ),
+          currentCount: completedDates.where((d) {
+            final now = DateTime.now();
+            return d.year == now.year && d.month == now.month && d.day >= now.day - 7;
+          }).length,
+          completedDates: completedDates,
+          periodStart: DateTime.tryParse(json['period_start'] as String? ?? '') ?? DateTime.now(),
+          isActive: json['is_active'] as bool? ?? true,
+          createdAt: DateTime.parse(json['created_at'] as String),
+        );
+      }));
+      
+      // Check for period resets
+      _checkAndResetPeriods();
+    } catch (e) {
+      print('Error loading micro widgets: $e');
+      state = [];
     }
   }
   
   void _checkAndResetPeriods() {
-    bool needsSave = false;
     state = state.map((widget) {
       if (widget.needsReset()) {
-        needsSave = true;
         return widget.resetForNewPeriod();
       }
       return widget;
     }).toList();
-    
-    if (needsSave) _save();
-  }
-  
-  Future<void> _save() async {
-    if (_prefs == null) return;
-    final jsonList = state.map((w) => w.toJson()).toList();
-    await _prefs!.setString(_userKey, jsonEncode(jsonList));
   }
   
   Future<void> addWidget(MicroWidgetModel widget) async {
     state = [...state, widget];
-    await _save();
+    
+    if (_client != null && _userId != 'demo') {
+      try {
+        await _client!.from('micro_widgets').insert({
+          'id': widget.id,
+          'user_id': _userId,
+          'type': widget.type.name,
+          'title': widget.title,
+          'target_count': widget.targetCount,
+          'frequency': widget.frequency.name,
+          'period_start': widget.periodStart.toIso8601String(),
+          'is_active': widget.isActive,
+          'sort_order': state.length,
+        });
+        await _logWidgetEvent('micro_widgets', 'created', {
+          'id': widget.id,
+          'type': widget.type.name,
+          'title': widget.title,
+          'targetCount': widget.targetCount,
+        });
+      } catch (e) {
+        print('Error saving micro widget: $e');
+      }
+    }
   }
   
   Future<void> updateWidget(MicroWidgetModel widget) async {
     state = state.map((w) => w.id == widget.id ? widget : w).toList();
-    await _save();
+    
+    if (_client != null && _userId != 'demo') {
+      try {
+        await _client!.from('micro_widgets').update({
+          'type': widget.type.name,
+          'title': widget.title,
+          'target_count': widget.targetCount,
+          'frequency': widget.frequency.name,
+        }).eq('id', widget.id);
+        await _logWidgetEvent('micro_widgets', 'updated', {
+          'id': widget.id,
+          'title': widget.title,
+        });
+      } catch (e) {
+        print('Error updating micro widget: $e');
+      }
+    }
   }
   
   Future<void> deleteWidget(String widgetId) async {
     state = state.where((w) => w.id != widgetId).toList();
-    await _save();
+    
+    if (_client != null && _userId != 'demo') {
+      try {
+        // Lösche zuerst die Completions
+        await _client!.from('micro_widget_completions').delete().eq('widget_id', widgetId);
+        // Dann das Widget selbst
+        await _client!.from('micro_widgets').delete().eq('id', widgetId);
+        await _logWidgetEvent('micro_widgets', 'deleted', {'id': widgetId});
+      } catch (e) {
+        print('Error deleting micro widget: $e');
+      }
+    }
   }
   
   /// Widget abhaken (für heute)
   Future<void> checkOff(String widgetId) async {
+    final today = DateTime.now();
+    final todayDate = DateTime(today.year, today.month, today.day);
+    
+    final widget = state.firstWhere((w) => w.id == widgetId, orElse: () => state.first);
+    
     state = state.map((w) {
       if (w.id == widgetId) {
         return w.checkOff();
       }
       return w;
     }).toList();
-    await _save();
+    
+    if (_client != null && _userId != 'demo') {
+      try {
+        await _client!.from('micro_widget_completions').upsert({
+          'user_id': _userId,
+          'widget_id': widgetId,
+          'date': todayDate.toIso8601String().split('T')[0],
+        });
+        await _logWidgetEvent('micro_widgets', 'checked_off', {
+          'widget_id': widgetId,
+          'title': widget.title,
+          'type': widget.type.name,
+          'date': todayDate.toIso8601String().split('T')[0],
+        });
+      } catch (e) {
+        print('Error checking off micro widget: $e');
+      }
+    }
   }
 }
 
-/// MicroWidgets Provider
+/// MicroWidgets Provider - Supabase-basiert
 final microWidgetsProvider = StateNotifierProvider<MicroWidgetsNotifier, List<MicroWidgetModel>>((ref) {
   final user = ref.watch(authNotifierProvider).valueOrNull;
   final userId = user?.id ?? 'demo';
-  final notifier = MicroWidgetsNotifier(userId);
   
-  ref.watch(sharedPreferencesProvider).whenData((prefs) {
-    notifier.init(prefs);
-  });
+  final client = AppConfig.isDemoMode ? null : Supabase.instance.client;
+  final notifier = MicroWidgetsNotifier(userId, client);
+  
+  // Auto-load beim Erstellen
+  if (user != null) {
+    notifier.load();
+  }
   
   return notifier;
 });
@@ -1005,7 +1049,10 @@ final microWidgetsProvider = StateNotifierProvider<MicroWidgetsNotifier, List<Mi
 
 /// School Repository Provider
 final schoolRepositoryProvider = Provider<SchoolRepository>((ref) {
-  return DemoSchoolRepository();
+  if (AppConfig.isDemoMode) {
+    return DemoSchoolRepository();
+  }
+  return SupabaseSchoolRepository(Supabase.instance.client);
 });
 
 /// Fächer (Subjects) Notifier
@@ -1381,8 +1428,7 @@ final sportRepositoryProvider = Provider<SportRepository>((ref) {
   if (AppConfig.isDemoMode) {
     return DemoSportRepository();
   }
-  // TODO: Implement SupabaseSportRepository when needed
-  return DemoSportRepository();
+  return SupabaseSportRepository(Supabase.instance.client);
 });
 
 /// Sport Sessions Notifier
@@ -1729,8 +1775,7 @@ final skinRepositoryProvider = Provider<SkinRepository>((ref) {
   if (AppConfig.isDemoMode) {
     return DemoSkinRepository();
   }
-  // TODO: Implement SupabaseSkinRepository when needed
-  return DemoSkinRepository();
+  return SupabaseSkinRepository(Supabase.instance.client);
 });
 
 /// Skin Entries Notifier
@@ -2057,10 +2102,24 @@ class HairCareEntriesNotifier extends StateNotifier<List<HairCareEntry>> {
       final updated = entry.copyWith(id: existing.id, createdAt: existing.createdAt);
       state = state.map((e) => e.id == existing.id ? updated : e).toList();
       await _save();
+      // Event loggen
+      await _logWidgetEvent('hair', 'updated', {
+        'id': updated.id,
+        'date': updated.date.toIso8601String(),
+        'careTypes': updated.careTypes.map((t) => t.name).toList(),
+        'washedToday': updated.careTypes.contains(HairCareType.washed),
+      });
       return updated;
     } else {
       state = [...state, entry];
       await _save();
+      // Event loggen
+      await _logWidgetEvent('hair', 'created', {
+        'id': entry.id,
+        'date': entry.date.toIso8601String(),
+        'careTypes': entry.careTypes.map((t) => t.name).toList(),
+        'washedToday': entry.careTypes.contains(HairCareType.washed),
+      });
       return entry;
     }
   }
@@ -2138,17 +2197,28 @@ class HairEventsNotifier extends StateNotifier<List<HairEvent>> {
   Future<HairEvent> add(HairEvent event) async {
     state = [...state, event];
     await _save();
+    await _logWidgetEvent('hair', 'event_created', {
+      'id': event.id,
+      'eventType': event.eventType.name,
+      'date': event.date.toIso8601String(),
+      'note': event.note,
+    });
     return event;
   }
   
   Future<void> update(HairEvent event) async {
     state = state.map((e) => e.id == event.id ? event : e).toList();
     await _save();
+    await _logWidgetEvent('hair', 'event_updated', {
+      'id': event.id,
+      'eventType': event.eventType.name,
+    });
   }
   
   Future<void> delete(String eventId) async {
     state = state.where((e) => e.id != eventId).toList();
     await _save();
+    await _logWidgetEvent('hair', 'event_deleted', {'id': eventId});
   }
 }
 
@@ -2196,17 +2266,27 @@ class HairProductsNotifier extends StateNotifier<List<HairProduct>> {
   Future<HairProduct> add(HairProduct product) async {
     state = [...state, product];
     await _save();
+    await _logWidgetEvent('hair', 'product_created', {
+      'id': product.id,
+      'name': product.name,
+      'category': product.category.name,
+    });
     return product;
   }
   
   Future<void> update(HairProduct product) async {
     state = state.map((p) => p.id == product.id ? product : p).toList();
     await _save();
+    await _logWidgetEvent('hair', 'product_updated', {
+      'id': product.id,
+      'name': product.name,
+    });
   }
   
   Future<void> delete(String productId) async {
     state = state.where((p) => p.id != productId).toList();
     await _save();
+    await _logWidgetEvent('hair', 'product_deleted', {'id': productId});
   }
 }
 
@@ -2315,6 +2395,12 @@ class DigestionEntriesNotifier extends StateNotifier<List<DigestionEntry>> {
   Future<DigestionEntry> add(DigestionEntry entry) async {
     state = [...state, entry];
     await _save();
+    await _logWidgetEvent('digestion', 'created', {
+      'id': entry.id,
+      'type': entry.type.name,
+      'consistency': entry.consistency?.name,
+      'timestamp': entry.timestamp.toIso8601String(),
+    });
     return entry;
   }
   
@@ -2322,12 +2408,17 @@ class DigestionEntriesNotifier extends StateNotifier<List<DigestionEntry>> {
   Future<void> update(DigestionEntry entry) async {
     state = state.map((e) => e.id == entry.id ? entry : e).toList();
     await _save();
+    await _logWidgetEvent('digestion', 'updated', {
+      'id': entry.id,
+      'type': entry.type.name,
+    });
   }
   
   /// Eintrag löschen
   Future<void> delete(String entryId) async {
     state = state.where((e) => e.id != entryId).toList();
     await _save();
+    await _logWidgetEvent('digestion', 'deleted', {'id': entryId});
   }
   
   /// Statistik: Einträge pro Tag (letzte n Tage)
@@ -2412,6 +2503,12 @@ class SupplementsNotifier extends StateNotifier<List<Supplement>> {
   Future<Supplement> add(Supplement supplement) async {
     state = [...state, supplement];
     await _save();
+    await _logWidgetEvent('supplements', 'created', {
+      'id': supplement.id,
+      'name': supplement.name,
+      'category': supplement.category.name,
+      'defaultDosage': supplement.defaultDosage,
+    });
     return supplement;
   }
   
@@ -2419,12 +2516,17 @@ class SupplementsNotifier extends StateNotifier<List<Supplement>> {
   Future<void> update(Supplement supplement) async {
     state = state.map((s) => s.id == supplement.id ? supplement : s).toList();
     await _save();
+    await _logWidgetEvent('supplements', 'updated', {
+      'id': supplement.id,
+      'name': supplement.name,
+    });
   }
   
   /// Supplement löschen
   Future<void> delete(String supplementId) async {
     state = state.where((s) => s.id != supplementId).toList();
     await _save();
+    await _logWidgetEvent('supplements', 'deleted', {'id': supplementId});
   }
 }
 
@@ -2492,6 +2594,12 @@ class SupplementIntakesNotifier extends StateNotifier<List<SupplementIntake>> {
   Future<SupplementIntake> add(SupplementIntake intake) async {
     state = [...state, intake];
     await _save();
+    await _logWidgetEvent('supplements', 'intake_created', {
+      'id': intake.id,
+      'supplementId': intake.supplementId,
+      'dosage': intake.dosage,
+      'timestamp': intake.timestamp.toIso8601String(),
+    });
     return intake;
   }
   
@@ -2499,12 +2607,16 @@ class SupplementIntakesNotifier extends StateNotifier<List<SupplementIntake>> {
   Future<void> update(SupplementIntake intake) async {
     state = state.map((i) => i.id == intake.id ? intake : i).toList();
     await _save();
+    await _logWidgetEvent('supplements', 'intake_updated', {
+      'id': intake.id,
+    });
   }
   
   /// Einnahme löschen
   Future<void> delete(String intakeId) async {
     state = state.where((i) => i.id != intakeId).toList();
     await _save();
+    await _logWidgetEvent('supplements', 'intake_deleted', {'id': intakeId});
   }
   
   /// Alle Einnahmen eines Supplements löschen
@@ -2569,6 +2681,12 @@ class UserMediaEntriesNotifier extends StateNotifier<List<UserMediaEntry>> {
     if (!exists) {
       state = [...state, entry];
       await _save();
+      await _logWidgetEvent('media', 'created', {
+        'id': entry.id,
+        'title': entry.media.title,
+        'type': entry.media.type.name,
+        'status': entry.status.name,
+      });
     }
   }
   
@@ -2576,12 +2694,18 @@ class UserMediaEntriesNotifier extends StateNotifier<List<UserMediaEntry>> {
   Future<void> update(UserMediaEntry entry) async {
     state = state.map((e) => e.id == entry.id ? entry : e).toList();
     await _save();
+    await _logWidgetEvent('media', 'updated', {
+      'id': entry.id,
+      'status': entry.status.name,
+      'rating': entry.rating?.overall,
+    });
   }
   
   /// Media-Eintrag löschen
   Future<void> delete(String entryId) async {
     state = state.where((e) => e.id != entryId).toList();
     await _save();
+    await _logWidgetEvent('media', 'deleted', {'id': entryId});
   }
   
   /// Eintrag per TMDB-ID finden
@@ -2720,18 +2844,29 @@ class HouseholdTasksNotifier extends StateNotifier<List<HouseholdTask>> {
   Future<void> add(HouseholdTask task) async {
     state = [...state, task];
     await _save();
+    await _logWidgetEvent('household', 'created', {
+      'id': task.id,
+      'name': task.name,
+      'category': task.category.name,
+      'frequency': task.frequency.name,
+    });
   }
   
   /// Aufgabe aktualisieren
   Future<void> update(HouseholdTask task) async {
     state = state.map((t) => t.id == task.id ? task : t).toList();
     await _save();
+    await _logWidgetEvent('household', 'updated', {
+      'id': task.id,
+      'name': task.name,
+    });
   }
   
   /// Aufgabe löschen
   Future<void> delete(String taskId) async {
     state = state.where((t) => t.id != taskId).toList();
     await _save();
+    await _logWidgetEvent('household', 'deleted', {'id': taskId});
   }
   
   /// Aufgabe pausieren/fortsetzen
@@ -2777,6 +2912,12 @@ class HouseholdCompletionsNotifier extends StateNotifier<List<TaskCompletion>> {
   Future<void> add(TaskCompletion completion) async {
     state = [...state, completion];
     await _save();
+    await _logWidgetEvent('household', 'completed', {
+      'id': completion.id,
+      'taskId': completion.taskId,
+      'wasSkipped': completion.wasSkipped,
+      'completedAt': completion.completedAt.toIso8601String(),
+    });
   }
   
   /// Letzte Erledigung für eine Aufgabe
@@ -2837,18 +2978,29 @@ class RecipesNotifier extends StateNotifier<List<Recipe>> {
   Future<void> addRecipe(Recipe recipe) async {
     state = [...state, recipe];
     await _save();
+    await _logWidgetEvent('recipes', 'created', {
+      'id': recipe.id,
+      'title': recipe.title,
+      'category': recipe.category.name,
+      'cookTimeMinutes': recipe.cookTimeMinutes,
+    });
   }
   
   /// Rezept aktualisieren
   Future<void> updateRecipe(Recipe recipe) async {
     state = state.map((r) => r.id == recipe.id ? recipe : r).toList();
     await _save();
+    await _logWidgetEvent('recipes', 'updated', {
+      'id': recipe.id,
+      'title': recipe.title,
+    });
   }
   
   /// Rezept löschen
   Future<void> removeRecipe(String recipeId) async {
     state = state.where((r) => r.id != recipeId).toList();
     await _save();
+    await _logWidgetEvent('recipes', 'deleted', {'id': recipeId});
   }
 }
 
@@ -2861,4 +3013,109 @@ final recipeStatisticsProvider = Provider.family<RecipeStatistics, String>((ref,
   final recipes = ref.watch(recipesProvider(userId));
   return RecipeStatistics.calculate(recipes);
 });
+
+// ============================================================================
+// DATA MIGRATION PROVIDERS
+// ============================================================================
+
+/// Migration Status State
+class MigrationState {
+  final bool isChecking;
+  final bool needsMigration;
+  final bool isMigrating;
+  final MigrationResult? result;
+  final String? error;
+
+  const MigrationState({
+    this.isChecking = false,
+    this.needsMigration = false,
+    this.isMigrating = false,
+    this.result,
+    this.error,
+  });
+
+  MigrationState copyWith({
+    bool? isChecking,
+    bool? needsMigration,
+    bool? isMigrating,
+    MigrationResult? result,
+    String? error,
+  }) {
+    return MigrationState(
+      isChecking: isChecking ?? this.isChecking,
+      needsMigration: needsMigration ?? this.needsMigration,
+      isMigrating: isMigrating ?? this.isMigrating,
+      result: result ?? this.result,
+      error: error ?? this.error,
+    );
+  }
+}
+
+/// Data Migration Notifier
+class DataMigrationNotifier extends StateNotifier<MigrationState> {
+  DataMigrationNotifier() : super(const MigrationState());
+
+  /// Prüft und führt Migration automatisch durch
+  Future<void> checkAndMigrate(String userId) async {
+    // Nur im Produktionsmodus migrieren
+    if (AppConfig.isDemoMode) return;
+
+    state = state.copyWith(isChecking: true);
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final client = Supabase.instance.client;
+      final migrationService = DataMigrationService(client, prefs);
+
+      if (migrationService.needsMigration(userId)) {
+        state = state.copyWith(
+          isChecking: false,
+          needsMigration: true,
+          isMigrating: true,
+        );
+
+        final result = await migrationService.migrateAllData(userId);
+
+        state = state.copyWith(
+          isMigrating: false,
+          needsMigration: false,
+          result: result,
+        );
+
+        if (result.status == MigrationStatus.completed) {
+          print('✅ Migration abgeschlossen: ${result.migratedItems} Elemente migriert');
+        } else {
+          print('⚠️ Migration fehlgeschlagen: ${result.errors.join(', ')}');
+        }
+      } else {
+        state = state.copyWith(
+          isChecking: false,
+          needsMigration: false,
+        );
+      }
+    } catch (e) {
+      state = state.copyWith(
+        isChecking: false,
+        isMigrating: false,
+        error: e.toString(),
+      );
+      print('❌ Migration Fehler: $e');
+    }
+  }
+}
+
+/// Data Migration Provider
+final dataMigrationProvider = StateNotifierProvider<DataMigrationNotifier, MigrationState>((ref) {
+  return DataMigrationNotifier();
+});
+
+/// Auto-Migration Provider - Wird beim Login getriggert
+final autoMigrationProvider = FutureProvider.family<void, String>((ref, userId) async {
+  // Nur im Produktionsmodus
+  if (AppConfig.isDemoMode) return;
+
+  final migrationNotifier = ref.read(dataMigrationProvider.notifier);
+  await migrationNotifier.checkAndMigrate(userId);
+});
+
 

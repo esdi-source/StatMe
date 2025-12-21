@@ -12,9 +12,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
 import '../services/statistics_service.dart';
+import '../services/event_log_statistics_service.dart';
 
 class StatisticsScreen extends ConsumerStatefulWidget {
   const StatisticsScreen({super.key});
@@ -74,9 +76,13 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> with Single
     await ref.read(moodHistoryProvider.notifier).loadRange(user.id, start, now);
     _moodData = ref.read(moodHistoryProvider);
 
-    // Erstelle Statistik-Service und berechne Daten
-    final dataCollector = WidgetDataCollector();
-    _registerDataSources(dataCollector, user.id, start, now);
+    // Erstelle Event-basierten DataCollector für automatische Widget-Erkennung
+    final supabaseClient = Supabase.instance.client;
+    final eventLogService = EventLogStatisticsService(supabaseClient);
+    final eventLogProvider = EventLogStatisticsProvider(eventLogService);
+    
+    // Lade alle Widget-Daten automatisch aus Event-Log und direkten Tabellen
+    final dataCollector = await eventLogProvider.createFullDataCollector(user.id, start, now);
     
     final statsService = StatisticsService(dataCollector: dataCollector);
     
@@ -88,10 +94,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> with Single
     setState(() => _isLoading = false);
   }
 
-  void _registerDataSources(WidgetDataCollector collector, String userId, DateTime start, DateTime end) {
-    // Diese Funktion wird später erweitert um automatisch alle Widget-Daten zu sammeln
-    // Für jetzt: Demo-Implementation
-  }
+  // _registerDataSources entfernt - wird jetzt automatisch durch EventLogStatisticsProvider erledigt
 
   @override
   Widget build(BuildContext context) {

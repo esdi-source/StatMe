@@ -88,6 +88,9 @@ class _UserHomeScreen extends ConsumerWidget {
   
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Automatische Datenmigration beim Login triggern
+    ref.watch(autoMigrationProvider(userId));
+    
     final onboardingComplete = ref.watch(userOnboardingProvider(userId));
     
     if (!onboardingComplete) {

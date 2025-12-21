@@ -638,8 +638,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _TodosWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const TodosScreen()));
       case HomeWidgetType.books:
         return _BooksWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const BooksScreen()));
-      case HomeWidgetType.timer:
-        return _TimerWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const TimerWidgetScreen()));
       case HomeWidgetType.school:
         return _SchoolWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const SchoolScreen()));
       case HomeWidgetType.sport:
@@ -790,8 +788,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.waving_hand;
       case HomeWidgetType.books:
         return Icons.menu_book;
-      case HomeWidgetType.timer:
-        return Icons.timer;
       case HomeWidgetType.school:
         return Icons.school;
       case HomeWidgetType.sport:
@@ -1405,43 +1401,6 @@ class _BooksWidget extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _TimerWidget extends ConsumerWidget {
-  final HomeWidgetSize size;
-  final Color? customColor;
-  final VoidCallback? onTap;
-
-  const _TimerWidget({required this.size, this.customColor, this.onTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final timerSessions = ref.watch(timerSessionsProvider);
-    final color = customColor ?? Colors.deepPurple;
-    
-    final today = DateTime.now();
-    final todaySessions = timerSessions.where((s) => 
-      s.startTime.year == today.year &&
-      s.startTime.month == today.month &&
-      s.startTime.day == today.day
-    ).toList();
-    
-    final totalMinutesToday = todaySessions.fold<int>(
-      0, (sum, s) => sum + s.durationMinutes
-    );
-
-    return UnifiedStatWidget(
-      size: size,
-      title: 'Timer',
-      value: '$totalMinutesToday',
-      unit: 'min',
-      subtitle: 'heute fokussiert',
-      icon: Icons.timer,
-      color: color,
-      progress: (totalMinutesToday / 120).clamp(0.0, 1.0),
-      onTap: onTap,
     );
   }
 }

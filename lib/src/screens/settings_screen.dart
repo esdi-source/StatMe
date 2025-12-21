@@ -12,6 +12,7 @@ import '../ui/theme/app_theme.dart';
 import '../ui/theme/design_tokens.dart';
 import '../ui/theme/theme_provider.dart';
 import 'onboarding_screen.dart';
+import 'settings/data_export_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -315,6 +316,48 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.all(16),
                 ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Data & Export Section
+            Text(
+              'Daten & Export',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: Icon(Icons.download, color: tokens.primary),
+                    title: const Text('Daten exportieren'),
+                    subtitle: const Text('Alle deine Daten als JSON herunterladen'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const DataExportScreen(),
+                      ),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Icon(Icons.cloud_done, color: tokens.success),
+                    title: const Text('Cloud-Synchronisation'),
+                    subtitle: const Text('Alle Daten werden automatisch gesichert'),
+                    trailing: Icon(
+                      Icons.check_circle,
+                      color: tokens.success,
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: Icon(Icons.security, color: tokens.info),
+                    title: const Text('Datensicherheit'),
+                    subtitle: const Text('End-to-End verschlüsselte Übertragung'),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),

@@ -10,7 +10,6 @@ enum HomeWidgetType {
   todos('ToDos', 'check_circle'),
   greeting('Begrüßung', 'waving_hand'),
   books('Bücher', 'menu_book'),
-  timer('Timer', 'timer'),
   school('Schule', 'school'),
   sport('Sport', 'fitness_center'),
   skin('Gesichtshaut', 'face_retouching_natural'),

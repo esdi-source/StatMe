@@ -4,7 +4,25 @@
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
+import '../services/supabase_data_service.dart';
 import 'repository_interfaces.dart';
+
+/// Helper-Klasse für Event-Logging
+class _EventLogger {
+  static final SupabaseDataService _dataService = SupabaseDataService.instance;
+  
+  static Future<void> log(String widgetName, String eventType, Map<String, dynamic> payload) async {
+    try {
+      await _dataService.logEvent(
+        widgetName: widgetName,
+        eventType: eventType,
+        payload: payload,
+      );
+    } catch (e) {
+      // Silently fail - don't break the app if logging fails
+    }
+  }
+}
 
 class SupabaseAuthRepository implements AuthRepository {
   final SupabaseClient _client;
@@ -135,7 +153,13 @@ class SupabaseTodoRepository implements TodoRepository {
         .select()
         .single();
     
-    return TodoModel.fromJson(response);
+    final created = TodoModel.fromJson(response);
+    await _EventLogger.log('todos', 'created', {
+      'id': created.id,
+      'title': created.title,
+      'priority': created.priority.name,
+    });
+    return created;
   }
   
   @override
@@ -147,12 +171,19 @@ class SupabaseTodoRepository implements TodoRepository {
         .select()
         .single();
     
-    return TodoModel.fromJson(response);
+    final updated = TodoModel.fromJson(response);
+    await _EventLogger.log('todos', 'updated', {
+      'id': updated.id,
+      'title': updated.title,
+      'active': updated.active,
+    });
+    return updated;
   }
   
   @override
   Future<void> deleteTodo(String todoId) async {
     await _client.from('todos').delete().eq('id', todoId);
+    await _EventLogger.log('todos', 'deleted', {'id': todoId});
   }
   
   @override
@@ -190,7 +221,12 @@ class SupabaseTodoRepository implements TodoRepository {
         .select()
         .single();
     
-    return TodoOccurrence.fromJson(response);
+    final occurrence = TodoOccurrence.fromJson(response);
+    await _EventLogger.log('todos', done ? 'completed' : 'uncompleted', {
+      'occurrence_id': occurrenceId,
+      'done': done,
+    });
+    return occurrence;
   }
 }
 
@@ -267,12 +303,21 @@ class SupabaseFoodRepository implements FoodRepository {
         .select()
         .single();
     
-    return FoodLogModel.fromJson(response);
+    final added = FoodLogModel.fromJson(response);
+    await _EventLogger.log('food', 'created', {
+      'id': added.id,
+      'productName': added.productName,
+      'calories': added.calories,
+      'grams': added.grams,
+      'date': added.date.toIso8601String(),
+    });
+    return added;
   }
   
   @override
   Future<void> deleteFoodLog(String logId) async {
     await _client.from('food_logs').delete().eq('id', logId);
+    await _EventLogger.log('food', 'deleted', {'id': logId});
   }
 }
 
@@ -309,12 +354,19 @@ class SupabaseWaterRepository implements WaterRepository {
         .select()
         .single();
     
-    return WaterLogModel.fromJson(response);
+    final added = WaterLogModel.fromJson(response);
+    await _EventLogger.log('water', 'created', {
+      'id': added.id,
+      'ml': added.ml,
+      'date': added.date.toIso8601String(),
+    });
+    return added;
   }
   
   @override
   Future<void> deleteWaterLog(String logId) async {
     await _client.from('water_logs').delete().eq('id', logId);
+    await _EventLogger.log('water', 'deleted', {'id': logId});
   }
 }
 
@@ -358,7 +410,13 @@ class SupabaseStepsRepository implements StepsRepository {
         .select()
         .single();
     
-    return StepsLogModel.fromJson(response);
+    final updated = StepsLogModel.fromJson(response);
+    await _EventLogger.log('steps', 'updated', {
+      'id': updated.id,
+      'steps': updated.steps,
+      'date': updated.date.toIso8601String(),
+    });
+    return updated;
   }
 }
 
@@ -404,12 +462,20 @@ class SupabaseSleepRepository implements SleepRepository {
         .select()
         .single();
     
-    return SleepLogModel.fromJson(response);
+    final added = SleepLogModel.fromJson(response);
+    await _EventLogger.log('sleep', 'created', {
+      'id': added.id,
+      'durationMinutes': added.durationMinutes,
+      'startTs': added.startTs.toIso8601String(),
+      'endTs': added.endTs.toIso8601String(),
+    });
+    return added;
   }
   
   @override
   Future<void> deleteSleep(String logId) async {
     await _client.from('sleep_logs').delete().eq('id', logId);
+    await _EventLogger.log('sleep', 'deleted', {'id': logId});
   }
 }
 
@@ -453,6 +519,13 @@ class SupabaseMoodRepository implements MoodRepository {
         .select()
         .single();
     
-    return MoodLogModel.fromJson(response);
+    final updated = MoodLogModel.fromJson(response);
+    await _EventLogger.log('mood', 'updated', {
+      'id': updated.id,
+      'mood': updated.mood,
+      'note': updated.note,
+      'date': updated.date.toIso8601String(),
+    });
+    return updated;
   }
 }

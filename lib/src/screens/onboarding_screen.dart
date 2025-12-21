@@ -116,9 +116,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       OnboardingWidgetSelection(
         type: HomeWidgetType.school,
       ),
-      OnboardingWidgetSelection(
-        type: HomeWidgetType.timer,
-      ),
       // Lifestyle
       OnboardingWidgetSelection(
         type: HomeWidgetType.sport,
@@ -515,7 +512,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   .where((w) => [
                         HomeWidgetType.todos,
                         HomeWidgetType.school,
-                        HomeWidgetType.timer,
                       ].contains(w.type) && !w.isRecommended)
                   .map(_buildWidgetTile),
               const SizedBox(height: 16),
@@ -687,8 +683,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         return Icons.waving_hand;
       case HomeWidgetType.books:
         return Icons.menu_book;
-      case HomeWidgetType.timer:
-        return Icons.timer;
       case HomeWidgetType.school:
         return Icons.school;
       case HomeWidgetType.sport:

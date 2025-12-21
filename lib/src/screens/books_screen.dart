@@ -6,13 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/providers.dart';
 import '../models/book_model.dart';
 import '../models/micro_widget_model.dart';
-import '../models/timer_widget_model.dart';
 import '../services/google_books_service.dart';
 import '../ui/widgets/book_cover_widget.dart';
 import 'book_search_screen.dart';
 import 'book_detail_screen.dart';
 import 'barcode_scanner_screen.dart';
-import 'timer_widget_screen.dart';
 import 'package:uuid/uuid.dart';
 
 class BooksScreen extends ConsumerStatefulWidget {
@@ -450,23 +448,11 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
   Widget _buildGoalsTab(DesignTokens tokens) {
     final microWidgets = ref.watch(microWidgetsProvider);
     final readingWidgets = microWidgets.where((w) => w.type == MicroWidgetType.reading).toList();
-    final timerSessions = ref.watch(timerSessionsProvider);
     
-    // Berechne Statistiken
-    final now = DateTime.now();
-    final weekStart = now.subtract(Duration(days: now.weekday - 1));
-    final weekStartDay = DateTime(weekStart.year, weekStart.month, weekStart.day);
-    final monthStart = DateTime(now.year, now.month, 1);
-    
-    final weekSessions = timerSessions.where((s) =>
-        s.activityType == TimerActivityType.reading &&
-        s.startTime.isAfter(weekStartDay));
-    final monthSessions = timerSessions.where((s) =>
-        s.activityType == TimerActivityType.reading &&
-        s.startTime.isAfter(monthStart));
-    
-    final weekMinutes = weekSessions.fold(0, (sum, s) => sum + s.durationSeconds) ~/ 60;
-    final monthMinutes = monthSessions.fold(0, (sum, s) => sum + s.durationSeconds) ~/ 60;
+    // Lesezeit-Statistiken aus reading_sessions werden später ergänzt
+    // Für jetzt zeigen wir nur die MikroWidgets an
+    final weekMinutes = 0;
+    final monthMinutes = 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -504,11 +490,6 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
             _buildEmptyMicroWidgetsCard(tokens)
           else
             ...readingWidgets.map((widget) => _buildMicroWidgetCard(widget, tokens)),
-          
-          const SizedBox(height: 24),
-          
-          // Schnellzugang zum Timer
-          _buildTimerQuickAccess(tokens),
         ],
       ),
     );
@@ -725,56 +706,6 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
           IconButton(
             icon: Icon(Icons.delete_outline, color: tokens.textSecondary),
             onPressed: () => _deleteMicroWidget(widget.id),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimerQuickAccess(DesignTokens tokens) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: tokens.divider),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: tokens.primary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.timer, color: tokens.primary, size: 32),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Lese-Timer',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: tokens.textPrimary,
-                  ),
-                ),
-                Text(
-                  'Starte eine Lesesession',
-                  style: TextStyle(color: tokens.textSecondary),
-                ),
-              ],
-            ),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const TimerWidgetScreen()),
-            ),
-            child: const Text('Starten'),
           ),
         ],
       ),

@@ -18,7 +18,6 @@ export 'settings_screen.dart';
 export 'books_screen.dart';
 export 'book_search_screen.dart';
 export 'book_detail_screen.dart';
-export 'timer_widget_screen.dart';
 
 // School Module
 export 'school_screen.dart';
