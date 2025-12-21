@@ -342,6 +342,248 @@ final foodLogNotifierProvider = StateNotifierProvider<FoodLogNotifier, List<Food
 });
 
 // ============================================
+// FOOD FAVORITES PROVIDER
+// ============================================
+
+class FavoriteProductsNotifier extends StateNotifier<List<FavoriteProduct>> {
+  final String _oderId;
+  final SupabaseClient? _client;
+  
+  FavoriteProductsNotifier(this._oderId, this._client) : super([]);
+  
+  Future<void> load() async {
+    if (_client == null || _oderId == 'demo') {
+      state = [];
+      return;
+    }
+    
+    try {
+      final response = await _client!
+          .from('favorite_products')
+          .select()
+          .eq('oder_id', _oderId)
+          .order('use_count', ascending: false);
+      
+      state = (response as List).map((json) => FavoriteProduct.fromJson(json)).toList();
+    } catch (e) {
+      print('Error loading favorite products: $e');
+    }
+  }
+  
+  Future<FavoriteProduct> add(FavoriteProduct product) async {
+    if (_client == null || _oderId == 'demo') {
+      state = [...state, product];
+      return product;
+    }
+    
+    try {
+      final response = await _client!
+          .from('favorite_products')
+          .insert(product.toJson())
+          .select()
+          .single();
+      
+      final added = FavoriteProduct.fromJson(response);
+      state = [...state, added];
+      
+      await SupabaseDataService.instance.logEvent(
+        widgetName: 'food',
+        eventType: 'favorite_added',
+        payload: {'id': added.id, 'name': added.name},
+      );
+      
+      return added;
+    } catch (e) {
+      print('Error adding favorite product: $e');
+      return product;
+    }
+  }
+  
+  Future<void> remove(String productId) async {
+    state = state.where((p) => p.id != productId).toList();
+    
+    if (_client != null && _oderId != 'demo') {
+      try {
+        await _client!.from('favorite_products').delete().eq('id', productId);
+        await SupabaseDataService.instance.logEvent(
+          widgetName: 'food',
+          eventType: 'favorite_removed',
+          payload: {'id': productId},
+        );
+      } catch (e) {
+        print('Error removing favorite product: $e');
+      }
+    }
+  }
+  
+  Future<void> incrementUseCount(String productId) async {
+    state = state.map((p) => 
+      p.id == productId ? p.copyWith(useCount: p.useCount + 1) : p
+    ).toList();
+    
+    if (_client != null && _oderId != 'demo') {
+      try {
+        await _client!.rpc('increment_food_use_count', params: {
+          'table_name': 'favorite_products',
+          'product_id': productId,
+        });
+      } catch (e) {
+        print('Error incrementing use count: $e');
+      }
+    }
+  }
+  
+  FavoriteProduct? findByBarcode(String barcode) {
+    try {
+      return state.firstWhere((p) => p.barcode == barcode);
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+final favoriteProductsProvider = StateNotifierProvider<FavoriteProductsNotifier, List<FavoriteProduct>>((ref) {
+  final user = ref.watch(authNotifierProvider).valueOrNull;
+  final oderId = user?.id ?? 'demo';
+  final client = AppConfig.isDemoMode ? null : Supabase.instance.client;
+  
+  final notifier = FavoriteProductsNotifier(oderId, client);
+  if (user != null) {
+    notifier.load();
+  }
+  return notifier;
+});
+
+// ============================================
+// CUSTOM FOOD PRODUCTS PROVIDER
+// ============================================
+
+class CustomFoodProductsNotifier extends StateNotifier<List<CustomFoodProduct>> {
+  final String _oderId;
+  final SupabaseClient? _client;
+  
+  CustomFoodProductsNotifier(this._oderId, this._client) : super([]);
+  
+  Future<void> load() async {
+    if (_client == null || _oderId == 'demo') {
+      state = [];
+      return;
+    }
+    
+    try {
+      final response = await _client!
+          .from('custom_food_products')
+          .select()
+          .eq('oder_id', _oderId)
+          .order('use_count', ascending: false);
+      
+      state = (response as List).map((json) => CustomFoodProduct.fromJson(json)).toList();
+    } catch (e) {
+      print('Error loading custom food products: $e');
+    }
+  }
+  
+  Future<CustomFoodProduct> add(CustomFoodProduct product) async {
+    if (_client == null || _oderId == 'demo') {
+      state = [...state, product];
+      return product;
+    }
+    
+    try {
+      final response = await _client!
+          .from('custom_food_products')
+          .insert(product.toJson())
+          .select()
+          .single();
+      
+      final added = CustomFoodProduct.fromJson(response);
+      state = [...state, added];
+      
+      await SupabaseDataService.instance.logEvent(
+        widgetName: 'food',
+        eventType: product.isRecipe ? 'recipe_created' : 'custom_product_created',
+        payload: {'id': added.id, 'name': added.name, 'kcal_per_100g': added.kcalPer100g},
+      );
+      
+      return added;
+    } catch (e) {
+      print('Error adding custom food product: $e');
+      return product;
+    }
+  }
+  
+  Future<void> update(CustomFoodProduct product) async {
+    state = state.map((p) => p.id == product.id ? product : p).toList();
+    
+    if (_client != null && _oderId != 'demo') {
+      try {
+        await _client!
+            .from('custom_food_products')
+            .update(product.toJson())
+            .eq('id', product.id);
+        
+        await SupabaseDataService.instance.logEvent(
+          widgetName: 'food',
+          eventType: 'custom_product_updated',
+          payload: {'id': product.id, 'name': product.name},
+        );
+      } catch (e) {
+        print('Error updating custom food product: $e');
+      }
+    }
+  }
+  
+  Future<void> remove(String productId) async {
+    state = state.where((p) => p.id != productId).toList();
+    
+    if (_client != null && _oderId != 'demo') {
+      try {
+        await _client!.from('custom_food_products').delete().eq('id', productId);
+        await SupabaseDataService.instance.logEvent(
+          widgetName: 'food',
+          eventType: 'custom_product_deleted',
+          payload: {'id': productId},
+        );
+      } catch (e) {
+        print('Error removing custom food product: $e');
+      }
+    }
+  }
+  
+  Future<void> incrementUseCount(String productId) async {
+    state = state.map((p) => 
+      p.id == productId ? p.copyWith(useCount: p.useCount + 1) : p
+    ).toList();
+    
+    if (_client != null && _oderId != 'demo') {
+      try {
+        await _client!.rpc('increment_food_use_count', params: {
+          'table_name': 'custom_food_products',
+          'product_id': productId,
+        });
+      } catch (e) {
+        print('Error incrementing use count: $e');
+      }
+    }
+  }
+  
+  List<CustomFoodProduct> get recipes => state.where((p) => p.isRecipe).toList();
+  List<CustomFoodProduct> get simpleProducts => state.where((p) => !p.isRecipe).toList();
+}
+
+final customFoodProductsProvider = StateNotifierProvider<CustomFoodProductsNotifier, List<CustomFoodProduct>>((ref) {
+  final user = ref.watch(authNotifierProvider).valueOrNull;
+  final oderId = user?.id ?? 'demo';
+  final client = AppConfig.isDemoMode ? null : Supabase.instance.client;
+  
+  final notifier = CustomFoodProductsNotifier(oderId, client);
+  if (user != null) {
+    notifier.load();
+  }
+  return notifier;
+});
+
+// ============================================
 // WATER PROVIDERS
 // ============================================
 

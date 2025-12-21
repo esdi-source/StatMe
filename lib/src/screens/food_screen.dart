@@ -1,14 +1,16 @@
-/// Food Screen - Calorie tracking
+/// Food Screen - Calorie tracking with favorites and custom products
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/openfoodfacts_service.dart';
 import 'food_log_edit_screen.dart';
 import 'barcode_scanner_screen.dart';
+import 'custom_food_product_edit_screen.dart';
 
 class FoodScreen extends ConsumerStatefulWidget {
   const FoodScreen({super.key});
@@ -17,21 +19,21 @@ class FoodScreen extends ConsumerStatefulWidget {
   ConsumerState<FoodScreen> createState() => _FoodScreenState();
 }
 
-class _FoodScreenState extends ConsumerState<FoodScreen> {
+class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProviderStateMixin {
   DateTime _selectedDate = DateTime.now();
-  final TextEditingController _searchController = TextEditingController();
-  List<OpenFoodFactsProduct> _searchResults = [];
-  bool _isSearching = false;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(() => setState(() {}));
     _loadFoodLogs();
   }
   
   @override
   void dispose() {
-    _searchController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -49,57 +51,38 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
     _loadFoodLogs();
   }
   
-  Future<void> _searchProducts(String query) async {
-    if (query.length < 2) {
-      setState(() {
-        _searchResults = [];
-        _isSearching = false;
-      });
-      return;
-    }
-    
-    setState(() => _isSearching = true);
-    
-    final service = ref.read(openFoodFactsServiceProvider);
-    final results = await service.searchProducts(query);
-    
-    setState(() {
-      _searchResults = results;
-      _isSearching = false;
-    });
-  }
-  
   Future<void> _scanBarcode() async {
     String? barcode;
     
-    // Auf Web: Versuche erst die Kamera, Fallback auf manuelle Eingabe
     if (kIsWeb) {
-      // Auf mobilen Browsern (PWA) die Kamera verwenden
       try {
         barcode = await Navigator.of(context).push<String>(
-          MaterialPageRoute(
-            builder: (context) => const BarcodeScannerScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
         );
       } catch (e) {
-        // Falls Kamera nicht funktioniert, manueller Input
         barcode = await showDialog<String>(
           context: context,
-          builder: (context) => _BarcodeInputDialog(),
+          builder: (_) => _BarcodeInputDialog(),
         );
       }
     } else {
-      // Native Apps: Direkt Kamera verwenden
       barcode = await Navigator.of(context).push<String>(
-        MaterialPageRoute(
-          builder: (context) => const BarcodeScannerScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
       );
     }
     
     if (barcode == null || barcode.isEmpty) return;
     
-    // Produkt abrufen
+    // Check favorites first
+    final favorites = ref.read(favoriteProductsProvider);
+    final favorite = favorites.where((f) => f.barcode == barcode).firstOrNull;
+    
+    if (favorite != null) {
+      _showFavoriteProductDialog(favorite);
+      return;
+    }
+    
+    // Fetch from OpenFoodFacts
     final product = await ref.read(productByBarcodeProvider(barcode).future);
     
     if (!mounted) return;
@@ -119,18 +102,59 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
   void _showProductDialog(OpenFoodFactsProduct product) {
     showDialog(
       context: context,
-      builder: (context) => _ProductDetailDialog(
+      builder: (_) => _ProductDetailDialog(
         product: product,
         onAdd: (grams) => _addProductFromOpenFoodFacts(product, grams),
+        onFavorite: () => _addToFavorites(product),
       ),
     );
+  }
+  
+  void _showFavoriteProductDialog(FavoriteProduct favorite) {
+    showDialog(
+      context: context,
+      builder: (_) => _FavoriteProductDialog(
+        product: favorite,
+        onAdd: (grams) => _addFromFavorite(favorite, grams),
+      ),
+    );
+  }
+  
+  Future<void> _addToFavorites(OpenFoodFactsProduct product) async {
+    final user = ref.read(authNotifierProvider).valueOrNull;
+    if (user == null) return;
+    
+    final favorite = FavoriteProduct(
+      id: const Uuid().v4(),
+      oderId: user.id,
+      name: product.fullName,
+      kcalPer100g: product.calories ?? 0,
+      proteinPer100g: product.proteins,
+      carbsPer100g: product.carbohydrates,
+      fatPer100g: product.fat,
+      barcode: product.barcode,
+      imageUrl: product.imageUrl,
+      defaultGrams: 100,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    
+    await ref.read(favoriteProductsProvider.notifier).add(favorite);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.productName} zu Favoriten hinzugefügt'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
   }
   
   Future<void> _addProductFromOpenFoodFacts(OpenFoodFactsProduct product, double grams) async {
     final user = ref.read(authNotifierProvider).valueOrNull;
     if (user == null) return;
     
-    // Kalorien berechnen (pro 100g)
     final calories = (product.calories ?? 0) * grams / 100;
     
     final foodLog = FoodLogModel(
@@ -146,7 +170,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
     await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
     
     if (mounted) {
-      Navigator.of(context).pop(); // Dialog schließen
+      Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${product.productName} hinzugefügt'),
@@ -155,184 +179,103 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
       );
     }
   }
+  
+  Future<void> _addFromFavorite(FavoriteProduct favorite, double grams) async {
+    final user = ref.read(authNotifierProvider).valueOrNull;
+    if (user == null) return;
+    
+    final calories = favorite.calculateCalories(grams);
+    
+    final foodLog = FoodLogModel(
+      id: '',
+      userId: user.id,
+      productName: favorite.name,
+      calories: calories,
+      grams: grams,
+      date: _selectedDate,
+      createdAt: DateTime.now(),
+    );
+    
+    await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
+    await ref.read(favoriteProductsProvider.notifier).incrementUseCount(favorite.id);
+    
+    if (mounted) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${favorite.name} hinzugefügt'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
+  
+  Future<void> _addFromCustomProduct(CustomFoodProduct product, double grams) async {
+    final user = ref.read(authNotifierProvider).valueOrNull;
+    if (user == null) return;
+    
+    final calories = product.calculateCalories(grams);
+    
+    final foodLog = FoodLogModel(
+      id: '',
+      userId: user.id,
+      productName: product.name,
+      calories: calories,
+      grams: grams,
+      date: _selectedDate,
+      createdAt: DateTime.now(),
+    );
+    
+    await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
+    await ref.read(customFoodProductsProvider.notifier).incrementUseCount(product.id);
+    
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} hinzugefügt'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authNotifierProvider).valueOrNull;
     final foodLogs = ref.watch(foodLogNotifierProvider);
     final totalCalories = foodLogs.fold<double>(0, (sum, log) => sum + log.calories);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Ernährung'),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(icon: Icon(Icons.today), text: 'Heute'),
+            Tab(icon: Icon(Icons.star), text: 'Favoriten'),
+            Tab(icon: Icon(Icons.restaurant_menu), text: 'Eigene'),
+          ],
+        ),
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Date Selector
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () => _changeDate(-1),
-                ),
-                GestureDetector(
-                  onTap: () async {
-                    final date = await showDatePicker(
-                      context: context,
-                      initialDate: _selectedDate,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now(),
-                    );
-                    if (date != null) {
-                      setState(() => _selectedDate = date);
-                      _loadFoodLogs();
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade700,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      _isToday(_selectedDate)
-                          ? 'Heute'
-                          : DateFormat('dd.MM.yyyy').format(_selectedDate),
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: _isToday(_selectedDate) ? null : () => _changeDate(1),
-                ),
-              ],
-            ),
+          _buildTodayTab(foodLogs, totalCalories),
+          _FavoritesTab(
+            onAddToLog: _addFromFavorite,
+            onScan: _scanBarcode,
           ),
-
-          // Calorie Summary
-          Card(
-            margin: const EdgeInsets.all(16),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  Column(
-                    children: [
-                      Text(
-                        '${totalCalories.toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              color: Colors.orange,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const Text('Gegessen'),
-                    ],
-                  ),
-                  Container(
-                    width: 1,
-                    height: 50,
-                    color: Colors.grey.shade300,
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '2000',
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const Text('Ziel'),
-                    ],
-                  ),
-                  Container(
-                    width: 1,
-                    height: 50,
-                    color: Colors.grey.shade300,
-                  ),
-                  Column(
-                    children: [
-                      Text(
-                        '${(2000 - totalCalories).toStringAsFixed(0)}',
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                              color: totalCalories > 2000 ? Colors.red : Colors.green,
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const Text('Übrig'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Progress Bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LinearProgressIndicator(
-                  value: (totalCalories / 2000).clamp(0, 1),
-                  minHeight: 8,
-                  backgroundColor: Colors.grey.shade200,
-                  valueColor: AlwaysStoppedAnimation(
-                    totalCalories > 2000 ? Colors.red : Colors.orange,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${((totalCalories / 2000) * 100).toStringAsFixed(0)}% des Tagesziels',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // Food Logs List
-          Expanded(
-            child: foodLogs.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.restaurant_menu, size: 64, color: Colors.grey.shade400),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Keine Einträge für diesen Tag',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _loadFoodLogs,
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: foodLogs.length,
-                      itemBuilder: (context, index) {
-                        final log = foodLogs[index];
-                        return _FoodLogCard(
-                          log: log,
-                          onDelete: () => _deleteLog(log),
-                        );
-                      },
-                    ),
-                  ),
+          _CustomProductsTab(
+            onAddToLog: _addFromCustomProduct,
           ),
         ],
       ),
-      floatingActionButton: Column(
+      floatingActionButton: _buildFAB(),
+    );
+  }
+  
+  Widget? _buildFAB() {
+    if (_tabController.index == 0) {
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton(
@@ -343,26 +286,199 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
           const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'search',
-            onPressed: () => _showSearchDialog(),
+            onPressed: _showSearchDialog,
             child: const Icon(Icons.search),
           ),
           const SizedBox(height: 12),
           FloatingActionButton.extended(
             heroTag: 'add',
-            onPressed: () => _openFoodLogEdit(),
+            onPressed: _openFoodLogEdit,
             icon: const Icon(Icons.add),
             label: const Text('Hinzufügen'),
           ),
         ],
-      ),
+      );
+    } else if (_tabController.index == 1) {
+      return FloatingActionButton.extended(
+        onPressed: _scanBarcode,
+        icon: const Icon(Icons.qr_code_scanner),
+        label: const Text('Favorit scannen'),
+      );
+    } else {
+      return FloatingActionButton.extended(
+        onPressed: () => _openCustomProductEdit(),
+        icon: const Icon(Icons.add),
+        label: const Text('Neues Rezept'),
+      );
+    }
+  }
+  
+  Widget _buildTodayTab(List<FoodLogModel> foodLogs, double totalCalories) {
+    return Column(
+      children: [
+        // Date Selector
+        Container(
+          padding: const EdgeInsets.all(16),
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: () => _changeDate(-1),
+              ),
+              GestureDetector(
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: _selectedDate,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime.now(),
+                  );
+                  if (date != null) {
+                    setState(() => _selectedDate = date);
+                    _loadFoodLogs();
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade700,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _isToday(_selectedDate)
+                        ? 'Heute'
+                        : DateFormat('dd.MM.yyyy').format(_selectedDate),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: _isToday(_selectedDate) ? null : () => _changeDate(1),
+              ),
+            ],
+          ),
+        ),
+
+        // Calorie Summary
+        Card(
+          margin: const EdgeInsets.all(16),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      '${totalCalories.toStringAsFixed(0)}',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            color: Colors.orange,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const Text('Gegessen'),
+                  ],
+                ),
+                Container(width: 1, height: 50, color: Colors.grey.shade300),
+                Column(
+                  children: [
+                    Text(
+                      '2000',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const Text('Ziel'),
+                  ],
+                ),
+                Container(width: 1, height: 50, color: Colors.grey.shade300),
+                Column(
+                  children: [
+                    Text(
+                      '${(2000 - totalCalories).toStringAsFixed(0)}',
+                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                            color: totalCalories > 2000 ? Colors.red : Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const Text('Übrig'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Progress Bar
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              LinearProgressIndicator(
+                value: (totalCalories / 2000).clamp(0, 1),
+                minHeight: 8,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation(
+                  totalCalories > 2000 ? Colors.red : Colors.orange,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '${((totalCalories / 2000) * 100).toStringAsFixed(0)}% des Tagesziels',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Food Logs List
+        Expanded(
+          child: foodLogs.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.restaurant_menu, size: 64, color: Colors.grey.shade400),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Keine Einträge für diesen Tag',
+                        style: TextStyle(color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: _loadFoodLogs,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: foodLogs.length,
+                    itemBuilder: (context, index) {
+                      final log = foodLogs[index];
+                      return _FoodLogCard(
+                        log: log,
+                        onDelete: () => _deleteLog(log),
+                      );
+                    },
+                  ),
+                ),
+        ),
+      ],
     );
   }
   
   void _showSearchDialog() {
     showDialog(
       context: context,
-      builder: (context) => _ProductSearchDialog(
-        onProductSelected: (product) => _showProductDialog(product),
+      builder: (_) => _ProductSearchDialog(
+        onProductSelected: _showProductDialog,
       ),
     );
   }
@@ -386,11 +502,22 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
       _loadFoodLogs();
     }
   }
+  
+  void _openCustomProductEdit() async {
+    final user = ref.read(authNotifierProvider).valueOrNull;
+    if (user == null) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CustomFoodProductEditScreen(oderId: user.id),
+      ),
+    );
+  }
 
   Future<void> _deleteLog(FoodLogModel log) async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (_) => AlertDialog(
         title: const Text('Eintrag löschen'),
         content: Text('Möchtest du "${log.productName}" wirklich löschen?'),
         actions: [
@@ -412,6 +539,336 @@ class _FoodScreenState extends ConsumerState<FoodScreen> {
     }
   }
 }
+
+// ============================================================================
+// FAVORITES TAB
+// ============================================================================
+
+class _FavoritesTab extends ConsumerWidget {
+  final Function(FavoriteProduct, double) onAddToLog;
+  final VoidCallback onScan;
+
+  const _FavoritesTab({required this.onAddToLog, required this.onScan});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final favorites = ref.watch(favoriteProductsProvider);
+
+    if (favorites.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.star_border, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            const Text('Keine Favoriten'),
+            const SizedBox(height: 8),
+            Text(
+              'Scanne Produkte und speichere sie als Favoriten',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: onScan,
+              icon: const Icon(Icons.qr_code_scanner),
+              label: const Text('Produkt scannen'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: favorites.length,
+      itemBuilder: (context, index) {
+        final favorite = favorites[index];
+        return _FavoriteProductCard(
+          product: favorite,
+          onTap: () => _showAddDialog(context, favorite),
+          onDelete: () => _deleteFavorite(context, ref, favorite),
+        );
+      },
+    );
+  }
+
+  void _showAddDialog(BuildContext context, FavoriteProduct product) {
+    showDialog(
+      context: context,
+      builder: (_) => _FavoriteProductDialog(
+        product: product,
+        onAdd: (grams) => onAddToLog(product, grams),
+      ),
+    );
+  }
+
+  Future<void> _deleteFavorite(BuildContext context, WidgetRef ref, FavoriteProduct product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Favorit entfernen'),
+        content: Text('Möchtest du "${product.name}" aus den Favoriten entfernen?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Entfernen'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(favoriteProductsProvider.notifier).remove(product.id);
+    }
+  }
+}
+
+class _FavoriteProductCard extends StatelessWidget {
+  final FavoriteProduct product;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  const _FavoriteProductCard({
+    required this.product,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: Colors.amber.shade100,
+          child: const Icon(Icons.star, color: Colors.amber),
+        ),
+        title: Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text('${product.kcalPer100g.toStringAsFixed(0)} kcal/100g • ${product.useCount}x verwendet'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: onTap,
+              color: Colors.green,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline),
+              onPressed: onDelete,
+              color: Colors.red.shade300,
+            ),
+          ],
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// CUSTOM PRODUCTS TAB
+// ============================================================================
+
+class _CustomProductsTab extends ConsumerWidget {
+  final Function(CustomFoodProduct, double) onAddToLog;
+
+  const _CustomProductsTab({required this.onAddToLog});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final products = ref.watch(customFoodProductsProvider);
+    final recipes = products.where((p) => p.isRecipe).toList();
+    final simpleProducts = products.where((p) => !p.isRecipe).toList();
+
+    if (products.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.restaurant_menu, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            const Text('Keine eigenen Produkte'),
+            const SizedBox(height: 8),
+            Text(
+              'Erstelle Rezepte oder eigene Produkte wie Salatsoße',
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => _openCustomProductEdit(context, ref),
+              icon: const Icon(Icons.add),
+              label: const Text('Neues Rezept erstellen'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        if (recipes.isNotEmpty) ...[
+          Text(
+            'Rezepte',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          ...recipes.map((p) => _CustomProductCard(
+                product: p,
+                onTap: () => _showAddDialog(context, p),
+                onEdit: () => _editProduct(context, ref, p),
+                onDelete: () => _deleteProduct(context, ref, p),
+              )),
+          const SizedBox(height: 16),
+        ],
+        if (simpleProducts.isNotEmpty) ...[
+          Text(
+            'Eigene Produkte',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          ...simpleProducts.map((p) => _CustomProductCard(
+                product: p,
+                onTap: () => _showAddDialog(context, p),
+                onEdit: () => _editProduct(context, ref, p),
+                onDelete: () => _deleteProduct(context, ref, p),
+              )),
+        ],
+      ],
+    );
+  }
+
+  void _showAddDialog(BuildContext context, CustomFoodProduct product) {
+    showDialog(
+      context: context,
+      builder: (_) => _CustomProductDialog(
+        product: product,
+        onAdd: (grams) {
+          onAddToLog(product, grams);
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+
+  void _openCustomProductEdit(BuildContext context, WidgetRef ref) async {
+    final user = ref.read(authNotifierProvider).valueOrNull;
+    if (user == null) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CustomFoodProductEditScreen(oderId: user.id),
+      ),
+    );
+  }
+
+  void _editProduct(BuildContext context, WidgetRef ref, CustomFoodProduct product) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => CustomFoodProductEditScreen(
+          product: product,
+          oderId: product.oderId,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _deleteProduct(BuildContext context, WidgetRef ref, CustomFoodProduct product) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Produkt löschen'),
+        content: Text('Möchtest du "${product.name}" wirklich löschen?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Abbrechen'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Löschen'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await ref.read(customFoodProductsProvider.notifier).remove(product.id);
+    }
+  }
+}
+
+class _CustomProductCard extends StatelessWidget {
+  final CustomFoodProduct product;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _CustomProductCard({
+    required this.product,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: product.isRecipe ? Colors.green.shade100 : Colors.blue.shade100,
+          child: Icon(
+            product.isRecipe ? Icons.restaurant_menu : Icons.inventory_2,
+            color: product.isRecipe ? Colors.green : Colors.blue,
+          ),
+        ),
+        title: Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          '${product.kcalPer100g.toStringAsFixed(0)} kcal/100g'
+          '${product.defaultServingGrams != null ? ' • Portion: ${product.defaultServingGrams!.toStringAsFixed(0)}g' : ''}'
+          '${product.useCount > 0 ? ' • ${product.useCount}x' : ''}',
+        ),
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) {
+            switch (value) {
+              case 'add':
+                onTap();
+                break;
+              case 'edit':
+                onEdit();
+                break;
+              case 'delete':
+                onDelete();
+                break;
+            }
+          },
+          itemBuilder: (_) => [
+            const PopupMenuItem(value: 'add', child: Text('Hinzufügen')),
+            const PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
+            const PopupMenuItem(value: 'delete', child: Text('Löschen')),
+          ],
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// DIALOGS
+// ============================================================================
 
 class _FoodLogCard extends StatelessWidget {
   final FoodLogModel log;
@@ -449,7 +906,6 @@ class _FoodLogCard extends StatelessWidget {
   }
 }
 
-/// Dialog für manuelle Barcode-Eingabe
 class _BarcodeInputDialog extends StatefulWidget {
   @override
   State<_BarcodeInputDialog> createState() => _BarcodeInputDialogState();
@@ -467,40 +923,17 @@ class _BarcodeInputDialogState extends State<_BarcodeInputDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Row(
-        children: [
-          const Icon(Icons.qr_code_scanner, color: Colors.orange),
-          const SizedBox(width: 8),
-          const Text('Barcode scannen'),
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Im Web-Modus: Barcode manuell eingeben',
-            style: TextStyle(color: Colors.grey),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _controller,
-            keyboardType: TextInputType.number,
-            autofocus: true,
-            decoration: const InputDecoration(
-              labelText: 'Barcode (EAN/UPC)',
-              hintText: 'z.B. 4006381333931',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.qr_code),
-            ),
-            onSubmitted: (_) => _submit(),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Demo-Barcodes: 4006381333931 (Haferflocken), 4000400144690 (Milch), 7622210449283 (Schokolade)',
-            style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-          ),
-        ],
+      title: const Text('Barcode eingeben'),
+      content: TextField(
+        controller: _controller,
+        keyboardType: TextInputType.number,
+        autofocus: true,
+        decoration: const InputDecoration(
+          labelText: 'Barcode (EAN/UPC)',
+          hintText: 'z.B. 4006381333931',
+          border: OutlineInputBorder(),
+        ),
+        onSubmitted: (_) => Navigator.of(context).pop(_controller.text.trim()),
       ),
       actions: [
         TextButton(
@@ -508,26 +941,24 @@ class _BarcodeInputDialogState extends State<_BarcodeInputDialog> {
           child: const Text('Abbrechen'),
         ),
         FilledButton(
-          onPressed: _submit,
+          onPressed: () => Navigator.of(context).pop(_controller.text.trim()),
           child: const Text('Suchen'),
         ),
       ],
     );
   }
-  
-  void _submit() {
-    if (_controller.text.isNotEmpty) {
-      Navigator.of(context).pop(_controller.text.trim());
-    }
-  }
 }
 
-/// Dialog für Produktdetails
 class _ProductDetailDialog extends StatefulWidget {
   final OpenFoodFactsProduct product;
   final Function(double grams) onAdd;
+  final VoidCallback onFavorite;
   
-  const _ProductDetailDialog({required this.product, required this.onAdd});
+  const _ProductDetailDialog({
+    required this.product,
+    required this.onAdd,
+    required this.onFavorite,
+  });
   
   @override
   State<_ProductDetailDialog> createState() => _ProductDetailDialogState();
@@ -555,15 +986,7 @@ class _ProductDetailDialogState extends State<_ProductDetailDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.product.brand != null)
-              Text(
-                widget.product.brand!,
-                style: TextStyle(color: Colors.grey.shade600),
-              ),
-            const SizedBox(height: 16),
-            
-            // Nutri-Score
-            if (widget.product.nutriscore != null)
-              _buildNutriScore(widget.product.nutriscore!),
+              Text(widget.product.brand!, style: TextStyle(color: Colors.grey.shade600)),
             const SizedBox(height: 16),
             
             // Nährwerte pro 100g
@@ -576,12 +999,9 @@ class _ProductDetailDialogState extends State<_ProductDetailDialog> {
                     const Text('Nährwerte pro 100g', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     _buildNutrientRow('Kalorien', '${widget.product.calories?.toStringAsFixed(0) ?? '-'} kcal'),
-                    _buildNutrientRow('Fett', '${widget.product.fat?.toStringAsFixed(1) ?? '-'} g'),
-                    _buildNutrientRow('Kohlenhydrate', '${widget.product.carbohydrates?.toStringAsFixed(1) ?? '-'} g'),
-                    _buildNutrientRow('davon Zucker', '${widget.product.sugars?.toStringAsFixed(1) ?? '-'} g'),
                     _buildNutrientRow('Protein', '${widget.product.proteins?.toStringAsFixed(1) ?? '-'} g'),
-                    _buildNutrientRow('Ballaststoffe', '${widget.product.fiber?.toStringAsFixed(1) ?? '-'} g'),
-                    _buildNutrientRow('Salz', '${widget.product.salt?.toStringAsFixed(2) ?? '-'} g'),
+                    _buildNutrientRow('Kohlenhydrate', '${widget.product.carbohydrates?.toStringAsFixed(1) ?? '-'} g'),
+                    _buildNutrientRow('Fett', '${widget.product.fat?.toStringAsFixed(1) ?? '-'} g'),
                   ],
                 ),
               ),
@@ -623,6 +1043,13 @@ class _ProductDetailDialogState extends State<_ProductDetailDialog> {
         ),
       ),
       actions: [
+        TextButton.icon(
+          onPressed: () {
+            widget.onFavorite();
+          },
+          icon: const Icon(Icons.star_border),
+          label: const Text('Favorit'),
+        ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Abbrechen'),
@@ -648,43 +1075,190 @@ class _ProductDetailDialogState extends State<_ProductDetailDialog> {
       ),
     );
   }
+}
+
+class _FavoriteProductDialog extends StatefulWidget {
+  final FavoriteProduct product;
+  final Function(double grams) onAdd;
   
-  Widget _buildNutriScore(String score) {
-    final colors = {
-      'a': Colors.green,
-      'b': Colors.lightGreen,
-      'c': Colors.yellow.shade700,
-      'd': Colors.orange,
-      'e': Colors.red,
-    };
-    
-    return Row(
-      children: ['a', 'b', 'c', 'd', 'e'].map((s) {
-        final isActive = s == score.toLowerCase();
-        return Container(
-          margin: const EdgeInsets.only(right: 4),
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: isActive ? colors[s] : colors[s]?.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(4),
+  const _FavoriteProductDialog({required this.product, required this.onAdd});
+  
+  @override
+  State<_FavoriteProductDialog> createState() => _FavoriteProductDialogState();
+}
+
+class _FavoriteProductDialogState extends State<_FavoriteProductDialog> {
+  late final TextEditingController _gramsController;
+  
+  @override
+  void initState() {
+    super.initState();
+    _gramsController = TextEditingController(
+      text: widget.product.defaultGrams?.toStringAsFixed(0) ?? '100',
+    );
+  }
+  
+  @override
+  void dispose() {
+    _gramsController.dispose();
+    super.dispose();
+  }
+  
+  double get _grams => double.tryParse(_gramsController.text) ?? 100;
+  double get _calculatedCalories => widget.product.calculateCalories(_grams);
+  
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.product.name),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('${widget.product.kcalPer100g.toStringAsFixed(0)} kcal/100g'),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _gramsController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Menge (g)',
+              border: OutlineInputBorder(),
+              suffixText: 'g',
+            ),
+            onChanged: (_) => setState(() {}),
           ),
-          child: Center(
-            child: Text(
-              s.toUpperCase(),
-              style: TextStyle(
-                color: isActive ? Colors.white : colors[s],
-                fontWeight: FontWeight.bold,
-              ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Kalorien:'),
+                Text(
+                  '${_calculatedCalories.toStringAsFixed(0)} kcal',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ],
             ),
           ),
-        );
-      }).toList(),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton.icon(
+          onPressed: () => widget.onAdd(_grams),
+          icon: const Icon(Icons.add),
+          label: const Text('Hinzufügen'),
+        ),
+      ],
     );
   }
 }
 
-/// Dialog für Produktsuche
+class _CustomProductDialog extends StatefulWidget {
+  final CustomFoodProduct product;
+  final Function(double grams) onAdd;
+  
+  const _CustomProductDialog({required this.product, required this.onAdd});
+  
+  @override
+  State<_CustomProductDialog> createState() => _CustomProductDialogState();
+}
+
+class _CustomProductDialogState extends State<_CustomProductDialog> {
+  late final TextEditingController _gramsController;
+  
+  @override
+  void initState() {
+    super.initState();
+    _gramsController = TextEditingController(
+      text: widget.product.defaultServingGrams?.toStringAsFixed(0) ?? '100',
+    );
+  }
+  
+  @override
+  void dispose() {
+    _gramsController.dispose();
+    super.dispose();
+  }
+  
+  double get _grams => double.tryParse(_gramsController.text) ?? 100;
+  double get _calculatedCalories => widget.product.calculateCalories(_grams);
+  
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.product.name),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (widget.product.description != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                widget.product.description!,
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+          Text('${widget.product.kcalPer100g.toStringAsFixed(0)} kcal/100g'),
+          if (widget.product.ingredients.isNotEmpty)
+            Text(
+              '${widget.product.ingredients.length} Zutaten',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _gramsController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Menge (g)',
+              border: OutlineInputBorder(),
+              suffixText: 'g',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text('Kalorien:'),
+                Text(
+                  '${_calculatedCalories.toStringAsFixed(0)} kcal',
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Abbrechen'),
+        ),
+        FilledButton.icon(
+          onPressed: () => widget.onAdd(_grams),
+          icon: const Icon(Icons.add),
+          label: const Text('Hinzufügen'),
+        ),
+      ],
+    );
+  }
+}
+
 class _ProductSearchDialog extends ConsumerStatefulWidget {
   final Function(OpenFoodFactsProduct) onProductSelected;
   
@@ -738,16 +1312,9 @@ class _ProductSearchDialogState extends ConsumerState<_ProductSearchDialog> {
                 suffixIcon: _isLoading
                     ? const Padding(
                         padding: EdgeInsets.all(12),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
                       )
-                    : IconButton(
-                        icon: const Icon(Icons.search),
-                        onPressed: _search,
-                      ),
+                    : IconButton(icon: const Icon(Icons.search), onPressed: _search),
               ),
               onSubmitted: (_) => _search(),
             ),
@@ -756,9 +1323,7 @@ class _ProductSearchDialogState extends ConsumerState<_ProductSearchDialog> {
               child: _results.isEmpty
                   ? Center(
                       child: Text(
-                        _searchController.text.isEmpty
-                            ? 'Gib einen Suchbegriff ein'
-                            : 'Keine Ergebnisse',
+                        _searchController.text.isEmpty ? 'Gib einen Suchbegriff ein' : 'Keine Ergebnisse',
                         style: TextStyle(color: Colors.grey.shade600),
                       ),
                     )
@@ -769,25 +1334,7 @@ class _ProductSearchDialogState extends ConsumerState<_ProductSearchDialog> {
                         final product = _results[index];
                         return ListTile(
                           title: Text(product.productName ?? 'Unbekannt'),
-                          subtitle: Text(
-                            '${product.brand ?? ''} • ${product.calories?.toStringAsFixed(0) ?? '-'} kcal/100g',
-                          ),
-                          trailing: product.nutriscore != null
-                              ? Container(
-                                  padding: const EdgeInsets.all(6),
-                                  decoration: BoxDecoration(
-                                    color: _nutriScoreColor(product.nutriscore!),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    product.nutriscore!.toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                )
-                              : null,
+                          subtitle: Text('${product.brand ?? ''} • ${product.calories?.toStringAsFixed(0) ?? '-'} kcal/100g'),
                           onTap: () {
                             Navigator.of(context).pop();
                             widget.onProductSelected(product);
@@ -806,16 +1353,5 @@ class _ProductSearchDialogState extends ConsumerState<_ProductSearchDialog> {
         ),
       ],
     );
-  }
-  
-  Color _nutriScoreColor(String score) {
-    switch (score.toLowerCase()) {
-      case 'a': return Colors.green;
-      case 'b': return Colors.lightGreen;
-      case 'c': return Colors.yellow.shade700;
-      case 'd': return Colors.orange;
-      case 'e': return Colors.red;
-      default: return Colors.grey;
-    }
   }
 }

@@ -1,5 +1,303 @@
 import 'package:equatable/equatable.dart';
 
+/// Favorisiertes Produkt (aus OpenFoodFacts oder eigene Produkte)
+class FavoriteProduct extends Equatable {
+  final String id;
+  final String oderId;
+  final String name;
+  final double kcalPer100g;
+  final double? proteinPer100g;
+  final double? carbsPer100g;
+  final double? fatPer100g;
+  final String? barcode;
+  final String? imageUrl;
+  final double? defaultGrams; // Standard-Portion
+  final int useCount; // Wie oft verwendet
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const FavoriteProduct({
+    required this.id,
+    required this.oderId,
+    required this.name,
+    required this.kcalPer100g,
+    this.proteinPer100g,
+    this.carbsPer100g,
+    this.fatPer100g,
+    this.barcode,
+    this.imageUrl,
+    this.defaultGrams,
+    this.useCount = 0,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory FavoriteProduct.fromJson(Map<String, dynamic> json) {
+    return FavoriteProduct(
+      id: json['id'] as String,
+      oderId: json['oder_id'] as String,
+      name: json['name'] as String,
+      kcalPer100g: (json['kcal_per_100g'] as num).toDouble(),
+      proteinPer100g: (json['protein_per_100g'] as num?)?.toDouble(),
+      carbsPer100g: (json['carbs_per_100g'] as num?)?.toDouble(),
+      fatPer100g: (json['fat_per_100g'] as num?)?.toDouble(),
+      barcode: json['barcode'] as String?,
+      imageUrl: json['image_url'] as String?,
+      defaultGrams: (json['default_grams'] as num?)?.toDouble(),
+      useCount: (json['use_count'] as int?) ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'oder_id': oderId,
+      'name': name,
+      'kcal_per_100g': kcalPer100g,
+      'protein_per_100g': proteinPer100g,
+      'carbs_per_100g': carbsPer100g,
+      'fat_per_100g': fatPer100g,
+      'barcode': barcode,
+      'image_url': imageUrl,
+      'default_grams': defaultGrams,
+      'use_count': useCount,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  double calculateCalories(double grams) => (kcalPer100g / 100) * grams;
+  double calculateProtein(double grams) => (proteinPer100g ?? 0) / 100 * grams;
+  double calculateCarbs(double grams) => (carbsPer100g ?? 0) / 100 * grams;
+  double calculateFat(double grams) => (fatPer100g ?? 0) / 100 * grams;
+
+  FavoriteProduct copyWith({
+    String? id,
+    String? oderId,
+    String? name,
+    double? kcalPer100g,
+    double? proteinPer100g,
+    double? carbsPer100g,
+    double? fatPer100g,
+    String? barcode,
+    String? imageUrl,
+    double? defaultGrams,
+    int? useCount,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return FavoriteProduct(
+      id: id ?? this.id,
+      oderId: oderId ?? this.oderId,
+      name: name ?? this.name,
+      kcalPer100g: kcalPer100g ?? this.kcalPer100g,
+      proteinPer100g: proteinPer100g ?? this.proteinPer100g,
+      carbsPer100g: carbsPer100g ?? this.carbsPer100g,
+      fatPer100g: fatPer100g ?? this.fatPer100g,
+      barcode: barcode ?? this.barcode,
+      imageUrl: imageUrl ?? this.imageUrl,
+      defaultGrams: defaultGrams ?? this.defaultGrams,
+      useCount: useCount ?? this.useCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, oderId, name, kcalPer100g, barcode, useCount];
+}
+
+/// Eigenes Produkt/Rezept (z.B. Salatsoße, selbstgemachte Gerichte)
+class CustomFoodProduct extends Equatable {
+  final String id;
+  final String oderId;
+  final String name;
+  final String? description;
+  final double kcalPer100g;
+  final double? proteinPer100g;
+  final double? carbsPer100g;
+  final double? fatPer100g;
+  final double? defaultServingGrams; // Standard-Portionsgröße
+  final List<CustomFoodIngredient> ingredients; // Falls aus Zutaten berechnet
+  final String? imageUrl;
+  final bool isRecipe; // Rezept vs. einfaches Produkt
+  final int useCount;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  const CustomFoodProduct({
+    required this.id,
+    required this.oderId,
+    required this.name,
+    this.description,
+    required this.kcalPer100g,
+    this.proteinPer100g,
+    this.carbsPer100g,
+    this.fatPer100g,
+    this.defaultServingGrams,
+    this.ingredients = const [],
+    this.imageUrl,
+    this.isRecipe = false,
+    this.useCount = 0,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory CustomFoodProduct.fromJson(Map<String, dynamic> json) {
+    return CustomFoodProduct(
+      id: json['id'] as String,
+      oderId: json['oder_id'] as String,
+      name: json['name'] as String,
+      description: json['description'] as String?,
+      kcalPer100g: (json['kcal_per_100g'] as num).toDouble(),
+      proteinPer100g: (json['protein_per_100g'] as num?)?.toDouble(),
+      carbsPer100g: (json['carbs_per_100g'] as num?)?.toDouble(),
+      fatPer100g: (json['fat_per_100g'] as num?)?.toDouble(),
+      defaultServingGrams: (json['default_serving_grams'] as num?)?.toDouble(),
+      ingredients: (json['ingredients'] as List<dynamic>?)
+              ?.map((i) => CustomFoodIngredient.fromJson(i as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      imageUrl: json['image_url'] as String?,
+      isRecipe: (json['is_recipe'] as bool?) ?? false,
+      useCount: (json['use_count'] as int?) ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'oder_id': oderId,
+      'name': name,
+      'description': description,
+      'kcal_per_100g': kcalPer100g,
+      'protein_per_100g': proteinPer100g,
+      'carbs_per_100g': carbsPer100g,
+      'fat_per_100g': fatPer100g,
+      'default_serving_grams': defaultServingGrams,
+      'ingredients': ingredients.map((i) => i.toJson()).toList(),
+      'image_url': imageUrl,
+      'is_recipe': isRecipe,
+      'use_count': useCount,
+      'created_at': createdAt.toIso8601String(),
+      'updated_at': updatedAt.toIso8601String(),
+    };
+  }
+
+  double calculateCalories(double grams) => (kcalPer100g / 100) * grams;
+  double calculateProtein(double grams) => (proteinPer100g ?? 0) / 100 * grams;
+  double calculateCarbs(double grams) => (carbsPer100g ?? 0) / 100 * grams;
+  double calculateFat(double grams) => (fatPer100g ?? 0) / 100 * grams;
+
+  /// Gesamtgewicht aller Zutaten
+  double get totalIngredientsWeight =>
+      ingredients.fold(0.0, (sum, i) => sum + i.grams);
+
+  /// Gesamtkalorien aller Zutaten
+  double get totalIngredientsCalories =>
+      ingredients.fold(0.0, (sum, i) => sum + i.calories);
+
+  CustomFoodProduct copyWith({
+    String? id,
+    String? oderId,
+    String? name,
+    String? description,
+    double? kcalPer100g,
+    double? proteinPer100g,
+    double? carbsPer100g,
+    double? fatPer100g,
+    double? defaultServingGrams,
+    List<CustomFoodIngredient>? ingredients,
+    String? imageUrl,
+    bool? isRecipe,
+    int? useCount,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) {
+    return CustomFoodProduct(
+      id: id ?? this.id,
+      oderId: oderId ?? this.oderId,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      kcalPer100g: kcalPer100g ?? this.kcalPer100g,
+      proteinPer100g: proteinPer100g ?? this.proteinPer100g,
+      carbsPer100g: carbsPer100g ?? this.carbsPer100g,
+      fatPer100g: fatPer100g ?? this.fatPer100g,
+      defaultServingGrams: defaultServingGrams ?? this.defaultServingGrams,
+      ingredients: ingredients ?? this.ingredients,
+      imageUrl: imageUrl ?? this.imageUrl,
+      isRecipe: isRecipe ?? this.isRecipe,
+      useCount: useCount ?? this.useCount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, oderId, name, kcalPer100g, isRecipe, useCount];
+}
+
+/// Zutat für ein eigenes Rezept
+class CustomFoodIngredient extends Equatable {
+  final String? productId; // Referenz auf Favorit oder null
+  final String? barcode;
+  final String name;
+  final double grams;
+  final double kcalPer100g;
+  final double? proteinPer100g;
+  final double? carbsPer100g;
+  final double? fatPer100g;
+
+  const CustomFoodIngredient({
+    this.productId,
+    this.barcode,
+    required this.name,
+    required this.grams,
+    required this.kcalPer100g,
+    this.proteinPer100g,
+    this.carbsPer100g,
+    this.fatPer100g,
+  });
+
+  double get calories => (kcalPer100g / 100) * grams;
+  double get protein => (proteinPer100g ?? 0) / 100 * grams;
+  double get carbs => (carbsPer100g ?? 0) / 100 * grams;
+  double get fat => (fatPer100g ?? 0) / 100 * grams;
+
+  factory CustomFoodIngredient.fromJson(Map<String, dynamic> json) {
+    return CustomFoodIngredient(
+      productId: json['product_id'] as String?,
+      barcode: json['barcode'] as String?,
+      name: json['name'] as String,
+      grams: (json['grams'] as num).toDouble(),
+      kcalPer100g: (json['kcal_per_100g'] as num).toDouble(),
+      proteinPer100g: (json['protein_per_100g'] as num?)?.toDouble(),
+      carbsPer100g: (json['carbs_per_100g'] as num?)?.toDouble(),
+      fatPer100g: (json['fat_per_100g'] as num?)?.toDouble(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'product_id': productId,
+      'barcode': barcode,
+      'name': name,
+      'grams': grams,
+      'kcal_per_100g': kcalPer100g,
+      'protein_per_100g': proteinPer100g,
+      'carbs_per_100g': carbsPer100g,
+      'fat_per_100g': fatPer100g,
+    };
+  }
+
+  @override
+  List<Object?> get props => [productId, barcode, name, grams, kcalPer100g];
+}
+
 class ProductModel extends Equatable {
   final String? id;
   final String? barcode;
