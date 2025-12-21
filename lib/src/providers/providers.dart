@@ -361,7 +361,7 @@ class FavoriteProductsNotifier extends StateNotifier<List<FavoriteProduct>> {
       final response = await _client!
           .from('favorite_products')
           .select()
-          .eq('oder_id', _oderId)
+          .eq('user_id', _oderId)
           .order('use_count', ascending: false);
       
       state = (response as List).map((json) => FavoriteProduct.fromJson(json)).toList();
@@ -474,7 +474,7 @@ class CustomFoodProductsNotifier extends StateNotifier<List<CustomFoodProduct>> 
       final response = await _client!
           .from('custom_food_products')
           .select()
-          .eq('oder_id', _oderId)
+          .eq('user_id', _oderId)
           .order('use_count', ascending: false);
       
       state = (response as List).map((json) => CustomFoodProduct.fromJson(json)).toList();

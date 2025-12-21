@@ -11,12 +11,12 @@ import 'barcode_scanner_screen.dart';
 
 class CustomFoodProductEditScreen extends ConsumerStatefulWidget {
   final CustomFoodProduct? product; // null = neu erstellen
-  final String oderId;
+  final String userId;
 
   const CustomFoodProductEditScreen({
     super.key,
     this.product,
-    required this.oderId,
+    required this.userId,
   });
 
   @override
@@ -122,7 +122,7 @@ class _CustomFoodProductEditScreenState extends ConsumerState<CustomFoodProductE
       final now = DateTime.now();
       final product = CustomFoodProduct(
         id: widget.product?.id ?? const Uuid().v4(),
-        oderId: widget.oderId,
+        userId: widget.userId,
         name: _nameController.text.trim(),
         description: _descriptionController.text.trim().isEmpty 
             ? null 
@@ -593,7 +593,7 @@ class _AddIngredientSheetState extends ConsumerState<_AddIngredientSheet> {
     final favorite = widget.favorites.firstWhere(
       (f) => f.barcode == barcode,
       orElse: () => FavoriteProduct(
-        id: '', oderId: '', name: '', kcalPer100g: 0,
+        id: '', userId: '', name: '', kcalPer100g: 0,
         createdAt: DateTime.now(), updatedAt: DateTime.now(),
       ),
     );

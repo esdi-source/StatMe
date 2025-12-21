@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 /// Favorisiertes Produkt (aus OpenFoodFacts oder eigene Produkte)
 class FavoriteProduct extends Equatable {
   final String id;
-  final String oderId;
+  final String userId;
   final String name;
   final double kcalPer100g;
   final double? proteinPer100g;
@@ -18,7 +18,7 @@ class FavoriteProduct extends Equatable {
 
   const FavoriteProduct({
     required this.id,
-    required this.oderId,
+    required this.userId,
     required this.name,
     required this.kcalPer100g,
     this.proteinPer100g,
@@ -35,7 +35,7 @@ class FavoriteProduct extends Equatable {
   factory FavoriteProduct.fromJson(Map<String, dynamic> json) {
     return FavoriteProduct(
       id: json['id'] as String,
-      oderId: json['oder_id'] as String,
+      userId: json['user_id'] as String,
       name: json['name'] as String,
       kcalPer100g: (json['kcal_per_100g'] as num).toDouble(),
       proteinPer100g: (json['protein_per_100g'] as num?)?.toDouble(),
@@ -53,7 +53,7 @@ class FavoriteProduct extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'oder_id': oderId,
+      'user_id': userId,
       'name': name,
       'kcal_per_100g': kcalPer100g,
       'protein_per_100g': proteinPer100g,
@@ -75,7 +75,7 @@ class FavoriteProduct extends Equatable {
 
   FavoriteProduct copyWith({
     String? id,
-    String? oderId,
+    String? userId,
     String? name,
     double? kcalPer100g,
     double? proteinPer100g,
@@ -90,7 +90,7 @@ class FavoriteProduct extends Equatable {
   }) {
     return FavoriteProduct(
       id: id ?? this.id,
-      oderId: oderId ?? this.oderId,
+      userId: userId ?? this.userId,
       name: name ?? this.name,
       kcalPer100g: kcalPer100g ?? this.kcalPer100g,
       proteinPer100g: proteinPer100g ?? this.proteinPer100g,
@@ -106,13 +106,13 @@ class FavoriteProduct extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, oderId, name, kcalPer100g, barcode, useCount];
+  List<Object?> get props => [id, userId, name, kcalPer100g, barcode, useCount];
 }
 
 /// Eigenes Produkt/Rezept (z.B. Salatsoße, selbstgemachte Gerichte)
 class CustomFoodProduct extends Equatable {
   final String id;
-  final String oderId;
+  final String userId;
   final String name;
   final String? description;
   final double kcalPer100g;
@@ -129,7 +129,7 @@ class CustomFoodProduct extends Equatable {
 
   const CustomFoodProduct({
     required this.id,
-    required this.oderId,
+    required this.userId,
     required this.name,
     this.description,
     required this.kcalPer100g,
@@ -148,7 +148,7 @@ class CustomFoodProduct extends Equatable {
   factory CustomFoodProduct.fromJson(Map<String, dynamic> json) {
     return CustomFoodProduct(
       id: json['id'] as String,
-      oderId: json['oder_id'] as String,
+      userId: json['user_id'] as String,
       name: json['name'] as String,
       description: json['description'] as String?,
       kcalPer100g: (json['kcal_per_100g'] as num).toDouble(),
@@ -171,7 +171,7 @@ class CustomFoodProduct extends Equatable {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'oder_id': oderId,
+      'user_id': userId,
       'name': name,
       'description': description,
       'kcal_per_100g': kcalPer100g,
@@ -203,7 +203,7 @@ class CustomFoodProduct extends Equatable {
 
   CustomFoodProduct copyWith({
     String? id,
-    String? oderId,
+    String? userId,
     String? name,
     String? description,
     double? kcalPer100g,
@@ -220,7 +220,7 @@ class CustomFoodProduct extends Equatable {
   }) {
     return CustomFoodProduct(
       id: id ?? this.id,
-      oderId: oderId ?? this.oderId,
+      userId: userId ?? this.userId,
       name: name ?? this.name,
       description: description ?? this.description,
       kcalPer100g: kcalPer100g ?? this.kcalPer100g,
@@ -238,7 +238,7 @@ class CustomFoodProduct extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, oderId, name, kcalPer100g, isRecipe, useCount];
+  List<Object?> get props => [id, userId, name, kcalPer100g, isRecipe, useCount];
 }
 
 /// Zutat für ein eigenes Rezept

@@ -126,7 +126,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
     
     final favorite = FavoriteProduct(
       id: const Uuid().v4(),
-      oderId: user.id,
+      userId: user.id,
       name: product.fullName,
       kcalPer100g: product.calories ?? 0,
       proteinPer100g: product.proteins,
@@ -509,7 +509,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => CustomFoodProductEditScreen(oderId: user.id),
+        builder: (_) => CustomFoodProductEditScreen(userId: user.id),
       ),
     );
   }
@@ -767,7 +767,7 @@ class _CustomProductsTab extends ConsumerWidget {
 
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => CustomFoodProductEditScreen(oderId: user.id),
+        builder: (_) => CustomFoodProductEditScreen(userId: user.id),
       ),
     );
   }
@@ -777,7 +777,7 @@ class _CustomProductsTab extends ConsumerWidget {
       MaterialPageRoute(
         builder: (_) => CustomFoodProductEditScreen(
           product: product,
-          oderId: product.oderId,
+          userId: product.userId,
         ),
       ),
     );
