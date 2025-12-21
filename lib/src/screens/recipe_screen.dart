@@ -1,5 +1,5 @@
 /// Recipe Screen - Rezepte sammeln, planen, kochen, bewerten
-/// Mit Merkliste, Koch-Verlauf und Statistiken
+/// Mit Merkliste, Koch-Verlauf, Statistiken und TheMealDB-Suche
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
 import '../services/recipe_parser_service.dart';
+import '../services/mealdb_service.dart';
 
 class RecipeScreen extends ConsumerStatefulWidget {
   const RecipeScreen({super.key});
@@ -24,7 +25,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -42,7 +43,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen>
         title: const Text('Rezepte'),
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
           tabs: const [
+            Tab(icon: Icon(Icons.search), text: 'Entdecken'),
             Tab(icon: Icon(Icons.bookmark_border), text: 'Merkliste'),
             Tab(icon: Icon(Icons.restaurant), text: 'Gekocht'),
             Tab(icon: Icon(Icons.analytics), text: 'Statistik'),
@@ -61,6 +64,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen>
           : TabBarView(
               controller: _tabController,
               children: [
+                _DiscoverTab(userId: user.id),
                 _WishlistTab(userId: user.id),
                 _CookedTab(userId: user.id),
                 _StatsTab(userId: user.id),
@@ -75,6 +79,584 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => const _AddRecipeSheet(),
+    );
+  }
+}
+
+// ============================================================================
+// DISCOVER TAB - TheMealDB Suche
+// ============================================================================
+
+class _DiscoverTab extends ConsumerStatefulWidget {
+  final String userId;
+
+  const _DiscoverTab({required this.userId});
+
+  @override
+  ConsumerState<_DiscoverTab> createState() => _DiscoverTabState();
+}
+
+class _DiscoverTabState extends ConsumerState<_DiscoverTab> {
+  final _searchController = TextEditingController();
+  List<MealDbRecipe> _results = [];
+  bool _isLoading = false;
+  String? _error;
+  MealDbRecipe? _randomMeal;
+  
+  // Beliebte Suchbegriffe für schnellen Zugriff
+  static const _popularSearches = [
+    'Pasta', 'Kuchen', 'Hähnchen', 'Salat', 'Curry', 
+    'Dessert', 'Suppe', 'Pizza', 'Reis', 'Fisch'
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRandomMeal();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadRandomMeal() async {
+    final random = await MealDbService.getRandomMeal();
+    if (mounted) {
+      setState(() => _randomMeal = random);
+    }
+  }
+
+  Future<void> _search(String query) async {
+    if (query.trim().isEmpty) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    final results = await MealDbService.searchMeals(query);
+    
+    if (mounted) {
+      setState(() {
+        _results = results;
+        _isLoading = false;
+        if (results.isEmpty) {
+          _error = 'Keine Rezepte gefunden für "$query"';
+        }
+      });
+    }
+  }
+
+  void _addToWishlist(MealDbRecipe meal) async {
+    final recipe = meal.toRecipe(widget.userId);
+    await ref.read(recipesProvider(widget.userId).notifier).addRecipe(recipe);
+    
+    if (mounted) {
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${meal.name} zur Merkliste hinzugefügt'),
+          backgroundColor: Colors.green,
+          action: SnackBarAction(
+            label: 'Öffnen',
+            textColor: Colors.white,
+            onPressed: () {
+              // Wechsle zur Merkliste
+              DefaultTabController.of(context).animateTo(1);
+            },
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Suchfeld
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Rezept suchen (z.B. Kuchen, Pasta, Curry...)',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchController.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() {
+                          _results = [];
+                          _error = null;
+                        });
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+            ),
+            onSubmitted: _search,
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        
+        // Quick Search Tags
+        if (_results.isEmpty && !_isLoading)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _popularSearches.map((term) => ActionChip(
+                label: Text(term),
+                onPressed: () {
+                  _searchController.text = term;
+                  _search(term);
+                },
+              )).toList(),
+            ),
+          ),
+        
+        const SizedBox(height: 8),
+        
+        // Content
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _results.isNotEmpty
+                  ? _buildResultsList()
+                  : _buildEmptyState(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Error Message
+        if (_error != null)
+          Card(
+            color: Colors.orange.shade50,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.orange.shade700),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(_error!, style: TextStyle(color: Colors.orange.shade900)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        
+        const SizedBox(height: 16),
+        
+        // Info Card
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.restaurant_menu, color: Theme.of(context).colorScheme.primary),
+                    const SizedBox(width: 8),
+                    const Text('Rezept-Datenbank', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Durchsuche tausende verifizierte Rezepte aus aller Welt. '
+                  'Suche auf Deutsch - wir übersetzen automatisch!',
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '✓ Vollständige Zutaten & Mengen\n'
+                  '✓ Detaillierte Zubereitungsschritte\n'
+                  '✓ Hochwertige Bilder\n'
+                  '✓ Internationale Küche',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 16),
+        
+        // Random Meal Suggestion
+        if (_randomMeal != null) ...[
+          Text(
+            '💡 Vorschlag des Tages',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          _MealDbCard(
+            meal: _randomMeal!,
+            onAdd: () => _addToWishlist(_randomMeal!),
+            onTap: () => _showMealDetail(_randomMeal!),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton.icon(
+              onPressed: _loadRandomMeal,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Neuer Vorschlag'),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildResultsList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _results.length,
+      itemBuilder: (context, index) {
+        final meal = _results[index];
+        return _MealDbCard(
+          meal: meal,
+          onAdd: () => _addToWishlist(meal),
+          onTap: () => _showMealDetail(meal),
+        );
+      },
+    );
+  }
+
+  void _showMealDetail(MealDbRecipe meal) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _MealDbDetailSheet(
+        meal: meal,
+        userId: widget.userId,
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// MEALDB CARD
+// ============================================================================
+
+class _MealDbCard extends StatelessWidget {
+  final MealDbRecipe meal;
+  final VoidCallback onAdd;
+  final VoidCallback onTap;
+
+  const _MealDbCard({
+    required this.meal,
+    required this.onAdd,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Bild
+            if (meal.imageUrl != null)
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image.network(
+                  meal.imageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.restaurant, size: 48),
+                  ),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          meal.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                meal.categoryGerman,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              meal.areaGerman,
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${meal.ingredients.length} Zutaten • ${meal.steps.length} Schritte',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Add Button
+                  IconButton(
+                    icon: const Icon(Icons.add_circle_outline),
+                    color: Theme.of(context).colorScheme.primary,
+                    onPressed: onAdd,
+                    tooltip: 'Zur Merkliste hinzufügen',
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ============================================================================
+// MEALDB DETAIL SHEET
+// ============================================================================
+
+class _MealDbDetailSheet extends ConsumerWidget {
+  final MealDbRecipe meal;
+  final String userId;
+
+  const _MealDbDetailSheet({
+    required this.meal,
+    required this.userId,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.9,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (context, scrollController) => Container(
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          children: [
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade400,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            // Content
+            Expanded(
+              child: ListView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  // Bild
+                  if (meal.imageUrl != null)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        meal.imageUrl!,
+                        height: 200,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  const SizedBox(height: 16),
+                  
+                  // Titel
+                  Text(
+                    meal.name,
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Tags
+                  Wrap(
+                    spacing: 8,
+                    children: [
+                      Chip(
+                        label: Text(meal.categoryGerman),
+                        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                      ),
+                      Chip(
+                        label: Text('🌍 ${meal.areaGerman}'),
+                      ),
+                      Chip(
+                        label: Text('✓ Verifiziert'),
+                        backgroundColor: Colors.green.shade100,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Zutaten
+                  Text(
+                    '🥗 Zutaten (${meal.ingredients.length})',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: meal.ingredients.map((i) {
+                          final text = i.measure != null && i.measure!.isNotEmpty
+                              ? '${i.measure} ${i.name}'
+                              : i.name;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('• '),
+                                Expanded(child: Text(text)),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  // Zubereitung
+                  Text(
+                    '👨‍🍳 Zubereitung (${meal.steps.length} Schritte)',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  ...meal.steps.asMap().entries.map((e) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 14,
+                            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                            child: Text(
+                              '${e.key + 1}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(child: Text(e.value)),
+                        ],
+                      ),
+                    ),
+                  )),
+                  
+                  const SizedBox(height: 24),
+                  
+                  // YouTube Link
+                  if (meal.youtubeUrl != null && meal.youtubeUrl!.isNotEmpty)
+                    Card(
+                      color: Colors.red.shade50,
+                      child: ListTile(
+                        leading: const Icon(Icons.play_circle_fill, color: Colors.red, size: 32),
+                        title: const Text('Video-Anleitung'),
+                        subtitle: const Text('Auf YouTube ansehen'),
+                        trailing: const Icon(Icons.open_in_new),
+                        onTap: () {
+                          // URL öffnen würde hier implementiert
+                        },
+                      ),
+                    ),
+                  
+                  const SizedBox(height: 100), // Padding für Button
+                ],
+              ),
+            ),
+            
+            // Bottom Actions
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () async {
+                        final recipe = meal.toRecipe(userId);
+                        await ref.read(recipesProvider(userId).notifier).addRecipe(recipe);
+                        if (context.mounted) {
+                          Navigator.pop(context);
+                          HapticFeedback.mediumImpact();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('${meal.name} zur Merkliste hinzugefügt'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.bookmark_add),
+                      label: const Text('Zur Merkliste'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
