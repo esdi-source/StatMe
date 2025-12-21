@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../core/config/app_config.dart';
 import '../models/models.dart';
 import '../models/home_widget_model.dart';
@@ -15,6 +16,7 @@ import '../repositories/repositories.dart';
 import '../services/in_memory_database.dart';
 import '../services/openfoodfacts_service.dart';
 import '../services/google_books_service.dart';
+import '../services/exercise_db_service.dart';
 
 // Re-export Theme Provider für einfacheren Zugriff
 export '../ui/theme/theme_provider.dart';
@@ -1591,6 +1593,132 @@ List<SportStats> _calculateSportStats(List<SportSession> sessions) {
     );
   }).toList()..sort((a, b) => b.totalDuration.compareTo(a.totalDuration));
 }
+
+// ============================================
+// ÜBUNGSDATENBANK (EXERCISE DATABASE) PROVIDERS
+// ============================================
+
+/// Alle Übungen Provider
+final allExercisesProvider = FutureProvider<List<Exercise>>((ref) async {
+  return ExerciseDbService.getAllExercises();
+});
+
+/// Übungs-Suche Provider
+final exerciseSearchProvider = FutureProvider.family<List<Exercise>, String>((ref, query) async {
+  if (query.isEmpty) return ExerciseDbService.getAllExercises();
+  return ExerciseDbService.searchExercises(query);
+});
+
+/// Übungen nach Muskelgruppe Provider
+final exercisesByMuscleProvider = FutureProvider.family<List<Exercise>, String>((ref, muscleId) async {
+  return ExerciseDbService.getExercisesByMuscle(muscleId);
+});
+
+/// Übungen nach Kategorie Provider
+final exercisesByCategoryProvider = FutureProvider.family<List<Exercise>, ExerciseCategory>((ref, category) async {
+  return ExerciseDbService.getExercisesByCategory(category);
+});
+
+// ============================================
+// TRAININGSPLÄNE (WORKOUT PLANS) PROVIDERS
+// ============================================
+
+/// Workout Plans Notifier - Verwaltet Trainingspläne
+class WorkoutPlansNotifier extends StateNotifier<List<WorkoutPlan>> {
+  final SharedPreferences _prefs;
+  final String _userId;
+  static const String _storageKey = 'workout_plans_';
+
+  WorkoutPlansNotifier(this._prefs, this._userId) : super([]) {
+    _load();
+  }
+
+  void _load() {
+    final data = _prefs.getStringList('$_storageKey$_userId');
+    if (data != null) {
+      try {
+        state = data
+            .map((json) => WorkoutPlan.fromJson(jsonDecode(json)))
+            .toList();
+      } catch (e) {
+        debugPrint('Fehler beim Laden der Trainingspläne: $e');
+        state = [];
+      }
+    }
+  }
+
+  Future<void> _save() async {
+    final data = state.map((plan) => jsonEncode(plan.toJson())).toList();
+    await _prefs.setStringList('$_storageKey$_userId', data);
+  }
+
+  /// Fügt neuen Trainingsplan hinzu
+  Future<void> add(WorkoutPlan plan) async {
+    state = [...state, plan];
+    await _save();
+  }
+
+  /// Aktualisiert bestehenden Plan
+  Future<void> update(WorkoutPlan plan) async {
+    state = state.map((p) => p.id == plan.id ? plan : p).toList();
+    await _save();
+  }
+
+  /// Löscht einen Plan
+  Future<void> delete(String id) async {
+    state = state.where((p) => p.id != id).toList();
+    await _save();
+  }
+
+  /// Plan duplizieren
+  Future<WorkoutPlan> duplicate(String id) async {
+    final original = state.firstWhere((p) => p.id == id);
+    final copy = original.copyWith(
+      id: const Uuid().v4(),
+      name: '${original.name} (Kopie)',
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+    await add(copy);
+    return copy;
+  }
+
+  /// Alle Pläne eines bestimmten Typs
+  List<WorkoutPlan> byType(WorkoutPlanType type) {
+    return state.where((p) => p.type == type).toList();
+  }
+}
+
+/// Workout Plans Provider
+final workoutPlansNotifierProvider = StateNotifierProvider<WorkoutPlansNotifier, List<WorkoutPlan>>((ref) {
+  final prefs = ref.watch(sharedPreferencesProvider);
+  final user = ref.watch(authNotifierProvider).valueOrNull;
+  final userId = user?.id ?? 'demo_user';
+  return WorkoutPlansNotifier(prefs.value!, userId);
+});
+
+/// Muskel-Analyse Provider - berechnet trainierte Muskelgruppen
+final muscleAnalysisProvider = Provider<MuscleAnalysis>((ref) {
+  final plans = ref.watch(workoutPlansNotifierProvider);
+  final sessions = ref.watch(sportSessionsNotifierProvider);
+  return MuscleAnalysis.calculate(plans, sessions);
+});
+
+/// Provider für Trainingsplan nach ID
+final workoutPlanByIdProvider = Provider.family<WorkoutPlan?, String>((ref, id) {
+  final plans = ref.watch(workoutPlansNotifierProvider);
+  try {
+    return plans.firstWhere((p) => p.id == id);
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Provider für Pläne nach Typ
+final workoutPlansByTypeProvider = Provider.family<List<WorkoutPlan>, WorkoutPlanType>((ref, type) {
+  final plans = ref.watch(workoutPlansNotifierProvider);
+  return plans.where((p) => p.type == type).toList();
+});
 
 // ============================================
 // SKIN (GESICHTSHAUT) PROVIDERS

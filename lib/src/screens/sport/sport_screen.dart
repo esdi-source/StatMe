@@ -16,6 +16,9 @@ import 'sport_sessions_screen.dart';
 import 'weight_screen.dart';
 import 'sport_stats_screen.dart';
 import 'sport_timer_screen.dart';
+import 'exercises_screen.dart';
+import 'workout_plans_screen.dart';
+import 'muscle_analysis_screen.dart';
 
 class SportScreen extends ConsumerStatefulWidget {
   const SportScreen({super.key});
@@ -299,36 +302,76 @@ class _SportScreenState extends ConsumerState<SportScreen> {
   }
 
   Widget _buildQuickActions(DesignTokens tokens) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _buildActionCard(
-            tokens,
-            Icons.list_alt,
-            'Einheiten',
-            'Alle anzeigen',
-            () => _navigateTo(const SportSessionsScreen()),
-          ),
+        // Erste Reihe - Original Actions
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                tokens,
+                Icons.list_alt,
+                'Einheiten',
+                'Alle anzeigen',
+                () => _navigateTo(const SportSessionsScreen()),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                tokens,
+                Icons.monitor_weight,
+                'Gewicht',
+                'Verlauf',
+                () => _navigateTo(const WeightScreen()),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                tokens,
+                Icons.bar_chart,
+                'Statistik',
+                'Übersicht',
+                () => _navigateTo(const SportStatsScreen()),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildActionCard(
-            tokens,
-            Icons.monitor_weight,
-            'Gewicht',
-            'Verlauf',
-            () => _navigateTo(const WeightScreen()),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildActionCard(
-            tokens,
-            Icons.bar_chart,
-            'Statistik',
-            'Übersicht',
-            () => _navigateTo(const SportStatsScreen()),
-          ),
+        const SizedBox(height: 12),
+        // Zweite Reihe - Neue Actions
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionCard(
+                tokens,
+                Icons.fitness_center,
+                'Übungen',
+                'Datenbank',
+                () => _navigateTo(const ExercisesScreen()),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                tokens,
+                Icons.calendar_month,
+                'Pläne',
+                'Training',
+                () => _navigateTo(const WorkoutPlansScreen()),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                tokens,
+                Icons.analytics,
+                'Muskeln',
+                'Analyse',
+                () => _navigateTo(const MuscleAnalysisScreen()),
+              ),
+            ),
+          ],
         ),
       ],
     );
