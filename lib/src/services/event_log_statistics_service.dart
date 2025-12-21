@@ -388,6 +388,18 @@ class EventLogStatisticsService {
     
     // Gewicht direkt laden
     await _loadWeightData(collector, userId, start, end);
+    
+    // Wasser direkt laden
+    await _loadWaterData(collector, userId, start, end);
+    
+    // Schlaf direkt laden
+    await _loadSleepData(collector, userId, start, end);
+    
+    // Schritte direkt laden
+    await _loadStepsData(collector, userId, start, end);
+    
+    // Kalorien/Food direkt laden
+    await _loadFoodData(collector, userId, start, end);
   }
   
   Future<void> _loadSportSessions(
@@ -646,6 +658,206 @@ class EventLogStatisticsService {
     }
   }
   
+  Future<void> _loadWaterData(
+    WidgetDataCollector collector,
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      final response = await _client
+          .from('water_logs')
+          .select()
+          .eq('user_id', userId)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0]);
+      
+      // Gruppiere nach Tag
+      final byDay = <String, int>{};
+      for (final row in response) {
+        final dateStr = row['date'] as String;
+        final amount = row['amount_ml'] as int? ?? 0;
+        byDay[dateStr] = (byDay[dateStr] ?? 0) + amount;
+      }
+      
+      final dataPoints = <DataPoint>[];
+      for (final entry in byDay.entries) {
+        final date = DateTime.parse(entry.key);
+        dataPoints.add(DataPoint(
+          widgetType: 'water',
+          metricName: 'total_ml',
+          value: entry.value.toDouble(),
+          date: date,
+          metadata: {'source': 'direct'},
+        ));
+      }
+      
+      if (dataPoints.isNotEmpty) {
+        collector.registerDataSource(
+          'water',
+          (s, e) => dataPoints.where((p) =>
+              p.date.isAfter(s.subtract(const Duration(days: 1))) &&
+              p.date.isBefore(e.add(const Duration(days: 1)))).toList(),
+        );
+      }
+    } catch (e) {
+      print('Could not load water data: $e');
+    }
+  }
+  
+  Future<void> _loadSleepData(
+    WidgetDataCollector collector,
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      final response = await _client
+          .from('sleep_logs')
+          .select()
+          .eq('user_id', userId)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0]);
+      
+      final dataPoints = <DataPoint>[];
+      for (final row in response) {
+        final date = DateTime.parse(row['date'] as String);
+        
+        // Berechne Schlafdauer in Stunden
+        if (row['sleep_time'] != null && row['wake_time'] != null) {
+          final sleepParts = (row['sleep_time'] as String).split(':');
+          final wakeParts = (row['wake_time'] as String).split(':');
+          
+          final sleepMinutes = int.parse(sleepParts[0]) * 60 + int.parse(sleepParts[1]);
+          final wakeMinutes = int.parse(wakeParts[0]) * 60 + int.parse(wakeParts[1]);
+          
+          var durationMinutes = wakeMinutes - sleepMinutes;
+          if (durationMinutes < 0) durationMinutes += 24 * 60; // Über Mitternacht
+          
+          final durationHours = durationMinutes / 60.0;
+          
+          dataPoints.add(DataPoint(
+            widgetType: 'sleep',
+            metricName: 'duration_hours',
+            value: durationHours,
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+        
+        if (row['quality'] != null) {
+          dataPoints.add(DataPoint(
+            widgetType: 'sleep',
+            metricName: 'quality',
+            value: (row['quality'] as num).toDouble(),
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+      }
+      
+      if (dataPoints.isNotEmpty) {
+        collector.registerDataSource(
+          'sleep',
+          (s, e) => dataPoints.where((p) =>
+              p.date.isAfter(s.subtract(const Duration(days: 1))) &&
+              p.date.isBefore(e.add(const Duration(days: 1)))).toList(),
+        );
+      }
+    } catch (e) {
+      print('Could not load sleep data: $e');
+    }
+  }
+  
+  Future<void> _loadStepsData(
+    WidgetDataCollector collector,
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      final response = await _client
+          .from('steps_logs')
+          .select()
+          .eq('user_id', userId)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0]);
+      
+      final dataPoints = <DataPoint>[];
+      for (final row in response) {
+        final date = DateTime.parse(row['date'] as String);
+        
+        if (row['steps'] != null) {
+          dataPoints.add(DataPoint(
+            widgetType: 'steps',
+            metricName: 'step_count',
+            value: (row['steps'] as num).toDouble(),
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+      }
+      
+      if (dataPoints.isNotEmpty) {
+        collector.registerDataSource(
+          'steps',
+          (s, e) => dataPoints.where((p) =>
+              p.date.isAfter(s.subtract(const Duration(days: 1))) &&
+              p.date.isBefore(e.add(const Duration(days: 1)))).toList(),
+        );
+      }
+    } catch (e) {
+      print('Could not load steps data: $e');
+    }
+  }
+  
+  Future<void> _loadFoodData(
+    WidgetDataCollector collector,
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      final response = await _client
+          .from('food_logs')
+          .select()
+          .eq('user_id', userId)
+          .gte('date', start.toIso8601String().split('T')[0])
+          .lte('date', end.toIso8601String().split('T')[0]);
+      
+      // Gruppiere nach Tag
+      final byDay = <String, double>{};
+      for (final row in response) {
+        final dateStr = row['date'] as String;
+        final calories = (row['calories'] as num?)?.toDouble() ?? 0;
+        byDay[dateStr] = (byDay[dateStr] ?? 0) + calories;
+      }
+      
+      final dataPoints = <DataPoint>[];
+      for (final entry in byDay.entries) {
+        final date = DateTime.parse(entry.key);
+        dataPoints.add(DataPoint(
+          widgetType: 'calories',
+          metricName: 'total_calories',
+          value: entry.value,
+          date: date,
+          metadata: {'source': 'direct'},
+        ));
+      }
+      
+      if (dataPoints.isNotEmpty) {
+        collector.registerDataSource(
+          'calories',
+          (s, e) => dataPoints.where((p) =>
+              p.date.isAfter(s.subtract(const Duration(days: 1))) &&
+              p.date.isBefore(e.add(const Duration(days: 1)))).toList(),
+        );
+      }
+    } catch (e) {
+      print('Could not load food data: $e');
+    }
+  }
+
   // ============================================================================
   // HILFSFUNKTIONEN
   // ============================================================================
