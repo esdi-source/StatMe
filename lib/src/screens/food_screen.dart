@@ -826,41 +826,85 @@ class _CustomProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: product.isRecipe ? Colors.green.shade100 : Colors.blue.shade100,
-          child: Icon(
-            product.isRecipe ? Icons.restaurant_menu : Icons.inventory_2,
-            color: product.isRecipe ? Colors.green : Colors.blue,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: product.isRecipe ? Colors.green.shade100 : Colors.blue.shade100,
+                child: Icon(
+                  product.isRecipe ? Icons.restaurant_menu : Icons.inventory_2,
+                  color: product.isRecipe ? Colors.green : Colors.blue,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          '${product.kcalPer100g.toStringAsFixed(0)} kcal/100g',
+                          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                        ),
+                        if (product.ingredients.isNotEmpty) ...[
+                          const Text(' • '),
+                          Icon(Icons.list, size: 14, color: Colors.grey.shade600),
+                          Text(
+                            ' ${product.ingredients.length}',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          ),
+                        ],
+                        if (product.useCount > 0) ...[
+                          const Text(' • '),
+                          Text(
+                            '${product.useCount}×',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              // Quick add button
+              FilledButton.tonal(
+                onPressed: onTap,
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                child: const Text('Hinzufügen'),
+              ),
+              PopupMenuButton<String>(
+                onSelected: (value) {
+                  switch (value) {
+                    case 'edit':
+                      onEdit();
+                      break;
+                    case 'delete':
+                      onDelete();
+                      break;
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
+                  const PopupMenuItem(value: 'delete', child: Text('Löschen')),
+                ],
+              ),
+            ],
           ),
         ),
-        title: Text(product.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          '${product.kcalPer100g.toStringAsFixed(0)} kcal/100g'
-          '${product.defaultServingGrams != null ? ' • Portion: ${product.defaultServingGrams!.toStringAsFixed(0)}g' : ''}'
-          '${product.useCount > 0 ? ' • ${product.useCount}x' : ''}',
-        ),
-        trailing: PopupMenuButton<String>(
-          onSelected: (value) {
-            switch (value) {
-              case 'add':
-                onTap();
-                break;
-              case 'edit':
-                onEdit();
-                break;
-              case 'delete':
-                onDelete();
-                break;
-            }
-          },
-          itemBuilder: (_) => [
-            const PopupMenuItem(value: 'add', child: Text('Hinzufügen')),
-            const PopupMenuItem(value: 'edit', child: Text('Bearbeiten')),
-            const PopupMenuItem(value: 'delete', child: Text('Löschen')),
-          ],
-        ),
-        onTap: onTap,
       ),
     );
   }
@@ -1194,55 +1238,106 @@ class _CustomProductDialogState extends State<_CustomProductDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.product.name),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: Row(
         children: [
-          if (widget.product.description != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Text(
-                widget.product.description!,
-                style: TextStyle(color: Colors.grey.shade600),
+          Icon(
+            widget.product.isRecipe ? Icons.restaurant_menu : Icons.inventory_2,
+            color: widget.product.isRecipe ? Colors.green : Colors.blue,
+          ),
+          const SizedBox(width: 8),
+          Expanded(child: Text(widget.product.name, overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.product.description != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  widget.product.description!,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+            Text('${widget.product.kcalPer100g.toStringAsFixed(0)} kcal/100g'),
+            
+            // Zutaten anzeigen
+            if (widget.product.ingredients.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              ExpansionTile(
+                tilePadding: EdgeInsets.zero,
+                title: Text(
+                  '${widget.product.ingredients.length} Zutaten',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                ),
+                children: widget.product.ingredients.map((i) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      Expanded(child: Text(i.name, style: const TextStyle(fontSize: 13))),
+                      Text('${i.grams.toStringAsFixed(0)}g', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                    ],
+                  ),
+                )).toList(),
+              ),
+            ],
+            
+            const SizedBox(height: 16),
+            
+            // Schnellauswahl-Buttons
+            if (widget.product.defaultServingGrams != null) ...[
+              Wrap(
+                spacing: 8,
+                children: [
+                  ActionChip(
+                    label: Text('1 Portion (${widget.product.defaultServingGrams!.toStringAsFixed(0)}g)'),
+                    onPressed: () => setState(() {
+                      _gramsController.text = widget.product.defaultServingGrams!.toStringAsFixed(0);
+                    }),
+                  ),
+                  ActionChip(
+                    label: const Text('½ Portion'),
+                    onPressed: () => setState(() {
+                      _gramsController.text = (widget.product.defaultServingGrams! / 2).toStringAsFixed(0);
+                    }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+            
+            TextField(
+              controller: _gramsController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Menge (g)',
+                border: OutlineInputBorder(),
+                suffixText: 'g',
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Kalorien:'),
+                  Text(
+                    '${_calculatedCalories.toStringAsFixed(0)} kcal',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ],
               ),
             ),
-          Text('${widget.product.kcalPer100g.toStringAsFixed(0)} kcal/100g'),
-          if (widget.product.ingredients.isNotEmpty)
-            Text(
-              '${widget.product.ingredients.length} Zutaten',
-              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-            ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _gramsController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Menge (g)',
-              border: OutlineInputBorder(),
-              suffixText: 'g',
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade50,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Kalorien:'),
-                Text(
-                  '${_calculatedCalories.toStringAsFixed(0)} kcal',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
       actions: [
         TextButton(
