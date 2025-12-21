@@ -2641,7 +2641,13 @@ class DigestionEntriesNotifier extends StateNotifier<List<DigestionEntry>> {
       'id': entry.id,
       'type': entry.type.name,
       'consistency': entry.consistency?.name,
+      'amount': entry.amount?.name,
+      'feeling': entry.feeling.name,
+      'hasPain': entry.hasPain,
+      'hasBloating': entry.hasBloating,
+      'hasUrgency': entry.hasUrgency,
       'timestamp': entry.timestamp.toIso8601String(),
+      'count': 1, // Jeder Eintrag zählt als 1
     });
     return entry;
   }
@@ -2653,6 +2659,12 @@ class DigestionEntriesNotifier extends StateNotifier<List<DigestionEntry>> {
     await _logWidgetEvent('digestion', 'updated', {
       'id': entry.id,
       'type': entry.type.name,
+      'consistency': entry.consistency?.name,
+      'amount': entry.amount?.name,
+      'feeling': entry.feeling.name,
+      'hasPain': entry.hasPain,
+      'hasBloating': entry.hasBloating,
+      'hasUrgency': entry.hasUrgency,
     });
   }
   

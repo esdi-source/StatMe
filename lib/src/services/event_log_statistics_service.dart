@@ -6,6 +6,7 @@
 /// WICHTIG: Neue Widgets werden automatisch erkannt - keine Anpassung nötig!
 
 import 'dart:convert';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
 import 'statistics_service.dart';
@@ -160,15 +161,81 @@ class EventLogStatisticsService {
         metricName: 'taken_count',
         payloadField: 'count',
         displayLabel: 'Eingenommen',
+        valueExtractor: (v) => v != null ? (v as num).toDouble() : 1.0,
+      ),
+      EventMetricConfig(
+        metricName: 'dosage',
+        payloadField: 'dosage',
+        displayLabel: 'Dosierung',
       ),
     ],
     
     // Verdauung Widget
     'digestion': [
       EventMetricConfig(
-        metricName: 'rating',
-        payloadField: 'rating',
-        displayLabel: 'Bewertung',
+        metricName: 'entry_count',
+        payloadField: 'count',
+        displayLabel: 'Anzahl Toilettengänge',
+        valueExtractor: (v) => v != null ? (v as num).toDouble() : 1.0,
+      ),
+      EventMetricConfig(
+        metricName: 'toilet_type',
+        payloadField: 'type',
+        displayLabel: 'Toilettengang-Art',
+        valueExtractor: (v) {
+          // 1=Stuhlgang, 2=Wasserlassen, 3=Beides
+          if (v == 'stool' || v == 'Stuhlgang') return 1.0;
+          if (v == 'urination' || v == 'Wasserlassen') return 2.0;
+          if (v == 'both' || v == 'Beides') return 3.0;
+          return 1.0;
+        },
+      ),
+      EventMetricConfig(
+        metricName: 'consistency',
+        payloadField: 'consistency',
+        displayLabel: 'Konsistenz',
+        valueExtractor: (v) {
+          // Bristol-Skala: 1=Hart, 2=Klumpig, 3=Normal, 4=Weich, 5=Locker, 6=Wässrig
+          if (v == 'hard') return 1.0;
+          if (v == 'lumpy') return 2.0;
+          if (v == 'normal') return 3.0;
+          if (v == 'soft') return 4.0;
+          if (v == 'loose') return 5.0;
+          if (v == 'watery') return 6.0;
+          if (v is num) return v.toDouble();
+          return 3.0; // Default: Normal
+        },
+      ),
+      EventMetricConfig(
+        metricName: 'feeling',
+        payloadField: 'feeling',
+        displayLabel: 'Gefühl danach',
+        valueExtractor: (v) {
+          // 1=Erleichtert, 2=Neutral, 3=Unangenehm, 4=Schmerzhaft
+          if (v == 'relieved') return 1.0;
+          if (v == 'neutral') return 2.0;
+          if (v == 'uncomfortable') return 3.0;
+          if (v == 'painful') return 4.0;
+          return 2.0;
+        },
+      ),
+      EventMetricConfig(
+        metricName: 'has_pain',
+        payloadField: 'hasPain',
+        displayLabel: 'Mit Schmerzen',
+        valueExtractor: (v) => v == true ? 1.0 : 0.0,
+      ),
+      EventMetricConfig(
+        metricName: 'has_bloating',
+        payloadField: 'hasBloating',
+        displayLabel: 'Mit Blähungen',
+        valueExtractor: (v) => v == true ? 1.0 : 0.0,
+      ),
+      EventMetricConfig(
+        metricName: 'has_urgency',
+        payloadField: 'hasUrgency',
+        displayLabel: 'Dringend',
+        valueExtractor: (v) => v == true ? 1.0 : 0.0,
       ),
     ],
     
@@ -400,6 +467,12 @@ class EventLogStatisticsService {
     
     // Kalorien/Food direkt laden
     await _loadFoodData(collector, userId, start, end);
+    
+    // Verdauung direkt laden
+    await _loadDigestionData(collector, userId, start, end);
+    
+    // Supplements direkt laden
+    await _loadSupplementsData(collector, userId, start, end);
   }
   
   Future<void> _loadSportSessions(
@@ -855,6 +928,172 @@ class EventLogStatisticsService {
       }
     } catch (e) {
       print('Could not load food data: $e');
+    }
+  }
+  
+  Future<void> _loadDigestionData(
+    WidgetDataCollector collector,
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      final response = await _client
+          .from('digestion_entries')
+          .select()
+          .eq('user_id', userId)
+          .gte('timestamp', start.toIso8601String())
+          .lte('timestamp', end.toIso8601String());
+      
+      // Gruppiere nach Tag für Zählung
+      final byDay = <String, List<Map<String, dynamic>>>{};
+      for (final row in response) {
+        final timestamp = DateTime.parse(row['timestamp'] as String);
+        final dateStr = DateFormat('yyyy-MM-dd').format(timestamp);
+        byDay[dateStr] = [...(byDay[dateStr] ?? []), row];
+      }
+      
+      final dataPoints = <DataPoint>[];
+      for (final entry in byDay.entries) {
+        final date = DateTime.parse(entry.key);
+        final entries = entry.value;
+        
+        // Anzahl Toilettengänge pro Tag
+        dataPoints.add(DataPoint(
+          widgetType: 'digestion',
+          metricName: 'entry_count',
+          value: entries.length.toDouble(),
+          date: date,
+          metadata: {'source': 'direct'},
+        ));
+        
+        // Durchschnittliche Konsistenz pro Tag (wenn vorhanden)
+        final consistencies = entries
+            .where((e) => e['consistency'] != null)
+            .map((e) => (e['consistency'] as num).toDouble())
+            .toList();
+        if (consistencies.isNotEmpty) {
+          dataPoints.add(DataPoint(
+            widgetType: 'digestion',
+            metricName: 'consistency',
+            value: consistencies.reduce((a, b) => a + b) / consistencies.length,
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+        
+        // Schmerzhafte Einträge zählen
+        final painCount = entries.where((e) => e['has_pain'] == true).length;
+        if (painCount > 0) {
+          dataPoints.add(DataPoint(
+            widgetType: 'digestion',
+            metricName: 'has_pain',
+            value: painCount.toDouble(),
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+        
+        // Blähungen zählen
+        final bloatingCount = entries.where((e) => e['has_bloating'] == true).length;
+        if (bloatingCount > 0) {
+          dataPoints.add(DataPoint(
+            widgetType: 'digestion',
+            metricName: 'has_bloating',
+            value: bloatingCount.toDouble(),
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+        
+        // Dringend zählen
+        final urgencyCount = entries.where((e) => e['has_urgency'] == true).length;
+        if (urgencyCount > 0) {
+          dataPoints.add(DataPoint(
+            widgetType: 'digestion',
+            metricName: 'has_urgency',
+            value: urgencyCount.toDouble(),
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+      }
+      
+      if (dataPoints.isNotEmpty) {
+        collector.registerDataSource(
+          'digestion',
+          (s, e) => dataPoints.where((p) =>
+              p.date.isAfter(s.subtract(const Duration(days: 1))) &&
+              p.date.isBefore(e.add(const Duration(days: 1)))).toList(),
+        );
+      }
+    } catch (e) {
+      print('Could not load digestion data: $e');
+    }
+  }
+  
+  Future<void> _loadSupplementsData(
+    WidgetDataCollector collector,
+    String userId,
+    DateTime start,
+    DateTime end,
+  ) async {
+    try {
+      final response = await _client
+          .from('supplement_intakes')
+          .select()
+          .eq('user_id', userId)
+          .gte('timestamp', start.toIso8601String())
+          .lte('timestamp', end.toIso8601String());
+      
+      // Gruppiere nach Tag
+      final byDay = <String, List<Map<String, dynamic>>>{};
+      for (final row in response) {
+        final timestamp = DateTime.parse(row['timestamp'] as String);
+        final dateStr = DateFormat('yyyy-MM-dd').format(timestamp);
+        byDay[dateStr] = [...(byDay[dateStr] ?? []), row];
+      }
+      
+      final dataPoints = <DataPoint>[];
+      for (final entry in byDay.entries) {
+        final date = DateTime.parse(entry.key);
+        final intakes = entry.value;
+        
+        // Anzahl Einnahmen pro Tag
+        dataPoints.add(DataPoint(
+          widgetType: 'supplements',
+          metricName: 'taken_count',
+          value: intakes.length.toDouble(),
+          date: date,
+          metadata: {'source': 'direct'},
+        ));
+        
+        // Gesamtdosierung pro Tag
+        final totalDosage = intakes
+            .where((i) => i['dosage'] != null)
+            .map((i) => (i['dosage'] as num).toDouble())
+            .fold(0.0, (a, b) => a + b);
+        if (totalDosage > 0) {
+          dataPoints.add(DataPoint(
+            widgetType: 'supplements',
+            metricName: 'dosage',
+            value: totalDosage,
+            date: date,
+            metadata: {'source': 'direct'},
+          ));
+        }
+      }
+      
+      if (dataPoints.isNotEmpty) {
+        collector.registerDataSource(
+          'supplements',
+          (s, e) => dataPoints.where((p) =>
+              p.date.isAfter(s.subtract(const Duration(days: 1))) &&
+              p.date.isBefore(e.add(const Duration(days: 1)))).toList(),
+        );
+      }
+    } catch (e) {
+      print('Could not load supplements data: $e');
     }
   }
 
