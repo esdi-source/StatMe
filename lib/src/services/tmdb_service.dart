@@ -4,17 +4,22 @@ library;
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../core/config/app_config.dart';
 import '../models/media_model.dart';
 
 class TmdbService {
   // TMDB API Key (kostenlos registrierbar auf themoviedb.org)
-  static const String _apiKey = '2a8d8f6c8d8f6c8d8f6c8d8f6c8d8f6c'; // Platzhalter
+  static String get _apiKey => AppConfig.instance.tmdbApiKey ?? '';
   static const String _baseUrl = 'https://api.themoviedb.org/3';
   static const String _language = 'de-DE';
 
   /// Suche nach Filmen
   static Future<List<MediaItem>> searchMovies(String query, {int page = 1}) async {
     if (query.isEmpty) return [];
+    if (_apiKey.isEmpty) {
+      print('WARNUNG: Kein TMDB API Key konfiguriert. Bitte TMDB_API_KEY in .env setzen.');
+      return [];
+    }
     
     try {
       final response = await http.get(
@@ -37,6 +42,7 @@ class TmdbService {
   /// Suche nach Serien
   static Future<List<MediaItem>> searchTvShows(String query, {int page = 1}) async {
     if (query.isEmpty) return [];
+    if (_apiKey.isEmpty) return [];
     
     try {
       final response = await http.get(

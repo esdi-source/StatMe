@@ -17,12 +17,16 @@ class WaterScreen extends ConsumerStatefulWidget {
 
 class _WaterScreenState extends ConsumerState<WaterScreen> {
   DateTime _selectedDate = DateTime.now();
-  final int _dailyGoal = 2500;
 
   @override
   void initState() {
     super.initState();
     _loadWaterLogs();
+  }
+
+  int get _dailyGoal {
+    final settings = ref.watch(settingsNotifierProvider);
+    return settings?.dailyWaterGoal ?? 2500;
   }
 
   Future<void> _loadWaterLogs() async {

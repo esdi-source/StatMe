@@ -276,7 +276,9 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     final foodLogs = ref.watch(foodLogNotifierProvider);
+    final settings = ref.watch(settingsNotifierProvider);
     final totalCalories = foodLogs.fold<double>(0, (sum, log) => sum + log.calories);
+    final calorieGoal = settings?.dailyCalorieGoal ?? 2000;
 
     return Scaffold(
       appBar: AppBar(
@@ -293,7 +295,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildTodayTab(foodLogs, totalCalories),
+          _buildTodayTab(foodLogs, totalCalories, calorieGoal.toDouble()),
           _FavoritesTab(
             onAddToLog: _addFromFavorite,
             onScan: _scanBarcode,
@@ -347,7 +349,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
     }
   }
   
-  Widget _buildTodayTab(List<FoodLogModel> foodLogs, double totalCalories) {
+  Widget _buildTodayTab(List<FoodLogModel> foodLogs, double totalCalories, double calorieGoal) {
     return Column(
       children: [
         // Date Selector
@@ -423,7 +425,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
                 Column(
                   children: [
                     Text(
-                      '2000',
+                      calorieGoal.toStringAsFixed(0),
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -435,9 +437,9 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
                 Column(
                   children: [
                     Text(
-                      (2000 - totalCalories).toStringAsFixed(0),
+                      (calorieGoal - totalCalories).toStringAsFixed(0),
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                            color: totalCalories > 2000 ? Colors.red : Colors.green,
+                            color: totalCalories > calorieGoal ? Colors.red : Colors.green,
                             fontWeight: FontWeight.bold,
                           ),
                     ),
@@ -456,16 +458,16 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               LinearProgressIndicator(
-                value: (totalCalories / 2000).clamp(0, 1),
+                value: (totalCalories / calorieGoal).clamp(0, 1),
                 minHeight: 8,
                 backgroundColor: Colors.grey.shade200,
                 valueColor: AlwaysStoppedAnimation(
-                  totalCalories > 2000 ? Colors.red : Colors.orange,
+                  totalCalories > calorieGoal ? Colors.red : Colors.orange,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                '${((totalCalories / 2000) * 100).toStringAsFixed(0)}% des Tagesziels',
+                '${((totalCalories / calorieGoal) * 100).toStringAsFixed(0)}% des Tagesziels',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],

@@ -20,6 +20,7 @@ class AppConfig {
   late final String? supabaseAnonKey;
   late final String? supabaseServiceKey;
   late final String? openaiApiKey;
+  late final String? tmdbApiKey;
   late final String openFoodFactsBaseUrl;
   late final String? edamamAppId;
   late final String? edamamAppKey;
@@ -60,7 +61,9 @@ class AppConfig {
       ..supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? _prodSupabaseAnonKey
       ..supabaseServiceKey = dotenv.env['SUPABASE_SERVICE_KEY']
       ..openaiApiKey = dotenv.env['OPENAI_API_KEY']
-      ..openFoodFactsBaseUrl = dotenv.env['OPENFOODFACTS_BASEURL'] ?? 'https://world.openfoodfacts.org/api/v2'
+      ..tmdbApiKey = envLoaded ? dotenv.env['TMDB_API_KEY'] : null
+      ..openFoodFactsBaseUrl = (envLoaded ? dotenv.env['OPENFOODFACTS_BASEURL'] : null) 
+        ?? 'https://world.openfoodfacts.org/api/v2'
       ..edamamAppId = dotenv.env['EDAMAM_APP_ID']
       ..edamamAppKey = dotenv.env['EDAMAM_APP_KEY'];
     

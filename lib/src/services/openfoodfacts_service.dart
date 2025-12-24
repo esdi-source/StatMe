@@ -149,7 +149,7 @@ class OpenFoodFactsService {
   /// Produkt anhand des Barcodes abrufen
   Future<OpenFoodFactsProduct> getProductByBarcode(String barcode) async {
     try {
-      final uri = Uri.parse('$_baseUrl/api/v2/product/$barcode.json');
+      final uri = Uri.parse('$_baseUrl/api/v0/product/$barcode.json');
       
       final response = await _client.get(
         uri,
