@@ -26,7 +26,7 @@ class _SportSessionsScreenState extends ConsumerState<SportSessionsScreen> {
     final groupedSessions = _groupSessionsByDate(sessions);
     
     // Get unique sport types for filter
-    final sportTypes = sessions.map((s) => s.sportType).toSet().toList()..sort();
+    final sportTypes = sessions.map((s) => s.sportTypeName ?? 'Unbekannt').toSet().toList()..sort();
     
     return Scaffold(
       appBar: AppBar(
@@ -63,7 +63,7 @@ class _SportSessionsScreenState extends ConsumerState<SportSessionsScreen> {
 
   Map<String, List<SportSession>> _groupSessionsByDate(List<SportSession> sessions) {
     final filtered = _filterSportType != null
-        ? sessions.where((s) => s.sportType == _filterSportType).toList()
+        ? sessions.where((s) => (s.sportTypeName ?? 'Unbekannt') == _filterSportType).toList()
         : sessions;
     
     final sorted = [...filtered]..sort((a, b) => b.date.compareTo(a.date));
@@ -233,7 +233,7 @@ class _SportSessionsScreenState extends ConsumerState<SportSessionsScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                _getSportIcon(session.sportType),
+                _getSportIcon(session.sportTypeName ?? 'Unbekannt'),
                 color: _getIntensityColor(tokens, session.intensity),
                 size: 24,
               ),
@@ -244,7 +244,7 @@ class _SportSessionsScreenState extends ConsumerState<SportSessionsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    session.sportType,
+                    session.sportTypeName ?? 'Unbekannt',
                     style: TextStyle(
                       color: tokens.textPrimary,
                       fontWeight: FontWeight.w600,

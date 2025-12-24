@@ -11,6 +11,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
 import 'sport_sessions_screen.dart';
@@ -42,6 +43,7 @@ class _SportScreenState extends ConsumerState<SportScreen> {
     await Future.wait([
       ref.read(sportSessionsNotifierProvider.notifier).load(user.id),
       ref.read(weightNotifierProvider.notifier).load(user.id),
+      ref.read(sportTypesNotifierProvider.notifier).load(user.id),
     ]);
   }
 
@@ -656,7 +658,7 @@ class _SportScreenState extends ConsumerState<SportScreen> {
   }
 
   Widget _buildSessionTile(DesignTokens tokens, SportSession session, {bool compact = false}) {
-    final icon = _getSportIcon(session.sportType);
+    final icon = _getSportIcon(session.sportTypeName ?? 'Unbekannt');
     
     return Padding(
       padding: EdgeInsets.symmetric(vertical: compact ? 6 : 8),
@@ -676,7 +678,7 @@ class _SportScreenState extends ConsumerState<SportScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  session.sportType,
+                  session.sportTypeName ?? 'Unbekannt',
                   style: TextStyle(
                     color: tokens.textPrimary,
                     fontWeight: FontWeight.w500,
@@ -1052,25 +1054,61 @@ class _AddSportSessionSheetState extends ConsumerState<AddSportSessionSheet> {
     final caloriesPerMinute = _intensity.calorieMultiplier * 3.5 * 70 / 200; // Assuming 70kg
     final calories = (caloriesPerMinute * _duration.inMinutes).round();
     
-    final session = SportSession(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: user.id,
-      sportType: _sportTypeController.text,
-      duration: _duration,
-      intensity: _intensity,
-      caloriesBurned: calories,
-      notes: _notesController.text.isEmpty ? null : _notesController.text,
-      date: _date,
-      createdAt: DateTime.now(),
-    );
-    
-    await ref.read(sportSessionsNotifierProvider.notifier).add(session);
-    
-    if (mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sporteinheit gespeichert!')),
+    try {
+      // Find or create SportType
+      final sportTypeName = _sportTypeController.text.trim();
+      final sportTypes = ref.read(sportTypesNotifierProvider);
+      
+      String sportTypeId;
+      final existingType = sportTypes.firstWhere(
+        (t) => t.name.toLowerCase() == sportTypeName.toLowerCase(),
+        orElse: () => SportType(id: '', userId: '', name: '', createdAt: DateTime.now(), updatedAt: DateTime.now()),
       );
+      
+      if (existingType.id.isNotEmpty) {
+        sportTypeId = existingType.id;
+      } else {
+        // Create new type
+        final newType = SportType(
+          id: const Uuid().v4(),
+          userId: user.id,
+          name: sportTypeName,
+          icon: 'fitness_center',
+          caloriesPerHour: 300,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        final createdType = await ref.read(sportTypesNotifierProvider.notifier).add(newType);
+        sportTypeId = createdType.id;
+      }
+
+      final session = SportSession(
+        id: const Uuid().v4(),
+        userId: user.id,
+        sportTypeId: sportTypeId,
+        sportTypeName: sportTypeName,
+        duration: _duration,
+        intensity: _intensity,
+        caloriesBurned: calories,
+        notes: _notesController.text.isEmpty ? null : _notesController.text,
+        date: _date,
+        createdAt: DateTime.now(),
+      );
+      
+      await ref.read(sportSessionsNotifierProvider.notifier).add(session);
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sporteinheit gespeichert!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fehler beim Speichern: $e')),
+        );
+      }
     }
   }
 }

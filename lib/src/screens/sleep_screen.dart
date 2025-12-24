@@ -90,11 +90,24 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
       endTs: wakeDateTime,
     );
 
-    await ref.read(sleepNotifierProvider.notifier).upsert(log);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Schlaf gespeichert')),
-    );
+    try {
+      await ref.read(sleepNotifierProvider.notifier).upsert(log);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Schlaf gespeichert')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _changeDate(int days) {

@@ -184,15 +184,7 @@ abstract class SportRepository {
   Future<SportType> updateSportType(SportType type);
   Future<void> deleteSportType(String typeId);
   
-  // Workout Sessions (legacy - mit SportType ID Referenz)
-  Future<List<WorkoutSession>> getWorkoutSessions(String userId);
-  Future<List<WorkoutSession>> getWorkoutSessionsForDate(String userId, DateTime date);
-  Future<List<WorkoutSession>> getWorkoutSessionsRange(String userId, DateTime start, DateTime end);
-  Future<WorkoutSession> addWorkoutSession(WorkoutSession session);
-  Future<WorkoutSession> updateWorkoutSession(WorkoutSession session);
-  Future<void> deleteWorkoutSession(String sessionId);
-  
-  // Sport Sessions (simplified - mit direktem Sportart-String)
+  // Sport Sessions
   Future<List<SportSession>> getSportSessions(String userId);
   Future<SportSession> addSportSession(SportSession session);
   Future<SportSession> updateSportSession(SportSession session);

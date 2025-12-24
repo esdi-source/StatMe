@@ -1,9 +1,11 @@
 /// Sport Timer Screen - Timer für Sporteinheiten
 library;
 
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
+import 'package:uuid/uuid.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
 
@@ -720,25 +722,66 @@ class _SaveSessionSheetState extends ConsumerState<_SaveSessionSheet> {
     final caloriesPerMinute = _intensity.calorieMultiplier * 3.5 * 70 / 200;
     final calories = (caloriesPerMinute * widget.duration.inMinutes).round();
     
-    final session = SportSession(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: user.id,
-      sportType: widget.sportType,
-      duration: widget.duration,
-      intensity: _intensity,
-      caloriesBurned: calories,
-      notes: _notesController.text.isEmpty ? null : _notesController.text,
-      date: widget.startTime,
-      createdAt: DateTime.now(),
-    );
-    
-    await ref.read(sportSessionsNotifierProvider.notifier).add(session);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sporteinheit gespeichert!')),
+    try {
+      // Ensure types are loaded
+      if (ref.read(sportTypesNotifierProvider).isEmpty) {
+         await ref.read(sportTypesNotifierProvider.notifier).load(user.id);
+      }
+
+      // Find or create SportType
+      final sportTypeName = widget.sportType;
+      final sportTypes = ref.read(sportTypesNotifierProvider);
+      
+      String sportTypeId;
+      final existingType = sportTypes.firstWhere(
+        (t) => t.name.toLowerCase() == sportTypeName.toLowerCase(),
+        orElse: () => SportType(id: '', userId: '', name: '', createdAt: DateTime.now(), updatedAt: DateTime.now()),
       );
-      widget.onSaved();
+      
+      if (existingType.id.isNotEmpty) {
+        sportTypeId = existingType.id;
+      } else {
+        // Create new type
+        final newType = SportType(
+          id: const Uuid().v4(),
+          userId: user.id,
+          name: sportTypeName,
+          icon: 'fitness_center',
+          caloriesPerHour: 300,
+          createdAt: DateTime.now(),
+          updatedAt: DateTime.now(),
+        );
+        final createdType = await ref.read(sportTypesNotifierProvider.notifier).add(newType);
+        sportTypeId = createdType.id;
+      }
+
+      final session = SportSession(
+        id: const Uuid().v4(),
+        userId: user.id,
+        sportTypeId: sportTypeId,
+        sportTypeName: sportTypeName,
+        duration: widget.duration,
+        intensity: _intensity,
+        caloriesBurned: calories,
+        notes: _notesController.text.isEmpty ? null : _notesController.text,
+        date: widget.startTime,
+        createdAt: DateTime.now(),
+      );
+      
+      await ref.read(sportSessionsNotifierProvider.notifier).add(session);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sporteinheit gespeichert!')),
+        );
+        widget.onSaved();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Fehler beim Speichern: $e')),
+        );
+      }
     }
   }
 }

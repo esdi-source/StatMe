@@ -30,7 +30,7 @@ class MoodLogModel extends Equatable {
     return MoodLogModel(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      mood: (json['mood_level'] ?? json['mood_1_10'] ?? json['mood']) as int,
+      mood: (json['mood_score'] ?? json['mood_level'] ?? json['mood']) as int,
       date: DateTime.parse(json['date'] as String),
       note: (json['notes'] ?? json['note']) as String?,
       stressLevel: json['stress_level'] as int?,
@@ -44,13 +44,13 @@ class MoodLogModel extends Equatable {
     return {
       'id': id,
       'user_id': userId,
-      'mood_level': mood,
+      'mood_score': mood,
       'date': date.toIso8601String().split('T')[0],
       'notes': note,
       'stress_level': stressLevel,
       'energy_level': energyLevel,
-      'motivation': motivation,
-      'inner_calm': innerCalm,
+      // 'motivation': motivation, // Not in DB schema
+      // 'inner_calm': innerCalm, // Not in DB schema
     };
   }
 

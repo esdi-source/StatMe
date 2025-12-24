@@ -44,7 +44,23 @@ class _WaterScreenState extends ConsumerState<WaterScreen> {
       createdAt: DateTime.now(),
     );
 
-    await ref.read(waterLogNotifierProvider.notifier).add(log);
+    try {
+      await ref.read(waterLogNotifierProvider.notifier).add(log);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$ml ml hinzugefügt')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _changeDate(int days) {

@@ -972,87 +972,13 @@ class SupabaseSportRepository implements SportRepository {
     await _client.from('sport_types').delete().eq('id', typeId);
   }
 
-  // --- WORKOUT SESSIONS ---
-  
-  @override
-  Future<List<WorkoutSession>> getWorkoutSessions(String userId) async {
-    final response = await _client
-        .from('workout_sessions')
-        .select()
-        .eq('user_id', userId)
-        .order('date', ascending: false);
-    
-    return (response as List).map((json) => WorkoutSession.fromJson(json)).toList();
-  }
-
-  @override
-  Future<List<WorkoutSession>> getWorkoutSessionsForDate(String userId, DateTime date) async {
-    final dateStr = date.toIso8601String().split('T')[0];
-    
-    final response = await _client
-        .from('workout_sessions')
-        .select()
-        .eq('user_id', userId)
-        .eq('date', dateStr);
-    
-    return (response as List).map((json) => WorkoutSession.fromJson(json)).toList();
-  }
-
-  @override
-  Future<List<WorkoutSession>> getWorkoutSessionsRange(String userId, DateTime start, DateTime end) async {
-    final response = await _client
-        .from('workout_sessions')
-        .select()
-        .eq('user_id', userId)
-        .gte('date', start.toIso8601String().split('T')[0])
-        .lte('date', end.toIso8601String().split('T')[0])
-        .order('date');
-    
-    return (response as List).map((json) => WorkoutSession.fromJson(json)).toList();
-  }
-
-  @override
-  Future<WorkoutSession> addWorkoutSession(WorkoutSession session) async {
-    final response = await _client
-        .from('workout_sessions')
-        .insert(session.toJson())
-        .select()
-        .single();
-    
-    await _dataService.logEvent(
-      widgetName: 'sport',
-      eventType: 'workout_completed',
-      payload: response,
-      referenceId: response['id'],
-    );
-    
-    return WorkoutSession.fromJson(response);
-  }
-
-  @override
-  Future<WorkoutSession> updateWorkoutSession(WorkoutSession session) async {
-    final response = await _client
-        .from('workout_sessions')
-        .update(session.toJson())
-        .eq('id', session.id)
-        .select()
-        .single();
-    
-    return WorkoutSession.fromJson(response);
-  }
-
-  @override
-  Future<void> deleteWorkoutSession(String sessionId) async {
-    await _client.from('workout_sessions').delete().eq('id', sessionId);
-  }
-
-  // --- SPORT SESSIONS (simplified) ---
+  // --- SPORT SESSIONS ---
   
   @override
   Future<List<SportSession>> getSportSessions(String userId) async {
     final response = await _client
         .from('sport_sessions')
-        .select()
+        .select('*, sport_types(name)')
         .eq('user_id', userId)
         .order('date', ascending: false);
     
@@ -1064,7 +990,7 @@ class SupabaseSportRepository implements SportRepository {
     final response = await _client
         .from('sport_sessions')
         .insert(session.toJson())
-        .select()
+        .select('*, sport_types(name)')
         .single();
     
     await _dataService.logEvent(
@@ -1083,7 +1009,7 @@ class SupabaseSportRepository implements SportRepository {
         .from('sport_sessions')
         .update(session.toJson())
         .eq('id', session.id)
-        .select()
+        .select('*, sport_types(name)')
         .single();
     
     return SportSession.fromJson(response);

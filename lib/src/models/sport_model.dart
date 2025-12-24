@@ -176,11 +176,11 @@ class WorkoutSession extends Equatable {
       date: DateTime.parse(json['date'] as String),
       durationMinutes: json['duration_minutes'] as int,
       intensity: SportIntensity.values.firstWhere(
-        (i) => i.name == json['intensity'],
+        (i) => i.name == (json['intensity'] ?? 'medium'),
         orElse: () => SportIntensity.medium,
       ),
-      caloriesBurned: json['calories_burned'] as int? ?? 0,
-      note: json['note'] as String?,
+      caloriesBurned: (json['calories_burned'] as num?)?.toInt() ?? 0,
+      note: (json['notes'] ?? json['note']) as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -191,12 +191,12 @@ class WorkoutSession extends Equatable {
       'id': id,
       'user_id': userId,
       'sport_type_id': sportTypeId,
-      'sport_type_name': sportTypeName,
+      // 'sport_type_name': sportTypeName, // Not in DB
       'date': date.toIso8601String(),
       'duration_minutes': durationMinutes,
-      'intensity': intensity.name,
+      // 'intensity': intensity.name, // Not in DB
       'calories_burned': caloriesBurned,
-      'note': note,
+      'notes': note,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -350,7 +350,8 @@ class SportStreak {
 class SportSession extends Equatable {
   final String id;
   final String userId;
-  final String sportType; // Direkter Name der Sportart
+  final String sportTypeId;
+  final String? sportTypeName;
   final Duration duration;
   final SportIntensity intensity;
   final int? caloriesBurned;
@@ -361,7 +362,8 @@ class SportSession extends Equatable {
   const SportSession({
     required this.id,
     required this.userId,
-    required this.sportType,
+    required this.sportTypeId,
+    this.sportTypeName,
     required this.duration,
     required this.intensity,
     this.caloriesBurned,
@@ -373,7 +375,8 @@ class SportSession extends Equatable {
   SportSession copyWith({
     String? id,
     String? userId,
-    String? sportType,
+    String? sportTypeId,
+    String? sportTypeName,
     Duration? duration,
     SportIntensity? intensity,
     int? caloriesBurned,
@@ -384,7 +387,8 @@ class SportSession extends Equatable {
     return SportSession(
       id: id ?? this.id,
       userId: userId ?? this.userId,
-      sportType: sportType ?? this.sportType,
+      sportTypeId: sportTypeId ?? this.sportTypeId,
+      sportTypeName: sportTypeName ?? this.sportTypeName,
       duration: duration ?? this.duration,
       intensity: intensity ?? this.intensity,
       caloriesBurned: caloriesBurned ?? this.caloriesBurned,
@@ -398,13 +402,11 @@ class SportSession extends Equatable {
     return SportSession(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      sportType: json['sport_type'] as String,
+      sportTypeId: json['sport_type_id'] as String? ?? '',
+      sportTypeName: json['sport_types'] != null ? (json['sport_types']['name'] as String?) : null,
       duration: Duration(minutes: json['duration_minutes'] as int),
-      intensity: SportIntensity.values.firstWhere(
-        (i) => i.name == json['intensity'],
-        orElse: () => SportIntensity.medium,
-      ),
-      caloriesBurned: json['calories_burned'] as int?,
+      intensity: SportIntensity.medium, // Default as not in DB
+      caloriesBurned: (json['calories_burned'] as num?)?.toInt(),
       notes: json['notes'] as String?,
       date: DateTime.parse(json['date'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -415,18 +417,19 @@ class SportSession extends Equatable {
     return {
       'id': id,
       'user_id': userId,
-      'sport_type': sportType,
+      'sport_type_id': sportTypeId,
       'duration_minutes': duration.inMinutes,
-      'intensity': intensity.name,
+      // 'intensity': intensity.name, // Not in DB
       'calories_burned': caloriesBurned,
       'notes': notes,
-      'date': date.toIso8601String(),
+      'date': date.toIso8601String().split('T')[0],
+      'start_time': date.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
   }
 
   @override
-  List<Object?> get props => [id, userId, sportType, duration, intensity, caloriesBurned, notes, date, createdAt];
+  List<Object?> get props => [id, userId, sportTypeId, sportTypeName, duration, intensity, caloriesBurned, notes, date, createdAt];
 }
 
 // ============================================================================

@@ -327,14 +327,14 @@ class ProductModel extends Equatable {
     return ProductModel(
       id: json['id'] as String?,
       barcode: json['barcode'] as String?,
-      productName: json['product_name'] as String,
-      kcalPer100g: (json['nutri_kcal_per_100g'] as num).toDouble(),
+      productName: (json['name'] ?? json['product_name']) as String,
+      kcalPer100g: (json['calories_per_100g'] ?? json['nutri_kcal_per_100g'] as num).toDouble(),
       proteinPer100g: (json['protein_per_100g'] as num?)?.toDouble(),
       carbsPer100g: (json['carbs_per_100g'] as num?)?.toDouble(),
       fatPer100g: (json['fat_per_100g'] as num?)?.toDouble(),
       fiberPer100g: (json['fiber_per_100g'] as num?)?.toDouble(),
       rawApi: json['raw_api'] as Map<String, dynamic>?,
-      lastChecked: DateTime.parse(json['last_checked'] as String),
+      lastChecked: json['last_checked'] != null ? DateTime.parse(json['last_checked'] as String) : DateTime.now(),
     );
   }
 
@@ -342,14 +342,14 @@ class ProductModel extends Equatable {
     return {
       if (id != null) 'id': id,
       'barcode': barcode,
-      'product_name': productName,
-      'nutri_kcal_per_100g': kcalPer100g,
+      'name': productName,
+      'calories_per_100g': kcalPer100g,
       'protein_per_100g': proteinPer100g,
       'carbs_per_100g': carbsPer100g,
       'fat_per_100g': fatPer100g,
       'fiber_per_100g': fiberPer100g,
-      'raw_api': rawApi,
-      'last_checked': lastChecked.toIso8601String(),
+      // 'raw_api': rawApi, // Not in DB
+      // 'last_checked': lastChecked.toIso8601String(), // Not in DB
     };
   }
 
@@ -399,8 +399,8 @@ class FoodLogModel extends Equatable {
       id: json['id'] as String,
       userId: json['user_id'] as String,
       productId: json['product_id'] as String?,
-      productName: json['product_name'] as String,
-      grams: (json['grams'] as num).toDouble(),
+      productName: (json['custom_name'] ?? json['product_name']) as String,
+      grams: (json['serving_size_g'] ?? json['grams'] as num).toDouble(),
       calories: (json['calories'] as num).toDouble(),
       date: DateTime.parse(json['date'] as String),
       rawApi: json['raw_api'] as Map<String, dynamic>?,
@@ -413,12 +413,16 @@ class FoodLogModel extends Equatable {
       'id': id,
       'user_id': userId,
       'product_id': productId,
-      'product_name': productName,
-      'grams': grams,
+      'custom_name': productName,
+      'serving_size_g': grams,
       'calories': calories,
       'date': date.toIso8601String().split('T')[0],
-      'raw_api': rawApi,
+      // 'raw_api': rawApi, // Not in DB
       'created_at': createdAt.toIso8601String(),
+      'meal_type': 'snack', // Default
+      'protein': 0, // Default
+      'carbs': 0, // Default
+      'fat': 0, // Default
     };
   }
 

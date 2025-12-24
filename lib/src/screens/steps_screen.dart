@@ -65,11 +65,24 @@ class _StepsScreenState extends ConsumerState<StepsScreen> {
       source: 'manual',
     );
 
-    await ref.read(stepsNotifierProvider.notifier).upsert(log);
-    
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Schritte gespeichert')),
-    );
+    try {
+      await ref.read(stepsNotifierProvider.notifier).upsert(log);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Schritte gespeichert')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _changeDate(int days) {

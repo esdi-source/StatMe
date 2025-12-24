@@ -606,6 +606,30 @@ final sportRepositoryProvider = Provider<SportRepository>((ref) {
   return SupabaseSportRepository(Supabase.instance.client);
 });
 
+/// Sport Types Notifier
+class SportTypesNotifier extends StateNotifier<List<SportType>> {
+  final SportRepository _repository;
+  String? _userId;
+
+  SportTypesNotifier(this._repository) : super([]);
+
+  Future<void> load(String userId) async {
+    _userId = userId;
+    state = await _repository.getSportTypes(userId);
+  }
+
+  Future<SportType> add(SportType type) async {
+    final created = await _repository.addSportType(type);
+    state = [...state, created];
+    return created;
+  }
+}
+
+final sportTypesNotifierProvider = StateNotifierProvider<SportTypesNotifier, List<SportType>>((ref) {
+  final repository = ref.watch(sportRepositoryProvider);
+  return SportTypesNotifier(repository);
+});
+
 /// Sport Sessions Notifier
 class SportSessionsNotifier extends StateNotifier<List<SportSession>> {
   final SportRepository _repository;
@@ -794,7 +818,8 @@ List<SportStats> _calculateSportStats(List<SportSession> sessions) {
   final Map<String, List<SportSession>> byType = {};
   
   for (final session in sessions) {
-    byType.putIfAbsent(session.sportType, () => []).add(session);
+    final typeName = session.sportTypeName ?? 'Unbekannt';
+    byType.putIfAbsent(typeName, () => []).add(session);
   }
   
   return byType.entries.map((entry) {

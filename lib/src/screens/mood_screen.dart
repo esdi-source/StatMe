@@ -101,12 +101,23 @@ class _MoodScreenState extends ConsumerState<MoodScreen> {
       innerCalm: _innerCalm,
     );
 
-    await ref.read(moodNotifierProvider.notifier).upsert(log);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Stimmung gespeichert')),
-      );
+    try {
+      await ref.read(moodNotifierProvider.notifier).upsert(log);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stimmung gespeichert')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

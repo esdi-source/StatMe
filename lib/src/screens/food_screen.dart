@@ -159,7 +159,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
     final calories = (product.calories ?? 0) * grams / 100;
     
     final foodLog = FoodLogModel(
-      id: '',
+      id: const Uuid().v4(),
       userId: user.id,
       productName: product.fullName,
       calories: calories,
@@ -168,16 +168,27 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
       createdAt: DateTime.now(),
     );
     
-    await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
-    
-    if (mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${product.productName} hinzugefügt'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    try {
+      await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.productName} hinzugefügt'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   
@@ -188,7 +199,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
     final calories = favorite.calculateCalories(grams);
     
     final foodLog = FoodLogModel(
-      id: '',
+      id: const Uuid().v4(),
       userId: user.id,
       productName: favorite.name,
       calories: calories,
@@ -197,17 +208,28 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
       createdAt: DateTime.now(),
     );
     
-    await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
-    await ref.read(favoriteProductsProvider.notifier).incrementUseCount(favorite.id);
-    
-    if (mounted) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${favorite.name} hinzugefügt'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    try {
+      await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
+      await ref.read(favoriteProductsProvider.notifier).incrementUseCount(favorite.id);
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${favorite.name} hinzugefügt'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
   
@@ -218,7 +240,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
     final calories = product.calculateCalories(grams);
     
     final foodLog = FoodLogModel(
-      id: '',
+      id: const Uuid().v4(),
       userId: user.id,
       productName: product.name,
       calories: calories,
@@ -227,16 +249,27 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
       createdAt: DateTime.now(),
     );
     
-    await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
-    await ref.read(customFoodProductsProvider.notifier).incrementUseCount(product.id);
-    
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${product.name} hinzugefügt'),
-          backgroundColor: Colors.green,
-        ),
-      );
+    try {
+      await ref.read(foodLogNotifierProvider.notifier).add(foodLog);
+      await ref.read(customFoodProductsProvider.notifier).incrementUseCount(product.id);
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.name} hinzugefügt'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Fehler beim Speichern: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
