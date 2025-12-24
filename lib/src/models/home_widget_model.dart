@@ -19,6 +19,7 @@ enum HomeWidgetType {
   media('Filme & Serien', 'movie'),
   household('Haushalt', 'cleaning_services'),
   recipes('Rezepte', 'restaurant_menu'),
+  productCheck('Produkt-Check', 'qr_code_scanner'),
   statistics('Statistik', 'insights');
 
   final String label;

@@ -13,6 +13,7 @@ import '../core/config/app_config.dart';
 import '../ui/widgets/color_picker_dialog.dart';
 import '../ui/widgets/unified_stat_widget.dart';
 import 'screens.dart';
+import 'product_check/product_check_widget.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -656,6 +657,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return _HouseholdWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const HouseholdScreen()));
       case HomeWidgetType.recipes:
         return _RecipesWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const RecipeScreen()));
+      case HomeWidgetType.productCheck:
+        return ProductCheckWidget(widgetData: widget);
       case HomeWidgetType.statistics:
         return _StatisticsWidget(size: widget.size, customColor: customColor, onTap: _isEditMode ? null : () => _navigateTo(const StatisticsScreen()));
     }
@@ -806,6 +809,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen>
         return Icons.cleaning_services;
       case HomeWidgetType.recipes:
         return Icons.restaurant_menu;
+      case HomeWidgetType.productCheck:
+        return Icons.qr_code_scanner;
       case HomeWidgetType.statistics:
         return Icons.insights;
     }
