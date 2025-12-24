@@ -4,7 +4,7 @@ import '../../models/home_widget_model.dart';
 import '../../models/product_check_model.dart';
 import '../../services/product_check_service.dart';
 import '../../providers/providers.dart';
-import '../barcode_scanner_screen.dart';
+// import '../barcode_scanner_screen.dart';
 import 'product_check_screen.dart';
 
 class ProductCheckWidget extends ConsumerStatefulWidget {
@@ -31,22 +31,6 @@ class _ProductCheckWidgetState extends ConsumerState<ProductCheckWidget> {
       setState(() {
         _lastProduct = history.first;
       });
-    }
-  }
-
-  Future<void> _scanBarcode() async {
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (context) => const BarcodeScannerScreen()),
-    );
-
-    if (barcode != null && mounted) {
-      // Navigate to full screen and fetch there
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const ProductCheckScreen()),
-      );
-      // Ideally we would pass the barcode to auto-scan, but for now just opening the screen is fine.
-      // Or we can fetch here and show a dialog.
-      // Let's just open the screen.
     }
   }
 

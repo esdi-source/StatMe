@@ -569,7 +569,6 @@ class _SchoolScreenState extends ConsumerState<SchoolScreen> {
   void _showAddSubjectDialog() {
     final nameController = TextEditingController();
     final shortNameController = TextEditingController();
-    final tokens = ref.read(designTokensProvider);
 
     showDialog(
       context: context,

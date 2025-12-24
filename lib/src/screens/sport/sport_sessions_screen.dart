@@ -361,8 +361,6 @@ class _SportSessionsScreenState extends ConsumerState<SportSessionsScreen> {
   Color _getIntensityColor(DesignTokens tokens, SportIntensity intensity) {
     switch (intensity) {
       case SportIntensity.low:
-        return tokens.info;
-      case SportIntensity.low:
         return tokens.success;
       case SportIntensity.medium:
         return tokens.warning;

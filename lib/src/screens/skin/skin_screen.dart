@@ -378,7 +378,7 @@ class _SkinScreenState extends ConsumerState<SkinScreen> {
               runSpacing: 8,
               children: dailySteps.map((step) {
                 // TODO: Implement via SkinCareCompletion provider
-                const isCompleted = false;
+                final isCompleted = false;
                 return GestureDetector(
                   onTap: () {
                     // TODO: Toggle completion via SkinCareCompletion

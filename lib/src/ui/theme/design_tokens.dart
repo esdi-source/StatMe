@@ -376,6 +376,7 @@ class DesignTokens {
   // INTENSITY HELPER
   // ---------------------------------------------------------------------------
   
+  /*
   /// Passt eine Farbe basierend auf Intensität an
   static Color _applyIntensity(Color baseColor, double intensity) {
     final hsl = HSLColor.fromColor(baseColor);
@@ -388,6 +389,7 @@ class DesignTokens {
         .withLightness(newLightness.clamp(0.0, 1.0))
         .toColor();
   }
+  */
   
   /// Intensiviert eine Farbe (macht sie kräftiger)
   static Color _intensify(Color color, double intensity) {

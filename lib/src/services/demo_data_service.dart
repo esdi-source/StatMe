@@ -223,7 +223,7 @@ class DemoDataService {
   static List<FoodLogModel> getDemoFoodLogs() {
     final now = DateTime.now();
     final logs = <FoodLogModel>[];
-    final products = getDemoProducts();
+    // final products = getDemoProducts();
     
     // Generate food logs for the last 7 days
     for (int day = 0; day < 7; day++) {
@@ -300,7 +300,7 @@ class DemoDataService {
     // Generate water logs for the last 7 days
     for (int day = 0; day < 7; day++) {
       final date = now.subtract(Duration(days: day));
-      final dailyTarget = 2000 + (day * 100); // Vary intake
+      // final dailyTarget = 2000 + (day * 100); // Vary intake
       
       // Morning
       logs.add(WaterLogModel(

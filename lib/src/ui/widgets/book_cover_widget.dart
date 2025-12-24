@@ -51,7 +51,7 @@ class BookCoverWidget extends ConsumerStatefulWidget {
 class _BookCoverWidgetState extends ConsumerState<BookCoverWidget> {
   bool _isRetrying = false;
   bool _isUploading = false;
-  String? _errorMessage;
+  // String? _errorMessage;
   CoverFetchResult? _localResult;
 
   @override
@@ -334,7 +334,7 @@ class _BookCoverWidgetState extends ConsumerState<BookCoverWidget> {
 
     setState(() {
       _isRetrying = true;
-      _errorMessage = null;
+      // _errorMessage = null;
     });
 
     try {
@@ -381,7 +381,7 @@ class _BookCoverWidgetState extends ConsumerState<BookCoverWidget> {
       if (mounted) {
         setState(() {
           _isRetrying = false;
-          _errorMessage = e.toString();
+          // _errorMessage = e.toString();
         });
       }
     }

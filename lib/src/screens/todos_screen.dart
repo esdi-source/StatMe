@@ -30,7 +30,7 @@ class _TodosScreenState extends ConsumerState<TodosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final user = ref.watch(authNotifierProvider).valueOrNull;
+    // final user = ref.watch(authNotifierProvider).valueOrNull;
     final todos = ref.watch(todoNotifierProvider);
 
     return Scaffold(

@@ -119,7 +119,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final sleep = ref.watch(sleepNotifierProvider);
+    // final sleep = ref.watch(sleepNotifierProvider);
     final duration = _calculateDuration();
     final progress = duration / 480; // 8 hours = 480 minutes
 

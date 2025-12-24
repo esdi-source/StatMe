@@ -834,8 +834,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         // Für Web: base64 Data URL verwenden
         // Für Native: Dateipfad verwenden
         if (kIsWeb) {
-          final bytes = await image.readAsBytes();
-          final base64 = 'data:image/jpeg;base64,${Uri.encodeFull(String.fromCharCodes(bytes))}';
+          // final bytes = await image.readAsBytes();
+          // final base64 = 'data:image/jpeg;base64,${Uri.encodeFull(String.fromCharCodes(bytes))}';
           ref.read(themeStateProvider.notifier).setBackgroundImage(image.path);
         } else {
           ref.read(themeStateProvider.notifier).setBackgroundImage(image.path);

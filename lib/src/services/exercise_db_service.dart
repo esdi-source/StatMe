@@ -656,6 +656,7 @@ class ExerciseDbService {
     }
   }
   
+  /*
   static Future<void> _saveToCache(List<Exercise> exercises) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -663,6 +664,7 @@ class ExerciseDbService {
       await prefs.setInt(_cacheTimestampKey, DateTime.now().millisecondsSinceEpoch);
     } catch (_) {}
   }
+  */
 }
 
 // ============================================================================

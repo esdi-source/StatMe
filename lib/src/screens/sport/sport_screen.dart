@@ -749,8 +749,6 @@ class _SportScreenState extends ConsumerState<SportScreen> {
     final tokens = ref.read(designTokensProvider);
     switch (intensity) {
       case SportIntensity.low:
-        return tokens.info;
-      case SportIntensity.low:
         return tokens.success;
       case SportIntensity.medium:
         return tokens.warning;

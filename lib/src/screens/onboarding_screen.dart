@@ -678,6 +678,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         return Icons.mood;
       case HomeWidgetType.todos:
         return Icons.check_circle;
+      case HomeWidgetType.productCheck:
+        return Icons.qr_code_scanner;
       case HomeWidgetType.greeting:
         return Icons.waving_hand;
       case HomeWidgetType.books:
