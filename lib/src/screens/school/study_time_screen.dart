@@ -1,4 +1,5 @@
 /// Lernzeit Screen - Timer und manuelle Erfassung
+library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';
@@ -355,7 +356,7 @@ class _StudyTimeScreenState extends ConsumerState<StudyTimeScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedSubjectId,
+                  initialValue: selectedSubjectId,
                   decoration: const InputDecoration(labelText: 'Fach'),
                   items: subjects.map((s) => DropdownMenuItem(
                     value: s.id,

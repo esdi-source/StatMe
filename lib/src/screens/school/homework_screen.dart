@@ -1,4 +1,5 @@
 /// Hausaufgaben Screen - Tägliche Aufgaben mit Abhaken
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -235,7 +236,7 @@ class _HomeworkScreenState extends ConsumerState<HomeworkScreen> with SingleTick
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
-                  value: selectedSubjectId,
+                  initialValue: selectedSubjectId,
                   decoration: const InputDecoration(labelText: 'Fach'),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Kein Fach')),

@@ -1,9 +1,9 @@
 /// Household Screen - Haushaltsaufgaben verwalten
 /// Mit flexiblen Aufgaben, Wiederkehr-Logik und Statistiken
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
@@ -198,21 +198,21 @@ class _TodayTab extends ConsumerWidget {
         // Überfällige Aufgaben
         if (overdue.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _SectionHeader(title: '⚠️ Überfällig', color: Colors.red),
+          const _SectionHeader(title: '⚠️ Überfällig', color: Colors.red),
           ...overdue.map((t) => _TaskCard(taskStatus: t, userId: userId)),
         ],
 
         // Heute fällig
         if (dueToday.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _SectionHeader(title: '📅 Heute fällig', color: Colors.orange),
+          const _SectionHeader(title: '📅 Heute fällig', color: Colors.orange),
           ...dueToday.map((t) => _TaskCard(taskStatus: t, userId: userId)),
         ],
 
         // Bald fällig
         if (upcoming.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _SectionHeader(title: '📆 Bald fällig', color: Colors.blue),
+          const _SectionHeader(title: '📆 Bald fällig', color: Colors.blue),
           ...upcoming.map((t) => _TaskCard(taskStatus: t, userId: userId)),
         ],
 
@@ -1202,7 +1202,7 @@ class _AddTaskSheetState extends ConsumerState<_AddTaskSheet> {
                 const Text('Raum (optional)', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<HouseholdRoom?>(
-                  value: _room,
+                  initialValue: _room,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     hintText: 'Raum auswählen',

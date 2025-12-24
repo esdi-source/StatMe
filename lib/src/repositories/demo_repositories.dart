@@ -1,5 +1,6 @@
 /// Demo Repository Implementations
 /// Uses InMemoryDatabase for demo mode - no external connections required
+library;
 
 import 'dart:async';
 import '../models/models.dart';
@@ -197,10 +198,20 @@ class DemoSleepRepository implements SleepRepository {
   Future<SleepLogModel> addSleep(SleepLogModel log) async {
     return await _db.addSleepLog(log);
   }
+
+  @override
+  Future<SleepLogModel> upsertSleep(SleepLogModel log) async {
+    return await _db.addSleepLog(log);
+  }
   
   @override
   Future<void> deleteSleep(String logId) async {
     await _db.deleteSleepLog(logId);
+  }
+
+  @override
+  Future<void> deleteSleepByDate(String userId, DateTime date) async {
+    // Mock implementation
   }
 }
 
@@ -923,5 +934,91 @@ class DemoSkinRepository implements SkinRepository {
   @override
   Future<void> deleteSkinPhoto(String photoId) async {
     _photos.removeWhere((p) => p.id == photoId);
+  }
+}
+
+// ============================================================================
+// DIGESTION REPOSITORY
+// ============================================================================
+
+class DemoDigestionRepository implements DigestionRepository {
+  final InMemoryDatabase _db = InMemoryDatabase();
+
+  @override
+  Future<List<DigestionEntry>> getEntries(String userId, DateTime date) async {
+    return _db.getDigestionEntries(userId, date);
+  }
+
+  @override
+  Future<List<DigestionEntry>> getEntriesRange(String userId, DateTime start, DateTime end) async {
+    return _db.getDigestionEntriesRange(userId, start, end);
+  }
+
+  @override
+  Future<DigestionEntry> addEntry(DigestionEntry entry) async {
+    return await _db.addDigestionEntry(entry);
+  }
+
+  @override
+  Future<DigestionEntry> updateEntry(DigestionEntry entry) async {
+    return await _db.updateDigestionEntry(entry);
+  }
+
+  @override
+  Future<void> deleteEntry(String entryId) async {
+    await _db.deleteDigestionEntry(entryId);
+  }
+}
+
+// ============================================================================
+// SUPPLEMENTS REPOSITORY
+// ============================================================================
+
+class DemoSupplementsRepository implements SupplementsRepository {
+  final InMemoryDatabase _db = InMemoryDatabase();
+
+  @override
+  Future<List<Supplement>> getSupplements(String userId) async {
+    return _db.getSupplements(userId);
+  }
+
+  @override
+  Future<Supplement> addSupplement(Supplement supplement) async {
+    return await _db.addSupplement(supplement);
+  }
+
+  @override
+  Future<Supplement> updateSupplement(Supplement supplement) async {
+    return await _db.updateSupplement(supplement);
+  }
+
+  @override
+  Future<void> deleteSupplement(String supplementId) async {
+    await _db.deleteSupplement(supplementId);
+  }
+
+  @override
+  Future<List<SupplementIntake>> getIntakes(String userId, DateTime date) async {
+    return _db.getSupplementIntakes(userId, date);
+  }
+
+  @override
+  Future<List<SupplementIntake>> getIntakesRange(String userId, DateTime start, DateTime end) async {
+    return _db.getSupplementIntakesRange(userId, start, end);
+  }
+
+  @override
+  Future<SupplementIntake> addIntake(SupplementIntake intake) async {
+    return await _db.addSupplementIntake(intake);
+  }
+
+  @override
+  Future<SupplementIntake> updateIntake(SupplementIntake intake) async {
+    return await _db.updateSupplementIntake(intake);
+  }
+
+  @override
+  Future<void> deleteIntake(String intakeId) async {
+    await _db.deleteSupplementIntake(intakeId);
   }
 }

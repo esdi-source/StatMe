@@ -1,5 +1,6 @@
 /// Demo Data Service
 /// Provides realistic fake data for demo mode
+library;
 
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';

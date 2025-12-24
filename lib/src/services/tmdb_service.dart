@@ -1,5 +1,6 @@
 /// TMDB API Service - The Movie Database
 /// Für Film- und Serien-Metadaten
+library;
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;

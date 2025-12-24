@@ -1,5 +1,6 @@
 /// Supabase Repository Implementations
 /// Used when DEMO_MODE=false for production with real Supabase backend
+library;
 
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -427,15 +428,13 @@ class SupabaseSleepRepository implements SleepRepository {
   
   @override
   Future<SleepLogModel?> getSleep(String userId, DateTime date) async {
-    final startOfDay = DateTime(date.year, date.month, date.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+    final dateStr = date.toIso8601String().split('T')[0];
     
     final response = await _client
         .from('sleep_logs')
         .select()
         .eq('user_id', userId)
-        .gte('end_ts', startOfDay.toIso8601String())
-        .lt('end_ts', endOfDay.toIso8601String())
+        .eq('date', dateStr)
         .maybeSingle();
     
     if (response == null) return null;
@@ -448,26 +447,32 @@ class SupabaseSleepRepository implements SleepRepository {
         .from('sleep_logs')
         .select()
         .eq('user_id', userId)
-        .gte('end_ts', start.toIso8601String())
-        .lte('end_ts', end.toIso8601String());
+        .gte('date', start.toIso8601String().split('T')[0])
+        .lte('date', end.toIso8601String().split('T')[0]);
     
     return (response as List).map((json) => SleepLogModel.fromJson(json)).toList();
   }
   
   @override
   Future<SleepLogModel> addSleep(SleepLogModel log) async {
+    return upsertSleep(log);
+  }
+
+  @override
+  Future<SleepLogModel> upsertSleep(SleepLogModel log) async {
     final response = await _client
         .from('sleep_logs')
-        .insert(log.toJson())
+        .upsert(log.toJson())
         .select()
         .single();
     
     final added = SleepLogModel.fromJson(response);
-    await _EventLogger.log('sleep', 'created', {
+    await _EventLogger.log('sleep', 'updated', {
       'id': added.id,
       'durationMinutes': added.durationMinutes,
-      'startTs': added.startTs.toIso8601String(),
-      'endTs': added.endTs.toIso8601String(),
+      'bedtime': added.startTs.toIso8601String(),
+      'wake_time': added.endTs.toIso8601String(),
+      'quality': added.quality,
     });
     return added;
   }
@@ -476,6 +481,13 @@ class SupabaseSleepRepository implements SleepRepository {
   Future<void> deleteSleep(String logId) async {
     await _client.from('sleep_logs').delete().eq('id', logId);
     await _EventLogger.log('sleep', 'deleted', {'id': logId});
+  }
+
+  @override
+  Future<void> deleteSleepByDate(String userId, DateTime date) async {
+    final dateStr = date.toIso8601String().split('T')[0];
+    await _client.from('sleep_logs').delete().eq('user_id', userId).eq('date', dateStr);
+    await _EventLogger.log('sleep', 'deleted', {'date': dateStr});
   }
 }
 
@@ -527,5 +539,203 @@ class SupabaseMoodRepository implements MoodRepository {
       'date': updated.date.toIso8601String(),
     });
     return updated;
+  }
+}
+
+class SupabaseDigestionRepository implements DigestionRepository {
+  final SupabaseClient _client;
+  
+  SupabaseDigestionRepository(this._client);
+  
+  @override
+  Future<List<DigestionEntry>> getEntries(String userId, DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    
+    final response = await _client
+        .from('digestion_entries')
+        .select()
+        .eq('user_id', userId)
+        .gte('timestamp', startOfDay.toIso8601String())
+        .lt('timestamp', endOfDay.toIso8601String())
+        .order('timestamp', ascending: false);
+    
+    return (response as List).map((json) => DigestionEntry.fromJson(json)).toList();
+  }
+  
+  @override
+  Future<List<DigestionEntry>> getEntriesRange(String userId, DateTime start, DateTime end) async {
+    final response = await _client
+        .from('digestion_entries')
+        .select()
+        .eq('user_id', userId)
+        .gte('timestamp', start.toIso8601String())
+        .lte('timestamp', end.toIso8601String())
+        .order('timestamp', ascending: false);
+    
+    return (response as List).map((json) => DigestionEntry.fromJson(json)).toList();
+  }
+  
+  @override
+  Future<DigestionEntry> addEntry(DigestionEntry entry) async {
+    final response = await _client
+        .from('digestion_entries')
+        .insert(entry.toJson())
+        .select()
+        .single();
+    
+    final added = DigestionEntry.fromJson(response);
+    await _EventLogger.log('digestion', 'created', {
+      'id': added.id,
+      'type': added.type.name,
+      'timestamp': added.timestamp.toIso8601String(),
+    });
+    return added;
+  }
+  
+  @override
+  Future<DigestionEntry> updateEntry(DigestionEntry entry) async {
+    final response = await _client
+        .from('digestion_entries')
+        .update(entry.toJson())
+        .eq('id', entry.id)
+        .select()
+        .single();
+    
+    final updated = DigestionEntry.fromJson(response);
+    await _EventLogger.log('digestion', 'updated', {
+      'id': updated.id,
+      'type': updated.type.name,
+    });
+    return updated;
+  }
+  
+  @override
+  Future<void> deleteEntry(String entryId) async {
+    await _client.from('digestion_entries').delete().eq('id', entryId);
+    await _EventLogger.log('digestion', 'deleted', {'id': entryId});
+  }
+}
+
+class SupabaseSupplementsRepository implements SupplementsRepository {
+  final SupabaseClient _client;
+  
+  SupabaseSupplementsRepository(this._client);
+  
+  @override
+  Future<List<Supplement>> getSupplements(String userId) async {
+    final response = await _client
+        .from('supplements')
+        .select()
+        .eq('user_id', userId)
+        .order('name');
+    
+    return (response as List).map((json) => Supplement.fromJson(json)).toList();
+  }
+  
+  @override
+  Future<Supplement> addSupplement(Supplement supplement) async {
+    final response = await _client
+        .from('supplements')
+        .insert(supplement.toJson())
+        .select()
+        .single();
+    
+    final added = Supplement.fromJson(response);
+    await _EventLogger.log('supplements', 'created', {
+      'id': added.id,
+      'name': added.name,
+    });
+    return added;
+  }
+  
+  @override
+  Future<Supplement> updateSupplement(Supplement supplement) async {
+    final response = await _client
+        .from('supplements')
+        .update(supplement.toJson())
+        .eq('id', supplement.id)
+        .select()
+        .single();
+    
+    final updated = Supplement.fromJson(response);
+    await _EventLogger.log('supplements', 'updated', {
+      'id': updated.id,
+      'name': updated.name,
+    });
+    return updated;
+  }
+  
+  @override
+  Future<void> deleteSupplement(String supplementId) async {
+    await _client.from('supplements').delete().eq('id', supplementId);
+    await _EventLogger.log('supplements', 'deleted', {'id': supplementId});
+  }
+  
+  @override
+  Future<List<SupplementIntake>> getIntakes(String userId, DateTime date) async {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    
+    final response = await _client
+        .from('supplement_intakes')
+        .select()
+        .eq('user_id', userId)
+        .gte('timestamp', startOfDay.toIso8601String())
+        .lt('timestamp', endOfDay.toIso8601String())
+        .order('timestamp', ascending: false);
+    
+    return (response as List).map((json) => SupplementIntake.fromJson(json)).toList();
+  }
+  
+  @override
+  Future<List<SupplementIntake>> getIntakesRange(String userId, DateTime start, DateTime end) async {
+    final response = await _client
+        .from('supplement_intakes')
+        .select()
+        .eq('user_id', userId)
+        .gte('timestamp', start.toIso8601String())
+        .lte('timestamp', end.toIso8601String())
+        .order('timestamp', ascending: false);
+    
+    return (response as List).map((json) => SupplementIntake.fromJson(json)).toList();
+  }
+  
+  @override
+  Future<SupplementIntake> addIntake(SupplementIntake intake) async {
+    final response = await _client
+        .from('supplement_intakes')
+        .insert(intake.toJson())
+        .select()
+        .single();
+    
+    final added = SupplementIntake.fromJson(response);
+    await _EventLogger.log('supplements', 'intake_created', {
+      'id': added.id,
+      'supplementId': added.supplementId,
+    });
+    return added;
+  }
+  
+  @override
+  Future<SupplementIntake> updateIntake(SupplementIntake intake) async {
+    final response = await _client
+        .from('supplement_intakes')
+        .update(intake.toJson())
+        .eq('id', intake.id)
+        .select()
+        .single();
+    
+    final updated = SupplementIntake.fromJson(response);
+    await _EventLogger.log('supplements', 'intake_updated', {
+      'id': updated.id,
+    });
+    return updated;
+  }
+  
+  @override
+  Future<void> deleteIntake(String intakeId) async {
+    await _client.from('supplement_intakes').delete().eq('id', intakeId);
+    await _EventLogger.log('supplements', 'intake_deleted', {'id': intakeId});
   }
 }

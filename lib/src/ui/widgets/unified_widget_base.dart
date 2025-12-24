@@ -2,6 +2,7 @@
 /// 
 /// Dieses Modul definiert das Basis-Layout für alle Dashboard-Widgets.
 /// Größenabhängige Designs für konsistente Darstellung.
+library;
 
 import 'package:flutter/material.dart';
 import '../../models/home_widget_model.dart';

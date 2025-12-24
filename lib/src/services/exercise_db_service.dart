@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service für Übungs-Datenbank (ExerciseDB-ähnlich)
@@ -19,28 +18,28 @@ class ExerciseDbService {
   
   static final List<MuscleGroup> _muscleGroups = [
     // Oberkörper - Push
-    MuscleGroup(id: 'chest', nameEn: 'Chest', nameDe: 'Brust', category: MuscleCategory.push),
-    MuscleGroup(id: 'shoulders', nameEn: 'Shoulders', nameDe: 'Schultern', category: MuscleCategory.push),
-    MuscleGroup(id: 'triceps', nameEn: 'Triceps', nameDe: 'Trizeps', category: MuscleCategory.push),
+    const MuscleGroup(id: 'chest', nameEn: 'Chest', nameDe: 'Brust', category: MuscleCategory.push),
+    const MuscleGroup(id: 'shoulders', nameEn: 'Shoulders', nameDe: 'Schultern', category: MuscleCategory.push),
+    const MuscleGroup(id: 'triceps', nameEn: 'Triceps', nameDe: 'Trizeps', category: MuscleCategory.push),
     
     // Oberkörper - Pull
-    MuscleGroup(id: 'back', nameEn: 'Back', nameDe: 'Rücken', category: MuscleCategory.pull),
-    MuscleGroup(id: 'lats', nameEn: 'Lats', nameDe: 'Latissimus', category: MuscleCategory.pull),
-    MuscleGroup(id: 'biceps', nameEn: 'Biceps', nameDe: 'Bizeps', category: MuscleCategory.pull),
-    MuscleGroup(id: 'forearms', nameEn: 'Forearms', nameDe: 'Unterarme', category: MuscleCategory.pull),
-    MuscleGroup(id: 'traps', nameEn: 'Traps', nameDe: 'Trapezius', category: MuscleCategory.pull),
+    const MuscleGroup(id: 'back', nameEn: 'Back', nameDe: 'Rücken', category: MuscleCategory.pull),
+    const MuscleGroup(id: 'lats', nameEn: 'Lats', nameDe: 'Latissimus', category: MuscleCategory.pull),
+    const MuscleGroup(id: 'biceps', nameEn: 'Biceps', nameDe: 'Bizeps', category: MuscleCategory.pull),
+    const MuscleGroup(id: 'forearms', nameEn: 'Forearms', nameDe: 'Unterarme', category: MuscleCategory.pull),
+    const MuscleGroup(id: 'traps', nameEn: 'Traps', nameDe: 'Trapezius', category: MuscleCategory.pull),
     
     // Unterkörper
-    MuscleGroup(id: 'quads', nameEn: 'Quadriceps', nameDe: 'Oberschenkel (vorne)', category: MuscleCategory.legs),
-    MuscleGroup(id: 'hamstrings', nameEn: 'Hamstrings', nameDe: 'Oberschenkel (hinten)', category: MuscleCategory.legs),
-    MuscleGroup(id: 'glutes', nameEn: 'Glutes', nameDe: 'Gesäß', category: MuscleCategory.legs),
-    MuscleGroup(id: 'calves', nameEn: 'Calves', nameDe: 'Waden', category: MuscleCategory.legs),
-    MuscleGroup(id: 'adductors', nameEn: 'Adductors', nameDe: 'Adduktoren', category: MuscleCategory.legs),
+    const MuscleGroup(id: 'quads', nameEn: 'Quadriceps', nameDe: 'Oberschenkel (vorne)', category: MuscleCategory.legs),
+    const MuscleGroup(id: 'hamstrings', nameEn: 'Hamstrings', nameDe: 'Oberschenkel (hinten)', category: MuscleCategory.legs),
+    const MuscleGroup(id: 'glutes', nameEn: 'Glutes', nameDe: 'Gesäß', category: MuscleCategory.legs),
+    const MuscleGroup(id: 'calves', nameEn: 'Calves', nameDe: 'Waden', category: MuscleCategory.legs),
+    const MuscleGroup(id: 'adductors', nameEn: 'Adductors', nameDe: 'Adduktoren', category: MuscleCategory.legs),
     
     // Core
-    MuscleGroup(id: 'abs', nameEn: 'Abs', nameDe: 'Bauch', category: MuscleCategory.core),
-    MuscleGroup(id: 'obliques', nameEn: 'Obliques', nameDe: 'Seitliche Bauchmuskeln', category: MuscleCategory.core),
-    MuscleGroup(id: 'lower_back', nameEn: 'Lower Back', nameDe: 'Unterer Rücken', category: MuscleCategory.core),
+    const MuscleGroup(id: 'abs', nameEn: 'Abs', nameDe: 'Bauch', category: MuscleCategory.core),
+    const MuscleGroup(id: 'obliques', nameEn: 'Obliques', nameDe: 'Seitliche Bauchmuskeln', category: MuscleCategory.core),
+    const MuscleGroup(id: 'lower_back', nameEn: 'Lower Back', nameDe: 'Unterer Rücken', category: MuscleCategory.core),
   ];
   
   static MuscleGroup? getMuscleGroupById(String id) {
@@ -56,16 +55,16 @@ class ExerciseDbService {
   // ============================================================================
   
   static final List<Equipment> allEquipment = [
-    Equipment(id: 'bodyweight', nameEn: 'Bodyweight', nameDe: 'Körpergewicht', icon: '🏃'),
-    Equipment(id: 'dumbbell', nameEn: 'Dumbbell', nameDe: 'Kurzhantel', icon: '🏋️'),
-    Equipment(id: 'barbell', nameEn: 'Barbell', nameDe: 'Langhantel', icon: '🏋️‍♂️'),
-    Equipment(id: 'kettlebell', nameEn: 'Kettlebell', nameDe: 'Kettlebell', icon: '🔔'),
-    Equipment(id: 'cable', nameEn: 'Cable Machine', nameDe: 'Kabelzug', icon: '🔌'),
-    Equipment(id: 'machine', nameEn: 'Machine', nameDe: 'Gerät', icon: '🏭'),
-    Equipment(id: 'resistance_band', nameEn: 'Resistance Band', nameDe: 'Widerstandsband', icon: '🎗️'),
-    Equipment(id: 'pull_up_bar', nameEn: 'Pull-up Bar', nameDe: 'Klimmzugstange', icon: '📏'),
-    Equipment(id: 'bench', nameEn: 'Bench', nameDe: 'Bank', icon: '🪑'),
-    Equipment(id: 'ez_bar', nameEn: 'EZ Bar', nameDe: 'SZ-Stange', icon: '〰️'),
+    const Equipment(id: 'bodyweight', nameEn: 'Bodyweight', nameDe: 'Körpergewicht', icon: '🏃'),
+    const Equipment(id: 'dumbbell', nameEn: 'Dumbbell', nameDe: 'Kurzhantel', icon: '🏋️'),
+    const Equipment(id: 'barbell', nameEn: 'Barbell', nameDe: 'Langhantel', icon: '🏋️‍♂️'),
+    const Equipment(id: 'kettlebell', nameEn: 'Kettlebell', nameDe: 'Kettlebell', icon: '🔔'),
+    const Equipment(id: 'cable', nameEn: 'Cable Machine', nameDe: 'Kabelzug', icon: '🔌'),
+    const Equipment(id: 'machine', nameEn: 'Machine', nameDe: 'Gerät', icon: '🏭'),
+    const Equipment(id: 'resistance_band', nameEn: 'Resistance Band', nameDe: 'Widerstandsband', icon: '🎗️'),
+    const Equipment(id: 'pull_up_bar', nameEn: 'Pull-up Bar', nameDe: 'Klimmzugstange', icon: '📏'),
+    const Equipment(id: 'bench', nameEn: 'Bench', nameDe: 'Bank', icon: '🪑'),
+    const Equipment(id: 'ez_bar', nameEn: 'EZ Bar', nameDe: 'SZ-Stange', icon: '〰️'),
   ];
   
   // ============================================================================
@@ -155,7 +154,7 @@ class ExerciseDbService {
   /// Vordefinierte Übungen (keine API nötig für Basis-Funktionalität)
   static final List<Exercise> _builtInExercises = [
     // ===== BRUST (Push) =====
-    Exercise(
+    const Exercise(
       id: 'bench_press',
       nameEn: 'Bench Press',
       nameDe: 'Bankdrücken',
@@ -166,7 +165,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 8,
     ),
-    Exercise(
+    const Exercise(
       id: 'push_ups',
       nameEn: 'Push Ups',
       nameDe: 'Liegestütze',
@@ -177,7 +176,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 7,
     ),
-    Exercise(
+    const Exercise(
       id: 'incline_bench_press',
       nameEn: 'Incline Bench Press',
       nameDe: 'Schrägbankdrücken',
@@ -188,7 +187,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 8,
     ),
-    Exercise(
+    const Exercise(
       id: 'chest_fly',
       nameEn: 'Chest Fly',
       nameDe: 'Fliegende',
@@ -199,7 +198,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 6,
     ),
-    Exercise(
+    const Exercise(
       id: 'dips',
       nameEn: 'Dips',
       nameDe: 'Dips',
@@ -212,7 +211,7 @@ class ExerciseDbService {
     ),
     
     // ===== SCHULTERN (Push) =====
-    Exercise(
+    const Exercise(
       id: 'shoulder_press',
       nameEn: 'Shoulder Press',
       nameDe: 'Schulterdrücken',
@@ -223,7 +222,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 7,
     ),
-    Exercise(
+    const Exercise(
       id: 'lateral_raise',
       nameEn: 'Lateral Raise',
       nameDe: 'Seitheben',
@@ -234,7 +233,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 5,
     ),
-    Exercise(
+    const Exercise(
       id: 'front_raise',
       nameEn: 'Front Raise',
       nameDe: 'Frontheben',
@@ -247,7 +246,7 @@ class ExerciseDbService {
     ),
     
     // ===== TRIZEPS (Push) =====
-    Exercise(
+    const Exercise(
       id: 'tricep_pushdown',
       nameEn: 'Tricep Pushdown',
       nameDe: 'Trizepsdrücken am Kabel',
@@ -258,7 +257,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 5,
     ),
-    Exercise(
+    const Exercise(
       id: 'skull_crushers',
       nameEn: 'Skull Crushers',
       nameDe: 'French Press',
@@ -271,7 +270,7 @@ class ExerciseDbService {
     ),
     
     // ===== RÜCKEN (Pull) =====
-    Exercise(
+    const Exercise(
       id: 'pull_ups',
       nameEn: 'Pull Ups',
       nameDe: 'Klimmzüge',
@@ -282,7 +281,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 9,
     ),
-    Exercise(
+    const Exercise(
       id: 'lat_pulldown',
       nameEn: 'Lat Pulldown',
       nameDe: 'Latzug',
@@ -293,7 +292,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 6,
     ),
-    Exercise(
+    const Exercise(
       id: 'barbell_row',
       nameEn: 'Barbell Row',
       nameDe: 'Langhantelrudern',
@@ -304,7 +303,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 8,
     ),
-    Exercise(
+    const Exercise(
       id: 'dumbbell_row',
       nameEn: 'Dumbbell Row',
       nameDe: 'Kurzhantelrudern',
@@ -315,7 +314,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 7,
     ),
-    Exercise(
+    const Exercise(
       id: 'deadlift',
       nameEn: 'Deadlift',
       nameDe: 'Kreuzheben',
@@ -326,7 +325,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.advanced,
       caloriesPerMinute: 10,
     ),
-    Exercise(
+    const Exercise(
       id: 'face_pulls',
       nameEn: 'Face Pulls',
       nameDe: 'Face Pulls',
@@ -339,7 +338,7 @@ class ExerciseDbService {
     ),
     
     // ===== BIZEPS (Pull) =====
-    Exercise(
+    const Exercise(
       id: 'bicep_curls',
       nameEn: 'Bicep Curls',
       nameDe: 'Bizeps Curls',
@@ -350,7 +349,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 5,
     ),
-    Exercise(
+    const Exercise(
       id: 'hammer_curls',
       nameEn: 'Hammer Curls',
       nameDe: 'Hammer Curls',
@@ -363,7 +362,7 @@ class ExerciseDbService {
     ),
     
     // ===== BEINE =====
-    Exercise(
+    const Exercise(
       id: 'squats',
       nameEn: 'Squats',
       nameDe: 'Kniebeugen',
@@ -374,7 +373,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 9,
     ),
-    Exercise(
+    const Exercise(
       id: 'leg_press',
       nameEn: 'Leg Press',
       nameDe: 'Beinpresse',
@@ -385,7 +384,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 7,
     ),
-    Exercise(
+    const Exercise(
       id: 'lunges',
       nameEn: 'Lunges',
       nameDe: 'Ausfallschritte',
@@ -396,7 +395,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 7,
     ),
-    Exercise(
+    const Exercise(
       id: 'leg_curls',
       nameEn: 'Leg Curls',
       nameDe: 'Beinbeuger',
@@ -407,7 +406,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 5,
     ),
-    Exercise(
+    const Exercise(
       id: 'leg_extension',
       nameEn: 'Leg Extension',
       nameDe: 'Beinstrecken',
@@ -418,7 +417,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 5,
     ),
-    Exercise(
+    const Exercise(
       id: 'romanian_deadlift',
       nameEn: 'Romanian Deadlift',
       nameDe: 'Rumänisches Kreuzheben',
@@ -429,7 +428,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 8,
     ),
-    Exercise(
+    const Exercise(
       id: 'hip_thrust',
       nameEn: 'Hip Thrust',
       nameDe: 'Hip Thrust',
@@ -440,7 +439,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 7,
     ),
-    Exercise(
+    const Exercise(
       id: 'calf_raises',
       nameEn: 'Calf Raises',
       nameDe: 'Wadenheben',
@@ -453,7 +452,7 @@ class ExerciseDbService {
     ),
     
     // ===== CORE =====
-    Exercise(
+    const Exercise(
       id: 'plank',
       nameEn: 'Plank',
       nameDe: 'Unterarmstütz',
@@ -464,7 +463,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 4,
     ),
-    Exercise(
+    const Exercise(
       id: 'crunches',
       nameEn: 'Crunches',
       nameDe: 'Crunches',
@@ -475,7 +474,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.beginner,
       caloriesPerMinute: 5,
     ),
-    Exercise(
+    const Exercise(
       id: 'russian_twist',
       nameEn: 'Russian Twist',
       nameDe: 'Russische Drehung',
@@ -486,7 +485,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 6,
     ),
-    Exercise(
+    const Exercise(
       id: 'leg_raises',
       nameEn: 'Leg Raises',
       nameDe: 'Beinheben',
@@ -497,7 +496,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 6,
     ),
-    Exercise(
+    const Exercise(
       id: 'mountain_climbers',
       nameEn: 'Mountain Climbers',
       nameDe: 'Bergsteiger',
@@ -510,7 +509,7 @@ class ExerciseDbService {
     ),
     
     // ===== CARDIO =====
-    Exercise(
+    const Exercise(
       id: 'burpees',
       nameEn: 'Burpees',
       nameDe: 'Burpees',
@@ -521,7 +520,7 @@ class ExerciseDbService {
       difficulty: ExerciseDifficulty.intermediate,
       caloriesPerMinute: 12,
     ),
-    Exercise(
+    const Exercise(
       id: 'jumping_jacks',
       nameEn: 'Jumping Jacks',
       nameDe: 'Hampelmänner',

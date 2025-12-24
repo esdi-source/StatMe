@@ -1,4 +1,5 @@
 /// Schul-Kalender Screen - Termine für Schulaufgaben, Referate etc.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -189,7 +190,7 @@ class SchoolCalendarScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<SchoolEventType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Art'),
                   items: SchoolEventType.values.map((t) => DropdownMenuItem(
                     value: t,
@@ -199,7 +200,7 @@ class SchoolCalendarScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String?>(
-                  value: selectedSubjectId,
+                  initialValue: selectedSubjectId,
                   decoration: const InputDecoration(labelText: 'Fach (optional)'),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Kein Fach')),

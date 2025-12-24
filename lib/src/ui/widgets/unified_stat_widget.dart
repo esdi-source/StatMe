@@ -1,6 +1,7 @@
 /// Einheitliches Statistik-Widget für alle Datentypen
 /// 
 /// Verwendet konsistentes Design für alle Widget-Größen
+library;
 
 import 'package:flutter/material.dart';
 import '../../models/home_widget_model.dart';

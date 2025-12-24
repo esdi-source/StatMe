@@ -4,6 +4,7 @@
 /// 1. Erstelle eine Klasse die AppWidgetDefinition implementiert
 /// 2. Füge sie hier zur _registerBuiltInWidgets() Methode hinzu
 /// 3. Das Widget erscheint automatisch überall in der App
+library;
 
 import 'package:flutter/foundation.dart';
 import 'widgets.dart';

@@ -1,7 +1,7 @@
 /// Supplement Screen - Nahrungsergänzungsmittel verwalten
 /// Mit Kamera-Scan, Einnahme-Tracking und Wirkstoff-Statistiken
+library;
 
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -1065,7 +1065,7 @@ class _AddSupplementSheetState extends ConsumerState<_AddSupplementSheet> {
 
                   // Kategorie
                   DropdownButtonFormField<SupplementCategory>(
-                    value: _category,
+                    initialValue: _category,
                     decoration: const InputDecoration(
                       labelText: 'Kategorie',
                       border: OutlineInputBorder(),
@@ -1088,7 +1088,7 @@ class _AddSupplementSheetState extends ConsumerState<_AddSupplementSheet> {
 
                   // Form
                   DropdownButtonFormField<SupplementForm>(
-                    value: _form,
+                    initialValue: _form,
                     decoration: const InputDecoration(
                       labelText: 'Einnahmeform',
                       border: OutlineInputBorder(),
@@ -1343,7 +1343,7 @@ class _AddIngredientDialogState extends State<_AddIngredientDialog> {
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _unit,
+                  initialValue: _unit,
                   decoration: const InputDecoration(
                     labelText: 'Einheit',
                   ),

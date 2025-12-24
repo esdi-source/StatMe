@@ -1,5 +1,6 @@
 /// Recipe Screen - Rezepte sammeln, planen, kochen, bewerten
 /// Mit Merkliste, Koch-Verlauf, Statistiken und TheMealDB-Suche
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -524,7 +525,7 @@ class _MealDbDetailSheet extends ConsumerWidget {
                         label: Text('🌍 ${meal.areaGerman}'),
                       ),
                       Chip(
-                        label: Text('✓ Verifiziert'),
+                        label: const Text('✓ Verifiziert'),
                         backgroundColor: Colors.green.shade100,
                       ),
                     ],
@@ -855,7 +856,7 @@ class _StatsTab extends ConsumerWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Icon(Icons.star, color: Colors.amber, size: 32),
+                      const Icon(Icons.star, color: Colors.amber, size: 32),
                       const SizedBox(width: 8),
                       Text(
                         stats.avgRating.toStringAsFixed(1),
@@ -1057,7 +1058,7 @@ class _RecipeCard extends ConsumerWidget {
                           Text('${recipe.cookCount}x gekocht', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                           if (recipe.avgRating != null) ...[
                             const SizedBox(width: 8),
-                            Icon(Icons.star, size: 14, color: Colors.amber),
+                            const Icon(Icons.star, size: 14, color: Colors.amber),
                             const SizedBox(width: 2),
                             Text(recipe.avgRating!.toStringAsFixed(1), style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                           ],
@@ -1124,7 +1125,7 @@ class _AddRecipeSheetState extends ConsumerState<_AddRecipeSheet> {
   final _prepTimeController = TextEditingController();
   final _cookTimeController = TextEditingController();
   RecipeCategory _category = RecipeCategory.other;
-  Set<RecipeTag> _tags = {};
+  final Set<RecipeTag> _tags = {};
   final List<RecipeIngredient> _ingredients = [];
   final List<String> _steps = [];
   String? _imageUrl;
@@ -1224,11 +1225,11 @@ class _AddRecipeSheetState extends ConsumerState<_AddRecipeSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  const Row(
                     children: [
-                      const Icon(Icons.check_circle, color: Colors.green),
-                      const SizedBox(width: 8),
-                      const Text('Rezept gefunden!', style: TextStyle(fontWeight: FontWeight.bold)),
+                      Icon(Icons.check_circle, color: Colors.green),
+                      SizedBox(width: 8),
+                      Text('Rezept gefunden!', style: TextStyle(fontWeight: FontWeight.bold)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -1300,7 +1301,7 @@ class _AddRecipeSheetState extends ConsumerState<_AddRecipeSheet> {
         const SizedBox(height: 12),
         // Kategorie
         DropdownButtonFormField<RecipeCategory>(
-          value: _category,
+          initialValue: _category,
           decoration: const InputDecoration(labelText: 'Kategorie', border: OutlineInputBorder()),
           items: RecipeCategory.values.map((c) => DropdownMenuItem(value: c, child: Text('${c.emoji} ${c.label}'))).toList(),
           onChanged: (v) => setState(() => _category = v ?? RecipeCategory.other),

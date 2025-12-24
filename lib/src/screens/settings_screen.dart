@@ -1,6 +1,6 @@
 /// Settings Screen
+library;
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,9 +8,6 @@ import 'package:image_picker/image_picker.dart';
 import '../core/config/app_config.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
-import '../ui/theme/app_theme.dart';
-import '../ui/theme/design_tokens.dart';
-import '../ui/theme/theme_provider.dart';
 import 'onboarding_screen.dart';
 import 'settings/data_export_screen.dart';
 
@@ -371,10 +368,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Card(
               child: Column(
                 children: [
-                  ListTile(
-                    leading: const Icon(Icons.info),
-                    title: const Text('Version'),
-                    trailing: const Text('1.0.0'),
+                  const ListTile(
+                    leading: Icon(Icons.info),
+                    title: Text('Version'),
+                    trailing: Text('1.0.0'),
                   ),
                   const Divider(height: 1),
                   ListTile(
@@ -625,7 +622,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onChanged: (value) {
                 ref.read(themeStateProvider.notifier).setUseCustomColors(value);
               },
-              activeColor: tokens.primary,
+              activeThumbColor: tokens.primary,
             ),
           ],
         ),

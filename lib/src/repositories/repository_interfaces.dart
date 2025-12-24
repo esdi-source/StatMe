@@ -1,6 +1,7 @@
 /// Abstract Repository Interfaces
 /// These define the contract for data access, implemented by both
 /// demo (in-memory) and production (Supabase) implementations
+library;
 
 import '../models/models.dart';
 
@@ -54,7 +55,9 @@ abstract class SleepRepository {
   Future<SleepLogModel?> getSleep(String userId, DateTime date);
   Future<List<SleepLogModel>> getSleepRange(String userId, DateTime start, DateTime end);
   Future<SleepLogModel> addSleep(SleepLogModel log);
+  Future<SleepLogModel> upsertSleep(SleepLogModel log);
   Future<void> deleteSleep(String logId);
+  Future<void> deleteSleepByDate(String userId, DateTime date);
 }
 
 abstract class MoodRepository {
@@ -137,6 +140,38 @@ abstract class SchoolRepository {
   // Aggregierte Daten
   Future<SubjectProfile> getSubjectProfile(String userId, String subjectId);
 }
+
+// ============================================================================
+// DIGESTION REPOSITORY
+// ============================================================================
+
+abstract class DigestionRepository {
+  Future<List<DigestionEntry>> getEntries(String userId, DateTime date);
+  Future<List<DigestionEntry>> getEntriesRange(String userId, DateTime start, DateTime end);
+  Future<DigestionEntry> addEntry(DigestionEntry entry);
+  Future<DigestionEntry> updateEntry(DigestionEntry entry);
+  Future<void> deleteEntry(String entryId);
+}
+
+// ============================================================================
+// SUPPLEMENTS REPOSITORY
+// ============================================================================
+
+abstract class SupplementsRepository {
+  // Supplements Definitions
+  Future<List<Supplement>> getSupplements(String userId);
+  Future<Supplement> addSupplement(Supplement supplement);
+  Future<Supplement> updateSupplement(Supplement supplement);
+  Future<void> deleteSupplement(String supplementId);
+  
+  // Intakes
+  Future<List<SupplementIntake>> getIntakes(String userId, DateTime date);
+  Future<List<SupplementIntake>> getIntakesRange(String userId, DateTime start, DateTime end);
+  Future<SupplementIntake> addIntake(SupplementIntake intake);
+  Future<SupplementIntake> updateIntake(SupplementIntake intake);
+  Future<void> deleteIntake(String intakeId);
+}
+
 
 // ============================================================================
 // SPORT REPOSITORY

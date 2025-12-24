@@ -1,5 +1,6 @@
 /// Onboarding Screen - Erster App-Start Setup
 /// Klarer Start ohne Überforderung, Nutzer wählt was relevant ist
+library;
 
 import 'dart:math';
 import 'package:flutter/material.dart';
@@ -9,8 +10,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
-import '../ui/theme/theme_provider.dart';
-import '../ui/theme/design_tokens.dart';
 
 /// Wichtigkeitsstufe für Widgets
 enum WidgetImportance {
@@ -602,7 +601,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   setState(() => selection.isSelected = value);
                   HapticFeedback.selectionClick();
                 },
-          activeColor: _selectedColor,
+          activeThumbColor: _selectedColor,
         ),
         children: [
           if (selection.isSelected)
@@ -631,7 +630,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       setState(() => selection.importance = value.first);
                       HapticFeedback.selectionClick();
                     },
-                    style: ButtonStyle(
+                    style: const ButtonStyle(
                       visualDensity: VisualDensity.compact,
                     ),
                   ),

@@ -6,6 +6,7 @@
 /// - Letzte Sporteinheiten
 /// - Gewichtstrend
 /// - Schnellzugriff auf alle Bereiche
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -765,7 +766,7 @@ class _SportScreenState extends ConsumerState<SportScreen> {
     if (hours > 0) {
       return '${hours}h ${minutes}m';
     }
-    return '${minutes} min';
+    return '$minutes min';
   }
 
   void _navigateTo(Widget screen) {

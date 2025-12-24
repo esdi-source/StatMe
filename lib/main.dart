@@ -1,5 +1,6 @@
 /// StatMe App Entry Point
 /// Health and productivity tracking application
+library;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';

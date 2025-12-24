@@ -1,4 +1,5 @@
 /// Noten Screen - Alle Noten mit Trend und Durchschnitt
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -162,20 +163,20 @@ class GradesScreen extends ConsumerWidget {
 
   Widget _buildTrendIcon(int trend, DesignTokens tokens) {
     if (trend == 1) {
-      return Row(
+      return const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.trending_up, color: Colors.green, size: 16),
-          const SizedBox(width: 2),
+          SizedBox(width: 2),
           Text('steigend', style: TextStyle(fontSize: 11, color: Colors.green)),
         ],
       );
     } else if (trend == -1) {
-      return Row(
+      return const Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.trending_down, color: Colors.red, size: 16),
-          const SizedBox(width: 2),
+          SizedBox(width: 2),
           Text('fallend', style: TextStyle(fontSize: 11, color: Colors.red)),
         ],
       );
@@ -242,7 +243,7 @@ class GradesScreen extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedSubjectId,
+                  initialValue: selectedSubjectId,
                   decoration: const InputDecoration(labelText: 'Fach'),
                   items: subjects.map((s) => DropdownMenuItem(
                     value: s.id,
@@ -252,7 +253,7 @@ class GradesScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<GradeType>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: const InputDecoration(labelText: 'Art'),
                   items: GradeType.values.map((t) => DropdownMenuItem(
                     value: t,
@@ -272,9 +273,9 @@ class GradesScreen extends ConsumerWidget {
                   label: '$points',
                   onChanged: (value) => setState(() => points = value.round()),
                 ),
-                Row(
+                const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
+                  children: [
                     Text('0', style: TextStyle(fontSize: 12)),
                     Text('15', style: TextStyle(fontSize: 12)),
                   ],
@@ -287,7 +288,7 @@ class GradesScreen extends ConsumerWidget {
                     const Text('Gewichtung: '),
                     Expanded(
                       child: DropdownButtonFormField<double>(
-                        value: weight,
+                        initialValue: weight,
                         items: [0.5, 1.0, 1.5, 2.0, 3.0].map((w) => DropdownMenuItem(
                           value: w,
                           child: Text('×$w'),

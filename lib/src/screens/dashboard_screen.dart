@@ -1,5 +1,6 @@
 /// Dashboard Screen - iOS-Style Home Screen mit Edit-Mode
 /// Long-Press aktiviert Bearbeitungsmodus, Drag & Drop, Widget-Anpassung
+library;
 
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -8,7 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
-import '../models/home_widget_model.dart';
 import '../core/config/app_config.dart';
 import '../ui/widgets/color_picker_dialog.dart';
 import '../ui/widgets/unified_stat_widget.dart';
@@ -1207,8 +1207,9 @@ class _TodosWidget extends ConsumerWidget {
   Widget _buildContent(List<dynamic> todayTodos, Color color) {
     // Dynamische Anzahl der angezeigten Items je nach Größe
     int maxItems = 0;
-    if (size == HomeWidgetSize.small) maxItems = 0;
-    else if (size == HomeWidgetSize.medium || size == HomeWidgetSize.tall) maxItems = 2;
+    if (size == HomeWidgetSize.small) {
+      maxItems = 0;
+    } else if (size == HomeWidgetSize.medium || size == HomeWidgetSize.tall) maxItems = 2;
     else if (size == HomeWidgetSize.large) maxItems = 4;
     else if (size.isLarge) maxItems = 6;
     else maxItems = 3;
@@ -1692,7 +1693,7 @@ class _HairWidget extends ConsumerWidget {
             ),
             if (todayEntry != null) ...[
               const Spacer(),
-              Icon(Icons.check_circle, size: 16, color: Colors.green),
+              const Icon(Icons.check_circle, size: 16, color: Colors.green),
             ],
           ],
         ),
@@ -1873,7 +1874,7 @@ class _SupplementsWidget extends ConsumerWidget {
             ),
             if (takenCount == active.length && active.isNotEmpty) ...[
               const Spacer(),
-              Icon(Icons.check_circle, size: 16, color: Colors.green),
+              const Icon(Icons.check_circle, size: 16, color: Colors.green),
             ],
           ],
         ),
@@ -2201,9 +2202,9 @@ class _HouseholdWidget extends ConsumerWidget {
               shape: BoxShape.circle,
             ),
             child: overdueCount > 0
-                ? Text('$overdueCount', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red))
+                ? Text('$overdueCount', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.red))
                 : todayCompleted > 0
-                    ? Text('✓$todayCompleted', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green))
+                    ? Text('✓$todayCompleted', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.green))
                     : Icon(Icons.cleaning_services, size: 20, color: color),
           ),
           const SizedBox(height: 4),
@@ -2621,7 +2622,7 @@ class _DigestionWidget extends ConsumerWidget {
             ),
             if (todayEntries.isNotEmpty) ...[
               const Spacer(),
-              Icon(Icons.check_circle, size: 16, color: Colors.green),
+              const Icon(Icons.check_circle, size: 16, color: Colors.green),
             ],
           ],
         ),

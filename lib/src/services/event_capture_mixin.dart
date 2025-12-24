@@ -2,6 +2,7 @@
 /// 
 /// Dieses Mixin wird von Repositories verwendet, um automatisch
 /// alle Datenänderungen im Event-Log zu erfassen.
+library;
 
 import 'package:flutter/foundation.dart';
 import 'supabase_data_service.dart';

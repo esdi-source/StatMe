@@ -1,8 +1,8 @@
 /// Sport Stats Screen - Statistiken und Übersicht nach Sportart
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../../providers/providers.dart';
 import '../../models/models.dart';
 

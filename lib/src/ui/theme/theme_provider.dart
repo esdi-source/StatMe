@@ -7,6 +7,7 @@
 /// - Benutzerdefinierte Farben
 /// - Persistente Speicherung mit SharedPreferences
 /// - Live-Updates an alle Widgets
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

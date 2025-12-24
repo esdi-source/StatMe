@@ -1,5 +1,6 @@
 /// In-Memory Database for Demo Mode
 /// Stores all data locally without any external connections
+library;
 
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
@@ -25,6 +26,9 @@ class InMemoryDatabase {
   final List<StepsLogModel> _stepsLogs = [];
   final List<SleepLogModel> _sleepLogs = [];
   final List<MoodLogModel> _moodLogs = [];
+  final List<DigestionEntry> _digestionEntries = [];
+  final List<Supplement> _supplements = [];
+  final List<SupplementIntake> _supplementIntakes = [];
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -57,6 +61,9 @@ class InMemoryDatabase {
     _stepsLogs.clear();
     _sleepLogs.clear();
     _moodLogs.clear();
+    _digestionEntries.clear();
+    _supplements.clear();
+    _supplementIntakes.clear();
   }
 
   // Auth
@@ -421,5 +428,115 @@ class InMemoryDatabase {
         readMinutesThisWeek: updatedMinutes,
       );
     }
+  }
+
+  // Digestion
+  List<DigestionEntry> getDigestionEntries(String userId, DateTime date) {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    
+    return _digestionEntries.where((entry) => 
+      entry.oderId == userId && 
+      entry.timestamp.isAfter(startOfDay) && 
+      entry.timestamp.isBefore(endOfDay)
+    ).toList();
+  }
+
+  List<DigestionEntry> getDigestionEntriesRange(String userId, DateTime start, DateTime end) {
+    return _digestionEntries.where((entry) => 
+      entry.oderId == userId && 
+      entry.timestamp.isAfter(start) && 
+      entry.timestamp.isBefore(end)
+    ).toList();
+  }
+
+  Future<DigestionEntry> addDigestionEntry(DigestionEntry entry) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final newEntry = entry.copyWith(id: _uuid.v4());
+    _digestionEntries.add(newEntry);
+    return newEntry;
+  }
+
+  Future<DigestionEntry> updateDigestionEntry(DigestionEntry entry) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _digestionEntries.indexWhere((e) => e.id == entry.id);
+    if (index != -1) {
+      _digestionEntries[index] = entry;
+      return entry;
+    }
+    throw Exception('Entry not found');
+  }
+
+  Future<void> deleteDigestionEntry(String id) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    _digestionEntries.removeWhere((e) => e.id == id);
+  }
+
+  // Supplements
+  List<Supplement> getSupplements(String userId) {
+    return _supplements.where((s) => s.userId == userId).toList();
+  }
+
+  Future<Supplement> addSupplement(Supplement supplement) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final newSupplement = supplement.copyWith(id: _uuid.v4());
+    _supplements.add(newSupplement);
+    return newSupplement;
+  }
+
+  Future<Supplement> updateSupplement(Supplement supplement) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _supplements.indexWhere((s) => s.id == supplement.id);
+    if (index != -1) {
+      _supplements[index] = supplement;
+      return supplement;
+    }
+    throw Exception('Supplement not found');
+  }
+
+  Future<void> deleteSupplement(String id) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    _supplements.removeWhere((s) => s.id == id);
+  }
+
+  List<SupplementIntake> getSupplementIntakes(String userId, DateTime date) {
+    final startOfDay = DateTime(date.year, date.month, date.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+    
+    return _supplementIntakes.where((intake) => 
+      intake.oderId == userId && 
+      intake.timestamp.isAfter(startOfDay) && 
+      intake.timestamp.isBefore(endOfDay)
+    ).toList();
+  }
+
+  List<SupplementIntake> getSupplementIntakesRange(String userId, DateTime start, DateTime end) {
+    return _supplementIntakes.where((intake) => 
+      intake.oderId == userId && 
+      intake.timestamp.isAfter(start) && 
+      intake.timestamp.isBefore(end)
+    ).toList();
+  }
+
+  Future<SupplementIntake> addSupplementIntake(SupplementIntake intake) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final newIntake = intake.copyWith(id: _uuid.v4());
+    _supplementIntakes.add(newIntake);
+    return newIntake;
+  }
+
+  Future<SupplementIntake> updateSupplementIntake(SupplementIntake intake) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    final index = _supplementIntakes.indexWhere((i) => i.id == intake.id);
+    if (index != -1) {
+      _supplementIntakes[index] = intake;
+      return intake;
+    }
+    throw Exception('Intake not found');
+  }
+
+  Future<void> deleteSupplementIntake(String id) async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    _supplementIntakes.removeWhere((i) => i.id == id);
   }
 }

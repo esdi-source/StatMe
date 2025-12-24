@@ -1,4 +1,5 @@
 /// Notenrechner Screen - Berechne benötigte Noten für Wunschschnitt
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -51,7 +52,7 @@ class _GradeCalculatorScreenState extends ConsumerState<GradeCalculatorScreen> {
                     Text('Fach auswählen', style: TextStyle(color: tokens.textSecondary)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String?>(
-                      value: _selectedSubjectId,
+                      initialValue: _selectedSubjectId,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -417,7 +418,7 @@ class _GradeCalculatorScreenState extends ConsumerState<GradeCalculatorScreen> {
               const SizedBox(height: 12),
               // Typ
               DropdownButtonFormField<GradeType>(
-                value: selectedType,
+                initialValue: selectedType,
                 decoration: const InputDecoration(labelText: 'Art'),
                 items: GradeType.values.map((t) => DropdownMenuItem(
                   value: t,

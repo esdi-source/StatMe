@@ -1,4 +1,5 @@
 /// Sport Timer Screen - Timer für Sporteinheiten
+library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';

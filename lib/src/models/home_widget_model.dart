@@ -158,9 +158,9 @@ class HomeScreenConfig extends Equatable {
       oderId: oderId,
       gridColumns: 4,
       updatedAt: DateTime.now(),
-      widgets: [
+      widgets: const [
         // Erste Reihe: Begrüßung (volle Breite)
-        const HomeWidget(
+        HomeWidget(
           id: 'greeting_1',
           type: HomeWidgetType.greeting,
           size: HomeWidgetSize.wide,
@@ -168,28 +168,28 @@ class HomeScreenConfig extends Equatable {
           gridY: 0,
         ),
         // Zweite Reihe: 4 kleine Widgets
-        const HomeWidget(
+        HomeWidget(
           id: 'calories_1',
           type: HomeWidgetType.calories,
           size: HomeWidgetSize.small,
           gridX: 0,
           gridY: 1,
         ),
-        const HomeWidget(
+        HomeWidget(
           id: 'water_1',
           type: HomeWidgetType.water,
           size: HomeWidgetSize.small,
           gridX: 1,
           gridY: 1,
         ),
-        const HomeWidget(
+        HomeWidget(
           id: 'steps_1',
           type: HomeWidgetType.steps,
           size: HomeWidgetSize.small,
           gridX: 2,
           gridY: 1,
         ),
-        const HomeWidget(
+        HomeWidget(
           id: 'sleep_1',
           type: HomeWidgetType.sleep,
           size: HomeWidgetSize.small,
@@ -197,14 +197,14 @@ class HomeScreenConfig extends Equatable {
           gridY: 1,
         ),
         // Dritte Reihe: Stimmung (mittel) + Bücher (mittel)
-        const HomeWidget(
+        HomeWidget(
           id: 'mood_1',
           type: HomeWidgetType.mood,
           size: HomeWidgetSize.medium,
           gridX: 0,
           gridY: 2,
         ),
-        const HomeWidget(
+        HomeWidget(
           id: 'books_1',
           type: HomeWidgetType.books,
           size: HomeWidgetSize.medium,
@@ -212,7 +212,7 @@ class HomeScreenConfig extends Equatable {
           gridY: 2,
         ),
         // Vierte Reihe: ToDos (groß)
-        const HomeWidget(
+        HomeWidget(
           id: 'todos_1',
           type: HomeWidgetType.todos,
           size: HomeWidgetSize.large,

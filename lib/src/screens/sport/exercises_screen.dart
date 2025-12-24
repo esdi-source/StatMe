@@ -4,6 +4,7 @@
 /// - Muskelgruppe
 /// - Kategorie (Push/Pull/Legs/Core)
 /// - Equipment
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

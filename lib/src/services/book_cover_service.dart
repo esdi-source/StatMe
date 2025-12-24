@@ -6,6 +6,7 @@
 /// 2. Google Books API
 /// 3. Open Library Covers API
 /// 4. Placeholder
+library;
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;

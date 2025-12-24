@@ -4,8 +4,8 @@
 /// und konvertiert sie in DataPoints für die Statistik-Analyse.
 /// 
 /// WICHTIG: Neue Widgets werden automatisch erkannt - keine Anpassung nötig!
+library;
 
-import 'dart:convert';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';
@@ -35,12 +35,12 @@ class EventLogStatisticsService {
   static final Map<String, List<EventMetricConfig>> _widgetMetricConfigs = {
     // Sport Widget
     'sport': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'duration_minutes',
         payloadField: 'durationMinutes',
         displayLabel: 'Trainingsdauer',
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'calories_burned',
         payloadField: 'caloriesBurned',
         displayLabel: 'Verbrannte Kalorien',
@@ -55,17 +55,17 @@ class EventLogStatisticsService {
     
     // Books Widget
     'books': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'pages_read',
         payloadField: 'pagesRead',
         displayLabel: 'Gelesene Seiten',
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'reading_minutes',
         payloadField: 'durationMinutes',
         displayLabel: 'Lesezeit',
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'current_page',
         payloadField: 'currentPage',
         displayLabel: 'Aktuelle Seite',
@@ -74,12 +74,12 @@ class EventLogStatisticsService {
     
     // School Widget
     'school': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'grade_value',
         payloadField: 'value',
         displayLabel: 'Note',
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'study_minutes',
         payloadField: 'durationMinutes',
         displayLabel: 'Lernzeit',
@@ -88,17 +88,17 @@ class EventLogStatisticsService {
     
     // Skin Widget
     'skin': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'condition',
         payloadField: 'overallCondition',
         displayLabel: 'Hautzustand',
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'oiliness',
         payloadField: 'oiliness',
         displayLabel: 'Fettigkeit',
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'hydration',
         payloadField: 'hydration',
         displayLabel: 'Feuchtigkeit',
@@ -107,7 +107,7 @@ class EventLogStatisticsService {
     
     // Kalorien Widget
     'calories': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'total_calories',
         payloadField: 'calories',
         displayLabel: 'Kalorien',
@@ -116,7 +116,7 @@ class EventLogStatisticsService {
     
     // Wasser Widget
     'water': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'total_ml',
         payloadField: 'amountMl',
         displayLabel: 'Wasser (ml)',
@@ -125,7 +125,7 @@ class EventLogStatisticsService {
     
     // Schritte Widget
     'steps': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'step_count',
         payloadField: 'steps',
         displayLabel: 'Schritte',
@@ -134,12 +134,12 @@ class EventLogStatisticsService {
     
     // Schlaf Widget
     'sleep': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'duration_hours',
         payloadField: 'durationHours',
         displayLabel: 'Schlafdauer',
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'quality',
         payloadField: 'quality',
         displayLabel: 'Schlafqualität',
@@ -148,7 +148,7 @@ class EventLogStatisticsService {
     
     // Gewicht Widget
     'weight': [
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'weight_kg',
         payloadField: 'weight',
         displayLabel: 'Gewicht (kg)',
@@ -163,7 +163,7 @@ class EventLogStatisticsService {
         displayLabel: 'Eingenommen',
         valueExtractor: (v) => v != null ? (v as num).toDouble() : 1.0,
       ),
-      EventMetricConfig(
+      const EventMetricConfig(
         metricName: 'dosage',
         payloadField: 'dosage',
         displayLabel: 'Dosierung',
@@ -499,7 +499,7 @@ class EventLogStatisticsService {
             metricName: 'duration_minutes',
             value: (row['duration_minutes'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
         
@@ -509,7 +509,7 @@ class EventLogStatisticsService {
             metricName: 'calories_burned',
             value: (row['calories_burned'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -556,7 +556,7 @@ class EventLogStatisticsService {
             metricName: 'pages_read',
             value: (row['pages_read'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
         
@@ -566,7 +566,7 @@ class EventLogStatisticsService {
             metricName: 'reading_minutes',
             value: (row['duration_minutes'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -629,7 +629,7 @@ class EventLogStatisticsService {
             metricName: 'study_minutes',
             value: (row['duration_minutes'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -671,7 +671,7 @@ class EventLogStatisticsService {
             metricName: 'condition',
             value: (row['overall_condition'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -713,7 +713,7 @@ class EventLogStatisticsService {
             metricName: 'weight_kg',
             value: (row['weight'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -761,7 +761,7 @@ class EventLogStatisticsService {
           metricName: 'total_ml',
           value: entry.value.toDouble(),
           date: date,
-          metadata: {'source': 'direct'},
+          metadata: const {'source': 'direct'},
         ));
       }
       
@@ -814,7 +814,7 @@ class EventLogStatisticsService {
             metricName: 'duration_hours',
             value: durationHours,
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
         
@@ -824,7 +824,7 @@ class EventLogStatisticsService {
             metricName: 'quality',
             value: (row['quality'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -866,7 +866,7 @@ class EventLogStatisticsService {
             metricName: 'step_count',
             value: (row['steps'] as num).toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -914,7 +914,7 @@ class EventLogStatisticsService {
           metricName: 'total_calories',
           value: entry.value,
           date: date,
-          metadata: {'source': 'direct'},
+          metadata: const {'source': 'direct'},
         ));
       }
       
@@ -964,7 +964,7 @@ class EventLogStatisticsService {
           metricName: 'entry_count',
           value: entries.length.toDouble(),
           date: date,
-          metadata: {'source': 'direct'},
+          metadata: const {'source': 'direct'},
         ));
         
         // Durchschnittliche Konsistenz pro Tag (wenn vorhanden)
@@ -978,7 +978,7 @@ class EventLogStatisticsService {
             metricName: 'consistency',
             value: consistencies.reduce((a, b) => a + b) / consistencies.length,
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
         
@@ -990,7 +990,7 @@ class EventLogStatisticsService {
             metricName: 'has_pain',
             value: painCount.toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
         
@@ -1002,7 +1002,7 @@ class EventLogStatisticsService {
             metricName: 'has_bloating',
             value: bloatingCount.toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
         
@@ -1014,7 +1014,7 @@ class EventLogStatisticsService {
             metricName: 'has_urgency',
             value: urgencyCount.toDouble(),
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }
@@ -1065,7 +1065,7 @@ class EventLogStatisticsService {
           metricName: 'taken_count',
           value: intakes.length.toDouble(),
           date: date,
-          metadata: {'source': 'direct'},
+          metadata: const {'source': 'direct'},
         ));
         
         // Gesamtdosierung pro Tag
@@ -1079,7 +1079,7 @@ class EventLogStatisticsService {
             metricName: 'dosage',
             value: totalDosage,
             date: date,
-            metadata: {'source': 'direct'},
+            metadata: const {'source': 'direct'},
           ));
         }
       }

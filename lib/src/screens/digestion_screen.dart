@@ -1,5 +1,6 @@
 /// Verdauung / Toilette Screen
 /// Dokumentiert Stuhlgang und Toilettengänge mit Verknüpfungen zu Essen, Trinken und Stimmung
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +8,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
-import '../ui/theme/design_tokens.dart';
 
 class DigestionScreen extends ConsumerStatefulWidget {
   const DigestionScreen({super.key});
@@ -579,7 +579,7 @@ class _DigestionScreenState extends ConsumerState<DigestionScreen> {
               // Statistik-Karten
               Row(
                 children: [
-                  Expanded(child: _buildStatCard('📊', '${avgPerDay.toStringAsFixed(1)}', 'Ø pro Tag', tokens)),
+                  Expanded(child: _buildStatCard('📊', avgPerDay.toStringAsFixed(1), 'Ø pro Tag', tokens)),
                   const SizedBox(width: 12),
                   Expanded(child: _buildStatCard('🎯', avgConsistency?.toStringAsFixed(1) ?? '-', 'Ø Konsistenz', tokens)),
                 ],

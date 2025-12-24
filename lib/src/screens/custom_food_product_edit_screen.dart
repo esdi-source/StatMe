@@ -1,4 +1,5 @@
 /// Custom Food Product Edit Screen - Für eigene Produkte/Rezepte
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -320,7 +321,7 @@ class _CustomFoodProductEditScreenState extends ConsumerState<CustomFoodProductE
                             ),
                             _NutrientSummary(
                               label: 'Kalorien',
-                              value: '${_ingredients.fold<double>(0, (s, i) => s + i.calories).toStringAsFixed(0)}',
+                              value: _ingredients.fold<double>(0, (s, i) => s + i.calories).toStringAsFixed(0),
                               color: Colors.orange,
                             ),
                           ],

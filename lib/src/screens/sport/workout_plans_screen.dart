@@ -4,6 +4,7 @@
 /// - Übersicht aller Pläne
 /// - Plan-Builder mit Übungsauswahl
 /// - Schnellstart für Training
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -656,7 +657,7 @@ class _PlanBuilderScreenState extends ConsumerState<_PlanBuilderScreen> {
           
           // Typ
           DropdownButtonFormField<WorkoutPlanType>(
-            value: _type,
+            initialValue: _type,
             decoration: InputDecoration(
               labelText: 'Typ',
               border: OutlineInputBorder(

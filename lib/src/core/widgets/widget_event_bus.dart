@@ -12,6 +12,7 @@
 ///    WidgetEventBus.instance.on<TimerSessionCompletedEvent>((event) {
 ///      // Handle event
 ///    });
+library;
 
 import 'dart:async';
 import 'package:flutter/foundation.dart';

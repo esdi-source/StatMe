@@ -1,5 +1,6 @@
 /// Book Detail Screen - View and edit book details with extended ratings
 /// Features: 5-star overall rating + optional detailed categories
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

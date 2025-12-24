@@ -2,6 +2,7 @@
 /// 
 /// Zentraler Service für alle Widget-Daten auf Supabase.
 /// Ersetzt SharedPreferences-basierte Speicherung durch persistente Cloud-Speicherung.
+library;
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';

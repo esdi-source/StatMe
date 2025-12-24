@@ -1,4 +1,5 @@
 /// Food Screen - Calorie tracking with favorites and custom products
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -376,7 +377,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
                 Column(
                   children: [
                     Text(
-                      '${totalCalories.toStringAsFixed(0)}',
+                      totalCalories.toStringAsFixed(0),
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                             color: Colors.orange,
                             fontWeight: FontWeight.bold,
@@ -401,7 +402,7 @@ class _FoodScreenState extends ConsumerState<FoodScreen> with SingleTickerProvid
                 Column(
                   children: [
                     Text(
-                      '${(2000 - totalCalories).toStringAsFixed(0)}',
+                      (2000 - totalCalories).toStringAsFixed(0),
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                             color: totalCalories > 2000 ? Colors.red : Colors.green,
                             fontWeight: FontWeight.bold,

@@ -1,6 +1,7 @@
 /// OpenFoodFacts API Service
 /// Ermöglicht das Abrufen von Produktdaten über Barcode-Scan
 /// API Dokumentation: https://openfoodfacts.github.io/openfoodfacts-server/api/
+library;
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;

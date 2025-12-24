@@ -1,5 +1,6 @@
 /// Haarpflege Verlauf Screen
 /// Zeigt alle Haarpflege-Einträge als Kalender/Liste
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

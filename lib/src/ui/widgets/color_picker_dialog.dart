@@ -1,5 +1,6 @@
 /// Freier Farbwähler für Widgets
 /// Schöne, intuitive Farbauswahl ohne Tabs
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

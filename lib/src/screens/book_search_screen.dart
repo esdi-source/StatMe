@@ -1,4 +1,5 @@
 /// Book Search Screen - Search and add books using Google Books API
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -334,7 +335,7 @@ class _BookSearchScreenState extends ConsumerState<BookSearchScreen> {
       Navigator.pop(context); // Close dialog
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('\"${book.title}\" zur ${status.label}-Liste hinzugefügt'),
+          content: Text('"${book.title}" zur ${status.label}-Liste hinzugefügt'),
         ),
       );
     }

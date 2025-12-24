@@ -1,13 +1,12 @@
 /// Main App Widget
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/config/app_config.dart';
 import '../providers/providers.dart';
 import 'theme/app_theme.dart';
-import 'theme/theme_provider.dart';
 import '../screens/screens.dart';
-import '../screens/onboarding_screen.dart';
 
 class StatMeApp extends ConsumerWidget {
   const StatMeApp({super.key});

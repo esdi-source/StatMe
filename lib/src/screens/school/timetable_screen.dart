@@ -1,4 +1,5 @@
 /// Stundenplan Screen - Wöchentliche Übersicht
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -171,7 +172,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedSubjectId,
+                  initialValue: selectedSubjectId,
                   decoration: const InputDecoration(labelText: 'Fach'),
                   items: subjects.map((s) => DropdownMenuItem(
                     value: s.id,
@@ -181,7 +182,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<Weekday>(
-                  value: selectedDay,
+                  initialValue: selectedDay,
                   decoration: const InputDecoration(labelText: 'Tag'),
                   items: _weekdays.map((d) => DropdownMenuItem(
                     value: d,
@@ -191,7 +192,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
-                  value: lessonNumber,
+                  initialValue: lessonNumber,
                   decoration: const InputDecoration(labelText: 'Stunde'),
                   items: List.generate(12, (i) => DropdownMenuItem(
                     value: i + 1,
@@ -287,7 +288,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
-                  value: selectedSubjectId,
+                  initialValue: selectedSubjectId,
                   decoration: const InputDecoration(labelText: 'Fach'),
                   items: subjects.map((s) => DropdownMenuItem(
                     value: s.id,
@@ -297,7 +298,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<Weekday>(
-                  value: selectedDay,
+                  initialValue: selectedDay,
                   decoration: const InputDecoration(labelText: 'Tag'),
                   items: _weekdays.map((d) => DropdownMenuItem(
                     value: d,
@@ -307,7 +308,7 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
-                  value: lessonNumber,
+                  initialValue: lessonNumber,
                   decoration: const InputDecoration(labelText: 'Stunde'),
                   items: List.generate(12, (i) => DropdownMenuItem(
                     value: i + 1,

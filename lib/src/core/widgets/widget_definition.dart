@@ -6,6 +6,7 @@
 /// - In Statistiken integriert zu werden
 /// - Mit anderen Widgets zu interagieren
 /// - In Einstellungen konfiguriert zu werden
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

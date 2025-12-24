@@ -5,6 +5,7 @@
 /// - Wochenstatistik
 /// - Letzte Ereignisse
 /// - Produkte
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -206,11 +207,11 @@ class HairScreen extends ConsumerWidget {
                         color: Colors.green.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(Icons.check_circle, size: 16, color: Colors.green),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text(
                             'Eingetragen',
                             style: TextStyle(

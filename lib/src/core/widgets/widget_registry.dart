@@ -9,6 +9,7 @@
 /// 1. Widget-Definition erstellen (extends AppWidgetDefinition)
 /// 2. In der Registry registrieren: WidgetRegistry.register(myWidget)
 /// 3. Widget ist automatisch überall verfügbar
+library;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'widget_definition.dart';

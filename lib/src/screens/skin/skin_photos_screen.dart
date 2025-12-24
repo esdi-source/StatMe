@@ -1,4 +1,5 @@
 /// Skin Photos Screen - Hautfotos verwalten (nur zur persönlichen Dokumentation)
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

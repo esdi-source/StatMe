@@ -7,6 +7,7 @@
 /// - Motivation (optional)
 /// - Innere Ruhe (optional)
 /// - Kontext-Notiz
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

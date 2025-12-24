@@ -9,6 +9,7 @@
 /// - Abstände (Spacing)
 /// 
 /// Widgets referenzieren diese Tokens statt fester Werte.
+library;
 
 import 'package:flutter/material.dart';
 

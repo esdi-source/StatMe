@@ -1,5 +1,6 @@
 /// StatMe App Configuration
 /// Manages demo mode and environment settings
+library;
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -34,7 +35,7 @@ class AppConfig {
   
   static bool get isDemoMode => instance.demoMode;
   
-  static Future<void> initialize() async {
+  static Future<void> initialize({bool? forceDemoMode}) async {
     if (_instance != null) return;
     
     bool envLoaded = false;
@@ -49,9 +50,9 @@ class AppConfig {
     // Wenn .env geladen wurde, verwende die Werte daraus
     // Ansonsten verwende die Production Fallbacks (NICHT Demo-Modus!)
     final envDemoMode = dotenv.env['DEMO_MODE']?.toLowerCase();
-    final useDemoMode = envLoaded 
+    final useDemoMode = forceDemoMode ?? (envLoaded 
         ? (envDemoMode == 'true' || envDemoMode == '1' || envDemoMode == 'yes')
-        : false; // Kein Demo-Modus wenn keine .env (= Production Build)
+        : false); // Kein Demo-Modus wenn keine .env (= Production Build)
     
     _instance = AppConfig._()
       ..demoMode = useDemoMode

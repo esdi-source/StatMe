@@ -4,6 +4,7 @@
 /// die bisher nur Demo-Implementierungen hatten.
 /// 
 /// Alle Daten werden benutzerspezifisch auf Supabase gespeichert.
+library;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/models.dart';

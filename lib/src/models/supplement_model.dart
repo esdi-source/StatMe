@@ -265,7 +265,7 @@ class Supplement extends Equatable {
   double getIngredientAmount(String ingredientName, double dosage) {
     final ingredient = ingredients.firstWhere(
       (i) => i.name.toLowerCase() == ingredientName.toLowerCase(),
-      orElse: () => Ingredient(id: '', name: '', amountPerUnit: 0, unit: ''),
+      orElse: () => const Ingredient(id: '', name: '', amountPerUnit: 0, unit: ''),
     );
     return ingredient.amountPerUnit * dosage;
   }

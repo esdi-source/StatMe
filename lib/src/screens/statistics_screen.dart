@@ -11,6 +11,7 @@
 /// - Und alle anderen Widgets
 /// 
 /// WICHTIG: Keine Diagnosen, keine Empfehlungen, nur neutrale Beobachtungen
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -343,11 +344,11 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> with Single
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
-              const Icon(Icons.analytics, color: Colors.white, size: 24),
-              const SizedBox(width: 8),
-              const Text(
+              Icon(Icons.analytics, color: Colors.white, size: 24),
+              SizedBox(width: 8),
+              Text(
                 'Deine Statistik',
                 style: TextStyle(
                   color: Colors.white,

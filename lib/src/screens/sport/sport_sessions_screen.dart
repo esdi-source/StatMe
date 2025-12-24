@@ -1,4 +1,5 @@
 /// Sport Sessions Screen - Alle Sporteinheiten anzeigen und verwalten
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -309,7 +310,7 @@ class _SportSessionsScreenState extends ConsumerState<SportSessionsScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.local_fire_department, size: 12, color: Colors.orange),
+                      const Icon(Icons.local_fire_department, size: 12, color: Colors.orange),
                       const SizedBox(width: 2),
                       Text(
                         '${session.caloriesBurned} kcal',

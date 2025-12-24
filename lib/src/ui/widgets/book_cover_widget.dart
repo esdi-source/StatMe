@@ -1,5 +1,6 @@
 /// Book Cover Widget
 /// Intelligentes Cover-Widget mit Ladezustand, Fallback und Retry-Option
+library;
 
 import 'dart:io';
 import 'package:flutter/material.dart';

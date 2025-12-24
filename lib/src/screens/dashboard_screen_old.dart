@@ -1,11 +1,11 @@
 /// Dashboard Screen - Overview of all metrics
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/providers.dart';
 import '../models/models.dart';
-import '../services/in_memory_database.dart';
 import '../core/config/app_config.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -148,7 +148,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                       _StatCard(
                         title: 'Wasser',
-                        value: '${totalWater} ml',
+                        value: '$totalWater ml',
                         icon: Icons.water_drop,
                         color: Colors.blue,
                         progress: totalWater / 2500,

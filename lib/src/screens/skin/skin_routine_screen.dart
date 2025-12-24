@@ -1,4 +1,5 @@
 /// Skin Routine Screen - Pflegeroutine verwalten
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -193,15 +194,13 @@ class _SkinRoutineScreenState extends ConsumerState<SkinRoutineScreen> with Sing
               decoration: isCompleted ? TextDecoration.lineThrough : null,
             ),
           ),
-          subtitle: step.name != null
-              ? Text(
+          subtitle: Text(
                   'Mit Produkt verknüpft',
                   style: TextStyle(
                     color: tokens.textDisabled,
                     fontSize: 12,
                   ),
-                )
-              : null,
+                ),
           trailing: ReorderableDragStartListener(
             index: 0,
             child: Icon(Icons.drag_handle, color: tokens.textDisabled),

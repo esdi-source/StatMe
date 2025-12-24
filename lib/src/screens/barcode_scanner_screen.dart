@@ -1,4 +1,5 @@
 /// Barcode Scanner Screen - Camera-based barcode scanning for PWA
+library;
 
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';

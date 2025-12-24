@@ -1,4 +1,5 @@
 /// Food Log Edit Screen - Add food entries with product search
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

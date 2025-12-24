@@ -9,6 +9,7 @@
 /// - Muster und Trends
 /// 
 /// WICHTIG: Keine Diagnosen, keine Empfehlungen, nur neutrale Beobachtungen
+library;
 
 import 'dart:math' as math;
 import '../models/models.dart';

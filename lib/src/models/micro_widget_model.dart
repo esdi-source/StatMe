@@ -1,5 +1,6 @@
 /// MikroWidget Model - Kleine abhakbare Widgets für tägliche Gewohnheiten
 /// z.B. "4x pro Woche lesen", "Täglich meditieren"
+library;
 
 import 'package:equatable/equatable.dart';
 

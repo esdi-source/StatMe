@@ -1,4 +1,5 @@
 /// Main Navigation Screen - Simplified layout, navigation via Dashboard cards
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

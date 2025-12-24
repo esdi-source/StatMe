@@ -5,8 +5,8 @@
 /// 
 /// Beispiel: Timer-Widget sucht alle Widgets mit `supportsTimerTracking`
 /// und kann deren Ziele beim Beenden einer Session aktualisieren.
+library;
 
-import 'package:flutter/foundation.dart';
 
 /// Basis-Enum für Widget-Fähigkeiten
 enum WidgetCapability {

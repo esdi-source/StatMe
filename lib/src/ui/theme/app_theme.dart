@@ -3,6 +3,7 @@
 /// Erstellt Flutter ThemeData basierend auf den aktuellen Design Tokens.
 /// Diese Datei dient als Brücke zwischen dem Token-System und Flutter's
 /// Material Theme System.
+library;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -206,7 +207,7 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: tokens.surface,
-        indicatorColor: tokens.primary.withOpacity(0.2),
+        indicatorColor: tokens.primary.withValues(alpha: 0.2),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return tokens.labelMedium.copyWith(color: tokens.primary);
@@ -247,7 +248,7 @@ class AppTheme {
       ),
       chipTheme: ChipThemeData(
         backgroundColor: tokens.surface,
-        selectedColor: tokens.primary.withOpacity(0.2),
+        selectedColor: tokens.primary.withValues(alpha: 0.2),
         labelStyle: tokens.labelMedium,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.radiusFull),
@@ -269,7 +270,7 @@ class AppTheme {
         }),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return tokens.primary.withOpacity(0.3);
+            return tokens.primary.withValues(alpha: 0.3);
           }
           return tokens.divider;
         }),

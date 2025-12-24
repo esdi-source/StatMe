@@ -6,6 +6,7 @@
 /// - Offene Hausaufgaben
 /// - Letzte Noten
 /// - Lernzeit-Statistik
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -554,7 +555,7 @@ class _SchoolScreenState extends ConsumerState<SchoolScreen> {
         screen = const SubjectProfilesScreen();
         break;
       case 'notes':
-        screen = NotesScreen();
+        screen = const NotesScreen();
         break;
       case 'calculator':
         screen = const GradeCalculatorScreen();

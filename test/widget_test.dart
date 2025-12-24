@@ -5,26 +5,26 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:statme/main.dart';
+import 'package:statme/src/core/config/app_config.dart';
+import 'package:statme/src/services/in_memory_database.dart';
+import 'package:statme/src/ui/app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App should build without errors', (WidgetTester tester) async {
+    // Initialize AppConfig in Demo Mode
+    await AppConfig.initialize(forceDemoMode: true);
+    await InMemoryDatabase().initialize();
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: StatMeApp(),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that the app builds
+    expect(find.byType(StatMeApp), findsOneWidget);
   });
 }

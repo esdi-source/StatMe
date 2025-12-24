@@ -1,5 +1,6 @@
 /// Books Screen - Meine Bücher mit Leseliste, Gelesen, Leseziele
 /// Features: ISBN Scanner, Google Books Suche, Bewertungen, Leseziele
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -418,11 +419,11 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
                     final starValue = (index + 1) * 2;
                     final rating = book.rating!.overall;
                     if (rating >= starValue) {
-                      return Icon(Icons.star, size: 12, color: Colors.amber);
+                      return const Icon(Icons.star, size: 12, color: Colors.amber);
                     } else if (rating >= starValue - 1) {
-                      return Icon(Icons.star_half, size: 12, color: Colors.amber);
+                      return const Icon(Icons.star_half, size: 12, color: Colors.amber);
                     } else {
-                      return Icon(Icons.star_border, size: 12, color: Colors.amber);
+                      return const Icon(Icons.star_border, size: 12, color: Colors.amber);
                     }
                   }),
                 ),
@@ -451,8 +452,8 @@ class _BooksScreenState extends ConsumerState<BooksScreen> with SingleTickerProv
     
     // Lesezeit-Statistiken aus reading_sessions werden später ergänzt
     // Für jetzt zeigen wir nur die MikroWidgets an
-    final weekMinutes = 0;
-    final monthMinutes = 0;
+    const weekMinutes = 0;
+    const monthMinutes = 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),

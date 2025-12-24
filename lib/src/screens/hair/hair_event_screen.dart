@@ -1,5 +1,6 @@
 /// Haarpflege Ereignisse Screen
 /// Ermöglicht das Erfassen von besonderen Ereignissen (Haarschnitt, Färben, etc.)
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -1,4 +1,5 @@
 /// Sleep Screen - Sleep tracking
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -89,7 +90,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
       endTs: wakeDateTime,
     );
 
-    await ref.read(sleepNotifierProvider.notifier).add(log);
+    await ref.read(sleepNotifierProvider.notifier).upsert(log);
     
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Schlaf gespeichert')),
@@ -232,7 +233,7 @@ class _SleepScreenState extends ConsumerState<SleepScreen> {
                         child: const Icon(Icons.nights_stay, color: Colors.indigo),
                       ),
                       title: const Text('Eingeschlafen'),
-                      subtitle: Text('Gestern Abend'),
+                      subtitle: const Text('Gestern Abend'),
                       trailing: TextButton(
                         onPressed: () async {
                           final time = await showTimePicker(

@@ -1,4 +1,5 @@
 /// Notizen Screen - Freie und fachbezogene Notizen
+library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -333,7 +334,7 @@ class _NotesScreenState extends ConsumerState<NotesScreen> {
                 children: [
                   // Subject selector
                   DropdownButtonFormField<String?>(
-                    value: selectedSubjectId,
+                    initialValue: selectedSubjectId,
                     decoration: const InputDecoration(
                       labelText: 'Fach (optional)',
                       border: OutlineInputBorder(),

@@ -1,10 +1,10 @@
 /// Media Screen - Filme & Serien verwalten
 /// Mit TMDB-Anbindung, Merkliste, Bewertungen und Statistiken
+library;
 
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../models/models.dart';
 import '../providers/providers.dart';
@@ -276,7 +276,7 @@ class _MediaCard extends ConsumerWidget {
                     if (entry.rating != null)
                       Row(
                         children: [
-                          Icon(Icons.star, size: 14, color: Colors.amber),
+                          const Icon(Icons.star, size: 14, color: Colors.amber),
                           const SizedBox(width: 2),
                           Text(
                             entry.rating!.overall.toStringAsFixed(1),
@@ -305,7 +305,7 @@ class _MediaCard extends ConsumerWidget {
                       Text(s.label),
                       if (s == entry.status) ...[
                         const Spacer(),
-                        Icon(Icons.check, size: 16, color: Colors.green),
+                        const Icon(Icons.check, size: 16, color: Colors.green),
                       ],
                     ],
                   ),
@@ -787,7 +787,7 @@ class _MediaDetailSheet extends ConsumerStatefulWidget {
 class _MediaDetailSheetState extends ConsumerState<_MediaDetailSheet> {
   late UserMediaEntry _entry;
   double _ratingValue = 5.0;
-  bool _showRating = false;
+  final bool _showRating = false;
 
   @override
   void initState() {
@@ -893,7 +893,7 @@ class _MediaDetailSheetState extends ConsumerState<_MediaDetailSheet> {
                           if (media.voteAverage != null)
                             Row(
                               children: [
-                                Icon(Icons.star, size: 16, color: Colors.amber),
+                                const Icon(Icons.star, size: 16, color: Colors.amber),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${media.voteAverage!.toStringAsFixed(1)}/10',
@@ -971,7 +971,7 @@ class _MediaDetailSheetState extends ConsumerState<_MediaDetailSheet> {
                             if (_entry.rating != null)
                               Row(
                                 children: [
-                                  Icon(Icons.star, color: Colors.amber),
+                                  const Icon(Icons.star, color: Colors.amber),
                                   const SizedBox(width: 4),
                                   Text(
                                     _entry.rating!.overall.toStringAsFixed(1),
